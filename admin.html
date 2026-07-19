@@ -400,6 +400,10 @@ tr:hover td { background: #FAFAFA; }
       <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/><path d="M10 9h8v2h-8zm0 3h8v2h-8zm0-6h8v2h-8z"/></svg>
       博客管理
     </div>
+    <div class="nav-item" data-page="analytics">
+      <svg viewBox="0 0 24 24"><path d="M3 13h2v8H3zm5-4h2v12H8zm5-5h2v17h-2zm5 9h2v8h-2z"/></svg>
+      访问统计
+    </div>
   </nav>
   <div class="sidebar-footer">
     <a href="qing-song-design.html" target="_blank">→ 打开官网预览</a>
@@ -515,6 +519,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
     else if (page === 'homepage') renderHomepage();
     else if (page === 'data') renderDataPage();
     else if (page === 'blog') renderBlogPage();
+    else if (page === 'analytics') renderAnalyticsPage();
   });
 });
 
@@ -1818,6 +1823,105 @@ async function publishBlog(oldSlug) {
 
 // ==================== INIT ====================
 renderCases();
+
+// ==================== ANALYTICS PAGE ====================
+let analyticsRange = 'today';
+
+async function renderAnalyticsPage() {
+  mainContent.innerHTML = '<div class="page-title">访问统计</div><div style="text-align:center;color:#86868B;padding:40px;">加载中...</div>';
+  await loadAnalytics();
+}
+
+async function loadAnalytics() {
+  try {
+    const res = await fetch('/api/analytics?range=' + analyticsRange + '&password=qingsong2024');
+    const data = await res.json();
+    if (data.error) { mainContent.innerHTML = '<div class="page-title">访问统计</div><div class="card"><p style="text-align:center;color:#cc4444;">错误: ' + data.error + '</p></div>'; return; }
+    buildAnalyticsUI(data);
+  } catch(e) {
+    mainContent.innerHTML = '<div class="page-title">访问统计</div><div class="card"><p style="text-align:center;color:#cc4444;">加载失败: ' + e.message + '</p></div>';
+  }
+}
+
+function buildAnalyticsUI(d) {
+  const totalPV = (d.totalPV || 0).toLocaleString();
+  const uniqueVisitors = (d.uniqueVisitors || 0).toLocaleString();
+  const avgDuration = formatDuration(d.avgDuration || 0);
+  const maxHourVal = d.hourlyDistribution ? Math.max.apply(null, d.hourlyDistribution) : 1;
+
+  let html = '<div class="page-title">访问统计</div>';
+
+  // Range toggle
+  const ranges = [{key:'today',label:'今日'},{key:'7days',label:'近7天'},{key:'30days',label:'近30天'}];
+  html += '<div class="btn-group" style="margin-bottom:24px;">';
+  ranges.forEach(function(r) {
+    html += '<button class="btn ' + (analyticsRange === r.key ? 'btn-primary' : 'btn-outline') + '" onclick="analyticsRange=\'' + r.key + '\';loadAnalytics()">' + r.label + '</button>';
+  });
+  html += '</div>';
+
+  // Metrics row
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">';
+  html += metricCard('总浏览量 (PV)', totalPV);
+  html += metricCard('独立访客 (UV)', uniqueVisitors);
+  html += metricCard('平均访问时长', avgDuration);
+  html += '</div>';
+
+  // Page ranking
+  html += '<div class="card"><div class="card-header"><h3>页面浏览排行</h3></div>';
+  if (d.pageRanking && d.pageRanking.length > 0) {
+    html += '<div class="table-wrap"><table><thead><tr><th>页面路径</th><th>PV</th><th>占比</th></tr></thead><tbody>';
+    d.pageRanking.forEach(function(p) {
+      const pct = totalPV > 0 ? ((p.count / (d.totalPV || 1)) * 100).toFixed(1) : '0.0';
+      html += '<tr><td>' + (p.page || '/') + '</td><td>' + p.count.toLocaleString() + '</td><td>' + pct + '%</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  } else {
+    html += '<p style="text-align:center;color:#86868B;padding:20px;">暂无数据</p>';
+  }
+  html += '</div>';
+
+  // Country distribution
+  html += '<div class="card"><div class="card-header"><h3>国家/地区分布</h3></div>';
+  if (d.countryDistribution && d.countryDistribution.length > 0) {
+    html += '<div class="table-wrap"><table><thead><tr><th>国家</th><th>PV</th></tr></thead><tbody>';
+    d.countryDistribution.forEach(function(c) {
+      html += '<tr><td>' + (c.country || '未知') + '</td><td>' + c.count.toLocaleString() + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  } else {
+    html += '<p style="text-align:center;color:#86868B;padding:20px;">暂无数据</p>';
+  }
+  html += '</div>';
+
+  // Hourly heatmap
+  html += '<div class="card"><div class="card-header"><h3>24小时访问分布</h3></div>';
+  if (d.hourlyDistribution && d.hourlyDistribution.length === 24) {
+    html += '<div style="display:flex;align-items:flex-end;gap:3px;height:180px;padding:8px 0;">';
+    for (var i = 0; i < 24; i++) {
+      var h = maxHourVal > 0 ? Math.max((d.hourlyDistribution[i] / maxHourVal) * 100, 3) : 0;
+      html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">';
+      html += '<span style="font-size:10px;color:#86868B;">' + d.hourlyDistribution[i] + '</span>';
+      html += '<div style="width:100%;height:' + h + '%;background:linear-gradient(180deg,#C9A96E,#D4B87A);border-radius:4px 4px 0 0;min-height:2px;" title="' + i + ':00 - ' + d.hourlyDistribution[i] + '"></div>';
+      html += '<span style="font-size:10px;color:#B0B0B5;">' + (i < 10 ? '0' + i : i) + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  } else {
+    html += '<p style="text-align:center;color:#86868B;padding:20px;">暂无数据</p>';
+  }
+  html += '</div>';
+
+  mainContent.innerHTML = html;
+}
+
+function metricCard(label, value) {
+  return '<div class="card" style="text-align:center;padding:20px;"><div style="font-size:28px;font-weight:700;color:#C9A96E;">' + value + '</div><div style="font-size:13px;color:#86868B;margin-top:6px;">' + label + '</div></div>';
+}
+
+function formatDuration(seconds) {
+  if (seconds <= 0) return '0 秒';
+  if (seconds < 60) return Math.round(seconds) + ' 秒';
+  if (seconds < 3600) return Math.floor(seconds / 60) + ' 分 ' + Math.round(seconds % 60) + ' 秒';
+  return Math.floor(seconds / 3600) + ' 时 ' + Math.floor((seconds % 3600) / 60) + ' 分';
+}
 </script>
-</body>
-</html>
