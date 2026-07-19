@@ -1,0 +1,225 @@
+/* ===== 青松设计智能客服 Widget 样式 ===== */
+/* 配色：黑 #0D0D0D / 红 #C41E3A / 金 #D4A843 / 白 #FFFFFF */
+
+.qs-chat-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #D4A843;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.qs-chat-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+}
+.qs-chat-btn svg {
+  width: 28px;
+  height: 28px;
+  fill: #0D0D0D;
+}
+
+.qs-chat-window {
+  position: fixed;
+  bottom: 96px;
+  right: 24px;
+  z-index: 9998;
+  width: 380px;
+  height: 520px;
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+.qs-chat-window.open {
+  display: flex;
+}
+
+/* 头部 */
+.qs-chat-header {
+  background: linear-gradient(135deg, #0D0D0D, #1a1a1a);
+  color: #D4A843;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.qs-chat-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.qs-chat-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.qs-chat-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #FFF;
+}
+.qs-chat-subtitle {
+  font-size: 11px;
+  color: #999;
+}
+.qs-chat-close {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 4px;
+  transition: color 0.15s;
+}
+.qs-chat-close:hover {
+  color: #FFF;
+}
+
+/* 消息区 */
+.qs-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #F5F5F7;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.qs-chat-messages::-webkit-scrollbar {
+  width: 4px;
+}
+.qs-chat-messages::-webkit-scrollbar-thumb {
+  background: #CCC;
+  border-radius: 2px;
+}
+
+/* 消息气泡 */
+.qs-msg {
+  max-width: 82%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  word-break: break-word;
+  animation: qs-fadeIn 0.25s ease;
+}
+@keyframes qs-fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.qs-msg-user {
+  align-self: flex-end;
+  background: #D4A843;
+  color: #0D0D0D;
+  border-bottom-right-radius: 4px;
+}
+.qs-msg-agent {
+  align-self: flex-start;
+  background: #FFFFFF;
+  color: #1D1D1F;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.qs-msg-typing {
+  align-self: flex-start;
+  background: #FFFFFF;
+  color: #999;
+  padding: 10px 16px;
+  border-radius: 14px;
+  border-bottom-left-radius: 4px;
+  font-size: 13px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  animation: qs-pulse 1.4s infinite;
+}
+@keyframes qs-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* 输入区 */
+.qs-chat-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid #E5E5E7;
+  background: #FFF;
+  flex-shrink: 0;
+}
+.qs-chat-input {
+  flex: 1;
+  border: 1px solid #DDD;
+  border-radius: 22px;
+  padding: 10px 16px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+  background: #F9F9FB;
+}
+.qs-chat-input:focus {
+  border-color: #D4A843;
+}
+.qs-chat-send {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: #D4A843;
+  color: #0D0D0D;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.qs-chat-send:hover {
+  background: #C4942E;
+}
+.qs-chat-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.qs-chat-send svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 移动端适配 */
+@media (max-width: 480px) {
+  .qs-chat-window {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    position: fixed;
+  }
+  .qs-chat-btn {
+    bottom: 16px;
+    right: 16px;
+    width: 50px;
+    height: 50px;
+  }
+}

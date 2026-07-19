@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设计案例 | 青松设计</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #1D1D1F;
+  background: #FFFFFF;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Navbar ===== */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(255,255,255,0.95);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.nav-inner {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.nav-logo img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #C9A96E;
+  object-fit: cover;
+}
+.nav-logo span {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1D1D1F;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+}
+.nav-links a {
+  text-decoration: none;
+  color: #555;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.nav-links a:hover,
+.nav-links a.active {
+  background: #F5F5F7;
+  color: #1D1D1F;
+}
+.nav-links a.primary-link {
+  background: #C9A96E;
+  color: #fff;
+  font-weight: 500;
+}
+.nav-links a.primary-link:hover {
+  background: #B8995E;
+}
+.nav-back {
+  color: #C9A96E !important;
+  font-weight: 500;
+}
+
+/* ===== Page Header ===== */
+.page-header {
+  padding-top: 100px;
+  padding-bottom: 48px;
+  text-align: center;
+}
+.page-header h1 {
+  font-size: 40px;
+  font-weight: 700;
+  color: #1D1D1F;
+  margin-bottom: 12px;
+}
+.page-header p {
+  font-size: 17px;
+  color: #86868B;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.line {
+  width: 40px;
+  height: 3px;
+  background: #C9A96E;
+  margin: 0 auto 16px;
+  border-radius: 2px;
+}
+
+/* ===== Category Tabs ===== */
+.cat-tabs {
+  position: relative;
+  z-index: 1;
+  background: rgba(255,255,255,0.96);
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  padding: 16px 0;
+}
+.cat-tabs-inner {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.cat-tab {
+  padding: 8px 22px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid #E8E8ED;
+  background: #fff;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-decoration: none;
+}
+.cat-tab:hover {
+  border-color: #C9A96E;
+  color: #C9A96E;
+}
+.cat-tab.active {
+  background: #C9A96E;
+  color: #fff;
+  border-color: #C9A96E;
+}
+.all-tab {
+  border-color: #C9A96E;
+  color: #C9A96E;
+}
+.all-tab.active {
+  background: #C9A96E;
+  color: #fff;
+}
+
+/* ===== Project Section ===== */
+.project-section {
+  padding: 16px 0 60px;
+}
+.project-inner {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ===== Section Category Header ===== */
+.cat-header {
+  text-align: center;
+  padding: 40px 0 8px;
+  margin-top: 16px;
+}
+.cat-header h2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1D1D1F;
+  margin-bottom: 6px;
+}
+.cat-header .cat-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #C9A96E;
+  padding: 4px 14px;
+  border: 1px solid #C9A96E;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+
+/* ===== Project Card ===== */
+.project-card {
+  margin-bottom: 48px;
+  border: 1px solid #E8E8ED;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: box-shadow 0.3s ease;
+}
+.project-card:hover {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+}
+.project-header {
+  padding: 28px 32px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.project-header h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1D1D1F;
+}
+.project-header .project-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.project-tag {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+.tag-home {
+  background: rgba(201,169,110,0.1);
+  color: #C9A96E;
+}
+.tag-commercial {
+  background: rgba(108,117,125,0.1);
+  color: #6C757D;
+}
+.project-location {
+  font-size: 13px;
+  color: #86868B;
+}
+.project-desc {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.7;
+  padding: 0 32px 8px;
+}
+
+/* ===== Project Gallery ===== */
+.project-gallery {
+  display: grid;
+  gap: 8px;
+  padding: 0 32px 28px;
+}
+.gallery-5 {
+  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-rows: auto auto;
+}
+.gallery-4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+}
+.gallery-item {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #E8E8ED;
+  cursor: pointer;
+}
+.gallery-item.parallax-container {
+  overflow: hidden;
+}
+.gallery-item img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+/* 图片加载失败占位 */
+.gallery-item img.img-error {
+  object-fit: contain;
+  background: #F5F5F7;
+  min-height: 120px;
+}
+.lightbox-img.img-error {
+  object-fit: contain;
+  background: #F5F5F7;
+  min-width: 200px;
+  min-height: 150px;
+}
+.gallery-main {
+  grid-row: 1 / 3;
+  grid-column: 1;
+}
+.gallery-main img {
+  height: 380px;
+}
+.gallery-thumb img {
+  height: 186px;
+}
+.gallery-4 .gallery-item img {
+  height: 240px;
+}
+
+@media (max-width: 768px) {
+  .page-header h1 { font-size: 30px; }
+  .project-header { padding: 20px; }
+  .project-header h3 { font-size: 18px; }
+  .project-desc { padding: 0 20px 8px; font-size: 13px; }
+  .project-gallery { padding: 0 20px 24px; gap: 6px; }
+  
+  .gallery-5 {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .gallery-5 .gallery-item {
+    flex: 0 0 85vw;
+  }
+  .gallery-5 .gallery-thumb {
+    flex: 0 0 60vw;
+  }
+  .gallery-main img { height: 260px; }
+  .gallery-thumb img { height: 200px; }
+  
+  .gallery-4 {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .gallery-4 .gallery-item img {
+    height: 160px;
+  }
+  
+  .cat-tabs-inner {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .cat-tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
+/* ===== Parallax ===== */
+.parallax-container {
+  overflow: hidden;
+}
+.parallax-container img {
+  transition: transform 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ===== Footer ===== */
+.footer {
+  background: #1D1D1F;
+  padding: 48px 40px;
+  text-align: center;
+  color: #A8A8A8;
+  font-size: 13px;
+  line-height: 2;
+}
+.footer a {
+  color: #C9A96E;
+  text-decoration: none;
+}
+.footer a:hover {
+  text-decoration: underline;
+}
+
+/* 720全景自动旋转动画 */
+@keyframes pano-rotate {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.pano-scene {
+  position: relative;
+  width: 100%;
+  height: 420px;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  margin: 0 32px 28px;
+  border: 1px solid #E8E8ED;
+}
+.pano-track {
+  display: flex;
+  width: 200%;
+  height: 100%;
+  animation: pano-rotate 25s linear infinite;
+}
+.pano-track img {
+  width: 50%;
+  height: 100%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.pano-scene:hover .pano-track {
+  animation-play-state: paused;
+}
+.pano-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s ease;
+}
+.pano-scene:hover .pano-overlay {
+  background: rgba(0,0,0,0.50);
+}
+.pano-overlay-text {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  padding: 14px 32px;
+  border: 1.5px solid rgba(255,255,255,0.7);
+  border-radius: 30px;
+  backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
+}
+.pano-scene:hover .pano-overlay-text {
+  border-color: #C9A96E;
+  background: rgba(201,169,110,0.25);
+  transform: scale(1.04);
+}
+@media (max-width: 768px) {
+  .pano-scene {
+    height: 260px;
+    margin: 0 16px 20px;
+  }
+  .pano-overlay-text {
+    font-size: 15px;
+    padding: 10px 20px;
+  }
+}
+
+/* ===== 720全景统一点击区 ===== */
+.pano-section-wrapper {
+  cursor: pointer;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+.pano-section-wrapper:hover .project-card {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+}
+
+/* ===== Lightbox ===== */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.lightbox-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+.lightbox-content {
+  position: relative;
+  max-width: 92vw;
+  max-height: 92vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox-img {
+  max-width: 92vw;
+  max-height: 92vh;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+  transform: scale(0.9);
+  transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+.lightbox-overlay.active .lightbox-img {
+  transform: scale(1);
+}
+.lightbox-close {
+  position: absolute;
+  top: 24px;
+  right: 32px;
+  z-index: 10001;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  background: rgba(0,0,0,0.4);
+  color: #C9A96E;
+  font-size: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(6px);
+}
+.lightbox-close:hover {
+  background: rgba(201,169,110,0.2);
+  border-color: #C9A96E;
+  color: #fff;
+}
+.lightbox-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10001;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 50%;
+  background: rgba(0,0,0,0.4);
+  color: #C9A96E;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(6px);
+  user-select: none;
+}
+.lightbox-arrow:hover {
+  background: rgba(201,169,110,0.2);
+  border-color: #C9A96E;
+  color: #fff;
+}
+.lightbox-arrow-left {
+  left: 28px;
+}
+.lightbox-arrow-right {
+  right: 28px;
+}
+.lightbox-arrow.hidden {
+  display: none;
+}
+.lightbox-counter {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10001;
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  background: rgba(0,0,0,0.5);
+  padding: 6px 18px;
+  border-radius: 20px;
+  backdrop-filter: blur(6px);
+}
+.lightbox-counter span {
+  color: #C9A96E;
+  font-weight: 600;
+}
+@media (max-width: 768px) {
+  .lightbox-close {
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+  .lightbox-arrow {
+    width: 38px;
+    height: 38px;
+    font-size: 20px;
+  }
+  .lightbox-arrow-left { left: 10px; }
+  .lightbox-arrow-right { right: 10px; }
+  .lightbox-counter { bottom: 16px; font-size: 12px; }
+}
+
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="qing-song-design.html" class="nav-logo">
+      <img src="images/logo.jpg" alt="青松设计" class="nav-logo-img">
+      <span>青松设计</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="qing-song-design.html" class="nav-back">&larr; 返回首页</a></li>
+      <li><a href="#home" class="all-tab active">全部案例</a></li>
+      <li><a href="blog.html">最新博客</a></li>
+      <li><a href="#home-anchor" class="cat-tab">家装案例</a></li>
+      <li><a href="#commercial" class="cat-tab">工装案例</a></li>
+      <li><a href="#pano720" class="cat-tab">720全景图</a></li>
+    </ul>
+  </div>
+</nav>
+
+<section class="page-header" id="home">
+  <h1>设计案例</h1>
+  <div class="line"></div>
+  <p>从家装到工装，每一个项目都是用心雕琢的作品</p>
+</section>
+
+<!-- ========== 家装案例 ========== -->
+<div class="cat-header" id="home-anchor">
+  <div class="cat-badge">家装案例</div>
+  <h2>住宅空间</h2>
+</div>
+
+<section class="project-section">
+<div class="project-inner" id="homeProjectsContainer">
+</div>
+</section>
+
+<!-- ========== 工装案例 ========== -->
+<div class="cat-header" id="commercial">
+  <div class="cat-badge">工装案例</div>
+  <h2>商业空间</h2>
+</div>
+
+<section class="project-section">
+<div class="project-inner" id="commercialProjectsContainer">
+</div>
+</section>
+
+<!-- ========== 720全景图 ========== -->
+<a class="pano-section-wrapper" onclick="event.preventDefault();window.open('https://vr.shinewonder.com/pano/page/publik/personalCenter.html?flag=02S03903502X03202V03703303202V01D01L01K01K','_blank')">
+<div class="cat-header" id="pano720">
+  <div class="cat-badge">全景漫游</div>
+  <h2>720全景图</h2>
+  <p style="max-width:600px;margin:8px auto 20px;color:#86868B;font-size:14px;">身临其境的全景漫游体验，真实还原空间每一处细节</p>
+</div>
+
+<section class="project-section">
+<div class="project-inner">
+
+<div class="project-card">
+  <div class="project-header">
+    <div>
+      <h3>景豪酒店 · 720全景漫游</h3>
+      <div class="project-meta">
+        <span class="project-tag tag-commercial">工装</span>
+        <span class="project-location">湖南 · 张家界</span>
+      </div>
+    </div>
+  </div>
+  <p class="project-desc">张家界早期五星级酒店，共 6 层，每层 1000 平米全配置空间。点击任意位置即可进入全景漫游，足不出户沉浸式体验酒店每一处空间设计。</p>
+  <div class="pano-scene">
+    <div class="pano-track">
+      <img src="images/project_jinghao_1.jpg" alt="景豪酒店全景">
+      <img src="images/project_jinghao_1.jpg" alt="景豪酒店全景">
+    </div>
+    <div class="pano-overlay">
+      <span class="pano-overlay-text">点击进入 720° 全景漫游 &rarr;</span>
+    </div>
+  </div>
+</div>
+</div>
+</section>
+</a>
+
+<footer class="footer">
+  <p><a href="qing-song-design.html">&larr; 返回青松设计首页</a></p>
+  <p style="margin-top:16px;">&copy; 2026 张家界青松空间设计有限公司 版权所有</p>
+</footer>
+
+<script>
+(function() {
+  try {
+    var containers = document.querySelectorAll('.parallax-container');
+    if (!containers || containers.length === 0) return;
+    for (var i = 0; i < containers.length; i++) {
+      (function(container) {
+        if (!container) return;
+        var img = container.querySelector('img');
+        if (!img) return;
+        container.addEventListener('mousemove', function(e) {
+          try {
+            var rect = container.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
+            var x = (e.clientX - rect.left) / rect.width;
+            var y = (e.clientY - rect.top) / rect.height;
+            var moveX = (x - 0.5) * 24;
+            var moveY = (y - 0.5) * 24;
+            img.style.transition = 'none';
+            img.style.transform = 'scale(1.15) translate(' + (-moveX) + 'px, ' + (-moveY) + 'px)';
+          } catch (err) {}
+        });
+        container.addEventListener('mouseleave', function() {
+          try {
+            img.style.transition = 'transform 0.6s cubic-bezier(0.4,0,0.2,1)';
+            img.style.transform = 'scale(1) translate(0, 0)';
+          } catch (err) {}
+        });
+      })(containers[i]);
+    }
+  } catch (err) {}
+})();
+</script>
+
+<script>
+// ==================== Dynamic Content from localStorage ====================
+(function() {
+  // Helper: generate project card HTML
+  function renderProjectCard(c) {
+    var imgCount = (c.images && c.images.length) || 0;
+    var galleryClass = imgCount >= 5 ? 'gallery-5' : 'gallery-4';
+    var typeClass = c.type === '家装' ? 'tag-home' : 'tag-commercial';
+    var typeLabel = c.type;
+
+    var html = '<div class="project-card">';
+    html += '<div class="project-header"><div>';
+    html += '<h3 id="' + c.id + '">' + c.name + '</h3>';
+    html += '<div class="project-meta">';
+    html += '<span class="project-tag ' + typeClass + '">' + typeLabel + '</span>';
+    html += '<span class="project-location">' + (c.location || '') + '</span>';
+    html += '</div></div></div>';
+    html += '<p class="project-desc">' + (c.desc || '') + '</p>';
+
+    // Filter empty/invalid image paths
+    var validImages = [];
+    for (var i = 0; i < imgCount; i++) {
+      if (c.images[i] && c.images[i].trim() !== '') {
+        validImages.push(c.images[i]);
+      }
+    }
+    var validCount = validImages.length;
+    if (validCount > 0) {
+      var galleryClass2 = validCount >= 5 ? 'gallery-5' : 'gallery-4';
+      html += '<div class="project-gallery ' + galleryClass2 + '">';
+      for (var j = 0; j < validCount; j++) {
+        var isMain = (validCount >= 5 && j === 0);
+        var itemClass2 = isMain ? 'gallery-item gallery-main parallax-container' : 'gallery-item gallery-thumb parallax-container';
+        html += '<div class="' + itemClass2 + '"><img src="' + validImages[j] + '" alt="' + c.name + ' - 图片' + (j+1) + '" loading="lazy" onerror="this.onerror=null;this.src=\'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="#F5F5F7" width="400" height="300"/><text fill="#86868B" font-family="sans-serif" font-size="16" text-anchor="middle" x="200" y="150">图片加载失败</text></svg>') + '\';this.classList.add(\'img-error\')"></div>';
+      }
+      html += '</div>';
+    }
+
+    // Video link
+    if (c.video) {
+      html += '<div style="padding:0 32px 16px;"><a href="' + c.video + '" target="_blank" style="color:#C9A96E;font-size:13px;text-decoration:none;">&#9654; 观看视频展示</a></div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  var appData = null;
+  try {
+    var raw = localStorage.getItem('qs_design_data');
+    if (raw) {
+      appData = JSON.parse(raw);
+    }
+  } catch(e) {}
+
+  // R2 CDN URL 替换 — localStorage 数据
+  // 保留 uploads/ 路径段，确保 URL 格式为 /images/uploads/xxx
+  appData = JSON.parse(JSON.stringify(appData).replace(/pub-7646c45fb83242e189261cdec03baf81\.r2\.dev\/uploads\//g, 'qingsong.ggff.net/images/uploads/'));
+
+  var casesData = null;
+  if (appData && appData.cases && appData.cases.length > 0) {
+    casesData = appData.cases;
+  } else {
+    // 默认兜底案例数据
+    casesData = [
+      { id: 'project-huajie', name: '华姐南庄坪雅居', type: '家装', location: '湖南 · 张家界', desc: '现代简约风格住宅设计，注重空间通透感与自然采光，营造舒适宜居的生活氛围', images: ['images/project_huajie_1.jpg','images/project_huajie_2.jpg','images/project_huajie_3.jpg','images/project_huajie_4.jpg','images/project_huajie_5.jpg'], video: '' },
+      { id: 'project-shanshui', name: '山水印象澜庭', type: '家装', location: '湖南 · 张家界', desc: '现代极简风格住宅，极简黑白搭配与现代生活方式，打造宁静雅致的居住环境。127平，半包造价12.3万', images: ['images/project_shanshui_1.jpg','images/project_shanshui_2.jpg','images/project_shanshui_3.jpg','images/project_shanshui_4.jpg'], video: '' },
+      { id: 'project-huadu', name: '華都山莊田總獨棟別墅', type: '家装', location: '湖南 · 常德', desc: '中式轻奢风格，600平独栋别墅。融合现代元素与传统美学，呈现高端品质生活空间', images: ['images/project_huadu_1.jpg','images/project_huadu_2.jpg','images/project_huadu_3.jpg','images/project_huadu_4.jpg'], video: '' },
+      { id: 'project-xuzong', name: '许总雅居', type: '工装', location: '湖南 · 张家界', desc: '现代简约商业空间设计，以红色主题色块贯穿展厅。阳湖坪义务商城耀元门窗超市', images: ['images/project_xuzong_1.jpg','images/project_xuzong_2.jpg','images/project_xuzong_3.jpg','images/project_xuzong_4.jpg','images/project_xuzong_5.jpg'], video: '' },
+      { id: 'project-jinghao', name: '景豪酒店', type: '工装', location: '湖南 · 张家界', desc: '张家界早期五星级酒店，共6层每层1000平米。配置全面，洗浴中心、健身房、用餐住宿一应俱全', images: ['images/project_jinghao_1.jpg','images/project_jinghao_2.jpg','images/project_jinghao_3.jpg','images/project_jinghao_4.jpg'], video: '' },
+      { id: 'project-guyun', name: '谷韵山居民宿', type: '工装', location: '湖南 · 张家界', desc: '以传统土家吊脚楼的建筑形态将民宿融入绝美的自然风光，形成人与自然和谐的统一', images: ['images/project_guyun_1.jpg','images/project_guyun_2.jpg','images/project_guyun_3.jpg','images/project_guyun_4.jpg'], video: '' },
+      { id: 'project-tongmeng', name: '童蒙国际早教中心', type: '工装', location: '湖南 · 张家界', desc: '教育文化空间设计，以英伦风情配合温润木色与开放式布局，打造沉浸式阅读与学习环境', images: ['images/project_tongmeng_1.jpg','images/project_tongmeng_2.jpg','images/project_tongmeng_3.jpg','images/project_tongmeng_4.jpg'], video: '' },
+      { id: 'project-zhangxiaorong', name: '张小嵘土菜馆', type: '工装', location: '湖南 · 张家界', desc: '新中式侘寂风×在地文化叙事空间。融合东方禅意与手作质感，将"土菜"主题转化为多维体验', images: ['images/project_zhangxiaorong_1.jpg','images/project_zhangxiaorong_2.jpg','images/project_zhangxiaorong_3.jpg','images/project_zhangxiaorong_4.jpg'], video: '' },
+      { id: 'project-bijiashan', name: '畢架山花园', type: '家装', location: '香港', desc: '家装设计', images: ['https://pub-7646c45fb83242e189261cdec03baf81.r2.dev/uploads/1784282847156_wk0le3.png','https://pub-7646c45fb83242e189261cdec03baf81.r2.dev/uploads/1784282851565_49v84d.png','https://pub-7646c45fb83242e189261cdec03baf81.r2.dev/uploads/1784282854116_bkuk0y.png','https://pub-7646c45fb83242e189261cdec03baf81.r2.dev/uploads/1784282855688_a3uz8u.png'], video: '' }
+    ];
+  }
+
+  // 默认数据 R2 CDN URL 替换
+  // 保留 uploads/ 路径段，确保 URL 格式为 /images/uploads/xxx
+  casesData = JSON.parse(JSON.stringify(casesData).replace(/pub-7646c45fb83242e189261cdec03baf81\.r2\.dev\/uploads\//g, 'qingsong.ggff.net/images/uploads/'));
+
+  var homeCases = casesData.filter(function(c) { return c.type === '家装'; });
+  var commercialCases = casesData.filter(function(c) { return c.type === '工装'; });
+
+  // Render 家装
+  var homeContainer = document.getElementById('homeProjectsContainer');
+  if (homeContainer && homeCases.length > 0) {
+    var html = '';
+    for (var i = 0; i < homeCases.length; i++) {
+      html += renderProjectCard(homeCases[i]);
+    }
+    homeContainer.innerHTML = html;
+  }
+
+  // Render 工装
+  var commContainer = document.getElementById('commercialProjectsContainer');
+  if (commContainer && commercialCases.length > 0) {
+    var html = '';
+    for (var i = 0; i < commercialCases.length; i++) {
+      html += renderProjectCard(commercialCases[i]);
+    }
+    commContainer.innerHTML = html;
+  }
+
+  // Re-init parallax after dynamic content
+  setTimeout(function() {
+    var containers = document.querySelectorAll('.parallax-container');
+    for (var i = 0; i < containers.length; i++) {
+      (function(container) {
+        var img = container.querySelector('img');
+        if (!img) return;
+        container.addEventListener('mousemove', function(e) {
+          try {
+            var rect = container.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
+            var x = (e.clientX - rect.left) / rect.width;
+            var y = (e.clientY - rect.top) / rect.height;
+            var moveX = (x - 0.5) * 24;
+            var moveY = (y - 0.5) * 24;
+            img.style.transition = 'none';
+            img.style.transform = 'scale(1.15) translate(' + (-moveX) + 'px, ' + (-moveY) + 'px)';
+          } catch (err) {}
+        });
+        container.addEventListener('mouseleave', function() {
+          try {
+            img.style.transition = 'transform 0.6s cubic-bezier(0.4,0,0.2,1)';
+            img.style.transform = 'scale(1) translate(0, 0)';
+          } catch (err) {}
+        });
+      })(containers[i]);
+    }
+  }, 150);
+})();
+</script>
+
+<!-- Lightbox -->
+<div class="lightbox-overlay" id="lightboxOverlay">
+  <button class="lightbox-close" id="lightboxClose" title="关闭">&times;</button>
+  <button class="lightbox-arrow lightbox-arrow-left hidden" id="lightboxPrev" title="上一张">&lsaquo;</button>
+  <button class="lightbox-arrow lightbox-arrow-right hidden" id="lightboxNext" title="下一张">&rsaquo;</button>
+  <div class="lightbox-content">
+    <img class="lightbox-img" id="lightboxImg" src="" alt="">
+  </div>
+  <div class="lightbox-counter hidden" id="lightboxCounter"><span></span></div>
+</div>
+
+<script>
+(function() {
+  var overlay = document.getElementById('lightboxOverlay');
+  var img = document.getElementById('lightboxImg');
+  var closeBtn = document.getElementById('lightboxClose');
+  var prevBtn = document.getElementById('lightboxPrev');
+  var nextBtn = document.getElementById('lightboxNext');
+  var counter = document.getElementById('lightboxCounter');
+  var counterSpan = counter.querySelector('span');
+
+  var currentGallery = [];  // array of {src, alt}
+  var currentIndex = 0;
+  var isOpen = false;
+
+  function openLightbox(galleryImages, startIndex) {
+    currentGallery = galleryImages;
+    currentIndex = startIndex;
+    showImage();
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    isOpen = true;
+  }
+
+  function closeLightbox() {
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+    isOpen = false;
+    setTimeout(function() {
+      img.src = '';
+    }, 300);
+  }
+
+  function showImage() {
+    if (currentGallery.length === 0) return;
+    var item = currentGallery[currentIndex];
+    img.classList.remove('img-error');
+    img.onerror = function() {
+      img.onerror = null;
+      img.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="#F5F5F7" width="400" height="300"/><text fill="#86868B" font-family="sans-serif" font-size="16" text-anchor="middle" x="200" y="150">图片加载失败</text></svg>');
+      img.classList.add('img-error');
+    };
+    img.src = item.src;
+    img.alt = item.alt;
+
+    // Update arrows
+    if (currentGallery.length <= 1) {
+      prevBtn.classList.add('hidden');
+      nextBtn.classList.add('hidden');
+      counter.classList.add('hidden');
+    } else {
+      prevBtn.classList.toggle('hidden', currentIndex === 0);
+      nextBtn.classList.toggle('hidden', currentIndex === currentGallery.length - 1);
+      counter.classList.remove('hidden');
+      counterSpan.textContent = (currentIndex + 1) + ' / ' + currentGallery.length;
+    }
+  }
+
+  function prevImage() {
+    if (currentIndex > 0) {
+      currentIndex--;
+      showImage();
+    }
+  }
+
+  function nextImage() {
+    if (currentIndex < currentGallery.length - 1) {
+      currentIndex++;
+      showImage();
+    }
+  }
+
+  // Event delegation: click on gallery images
+  document.addEventListener('click', function(e) {
+    var target = e.target;
+    // Must be an img inside .gallery-item (not inside .pano-scene)
+    if (target.tagName !== 'IMG') return;
+    if (target.closest('.pano-scene')) return;
+    var galleryItem = target.closest('.gallery-item');
+    if (!galleryItem) return;
+
+    // Find all gallery items in the same project-gallery
+    var gallery = target.closest('.project-gallery');
+    if (!gallery) return;
+
+    var allItems = gallery.querySelectorAll('.gallery-item img');
+    var images = [];
+    var clickedIndex = 0;
+    for (var i = 0; i < allItems.length; i++) {
+      images.push({ src: allItems[i].src, alt: allItems[i].alt || '' });
+      if (allItems[i] === target) {
+        clickedIndex = i;
+      }
+    }
+
+    if (images.length > 0) {
+      openLightbox(images, clickedIndex);
+    }
+  });
+
+  // Close events
+  closeBtn.addEventListener('click', closeLightbox);
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) closeLightbox();
+  });
+
+  prevBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    prevImage();
+  });
+  nextBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    nextImage();
+  });
+
+  // Keyboard
+  document.addEventListener('keydown', function(e) {
+    if (!isOpen) return;
+    switch (e.key) {
+      case 'Escape':
+        closeLightbox();
+        break;
+      case 'ArrowLeft':
+        prevImage();
+        break;
+      case 'ArrowRight':
+        nextImage();
+        break;
+    }
+  });
+})();
+</script>
+
+<link rel="stylesheet" href="/chat-widget.css">
+<script src="/chat-widget.js"></script>
+</body>
+</html>

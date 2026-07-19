@@ -1,0 +1,9 @@
+name = "qingsong-sheji"
+pages_build_output_dir = "."
+
+[vars]
+CF_ACCOUNT_ID = "3d9087e0e073718babbb3e287f849382"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "qingsong-images"

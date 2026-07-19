@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文章详情 | 青松设计</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1D1D1F; background: #FFFFFF; line-height: 1.8; }
+
+.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 0 40px; height: 72px; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.06); }
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.nav-logo img { height: 36px; }
+.nav-logo span { font-size: 18px; font-weight: 700; color: #1D1D1F; }
+.nav-cta { background: #D4A843; color: #0D0D0D; border: none; padding: 10px 24px; border-radius: 24px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+.nav-cta:hover { background: #C4942E; }
+.nav-back { text-decoration: none; color: #555; font-size: 14px; font-weight: 500; }
+
+.article-wrap { max-width: 800px; margin: 0 auto; }
+.article-cover { width: 100%; max-height: 480px; object-fit: cover; margin-bottom: 40px; background: #F5F5F7; }
+.article-content { padding: 100px 40px 60px; }
+
+.article-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.article-date { font-size: 14px; color: #86868B; }
+.article-tags { display: flex; gap: 6px; }
+.article-tag { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(201,169,110,0.1); color: #C9A96E; font-weight: 500; }
+
+.article-title { font-size: 36px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; line-height: 1.3; }
+.article-summary { font-size: 17px; color: #86868B; padding-bottom: 32px; border-bottom: 1px solid #F0F0F2; margin-bottom: 32px; }
+
+.article-body { font-size: 16px; line-height: 1.9; color: #333; }
+.article-body h2 { font-size: 24px; margin: 40px 0 16px; font-weight: 700; }
+.article-body h3 { font-size: 19px; margin: 28px 0 12px; font-weight: 700; }
+.article-body p { margin-bottom: 16px; }
+.article-body img { max-width: 100%; border-radius: 12px; margin: 20px 0; }
+.article-body video { max-width: 100%; border-radius: 12px; margin: 20px 0; }
+.article-body audio { width: 100%; max-width: 500px; margin: 16px 0; }
+.article-body blockquote { border-left: 3px solid #C9A96E; padding-left: 20px; color: #86868B; margin: 24px 0; font-style: italic; }
+.article-body a { color: #C9A96E; }
+.article-body ul, .article-body ol { padding-left: 24px; margin: 12px 0 20px; }
+.article-body li { margin-bottom: 6px; }
+
+.media-section { margin: 40px 0; padding: 24px; background: #FAFAFA; border-radius: 12px; }
+.media-section h4 { font-size: 15px; margin-bottom: 12px; color: #555; }
+
+.article-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 48px; padding-top: 24px; border-top: 1px solid #F0F0F2; }
+.btn-copy { background: #F0F0F2; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; color: #555; transition: all 0.15s; }
+.btn-copy:hover { background: #E0E0E0; }
+.btn-back { color: #C9A96E; text-decoration: none; font-size: 14px; font-weight: 500; }
+
+.footer { text-align: center; padding: 40px; color: #86868B; font-size: 13px; border-top: 1px solid #F0F0F2; }
+.loading { text-align: center; padding: 200px 20px; color: #86868B; font-size: 16px; }
+.error { text-align: center; padding: 200px 20px; }
+.error h2 { font-size: 24px; color: #555; margin-bottom: 12px; }
+.error a { color: #C9A96E; }
+
+@media (max-width: 768px) {
+  .nav { padding: 0 20px; }
+  .article-content { padding: 90px 20px 40px; }
+  .article-title { font-size: 24px; }
+  .article-cover { border-radius: 0; max-height: 280px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="nav-logo">
+    <img src="images/logo.jpg" alt="青松设计">
+    <span>青松设计</span>
+  </a>
+  <a href="blog.html" class="nav-back">← 返回博客列表</a>
+  <a href="tel:19907444111" class="nav-cta">预约咨询</a>
+</nav>
+
+<div class="article-content" id="articleContent">
+  <div class="loading">加载中...</div>
+</div>
+
+<div class="footer">&copy; 2026 青松空间设计有限公司. All rights reserved.</div>
+
+<script>
+function fd(s) { if(!s)return''; var d=new Date(s); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function render(article) {
+  var wrap = document.getElementById('articleContent');
+  if (!article) {
+    wrap.innerHTML = '<div class="error"><h2>文章未找到</h2><p><a href="blog.html">← 返回博客列表</a></p></div>';
+    document.title = '文章未找到 | 青松设计';
+    return;
+  }
+  document.title = article.title + ' | 青松设计';
+
+  var h = '<div class="article-wrap">';
+  if (article.cover) h += '<img class="article-cover" src="'+article.cover+'" alt="'+article.title+'" onerror="this.style.display=\'none\'">';
+
+  var tagsH = article.tags && article.tags.length ? '<div class="article-tags">'+article.tags.map(function(t){return'<span class="article-tag">'+t+'</span>';}).join('')+'</div>' : '';
+
+  h += '<div class="article-meta"><span class="article-date">'+fd(article.createdAt||article.updatedAt)+'</span>'+tagsH+'</div>';
+  h += '<h1 class="article-title">'+article.title+'</h1>';
+  if (article.summary) h += '<p class="article-summary">'+article.summary+'</p>';
+  h += '<div class="article-body">'+(article.content||'')+'</div>';
+
+  if (article.hasAudio && article.audioUrl) h += '<div class="media-section"><h4>🎵 音频播放</h4><audio src="'+article.audioUrl+'" controls style="width:100%;max-width:500px;"></audio></div>';
+  if (article.hasVideo && article.videoUrl) h += '<div class="media-section"><h4>🎬 视频播放</h4><video src="'+article.videoUrl+'" controls style="max-width:100%;border-radius:8px;"></video></div>';
+
+  h += '<div class="article-actions"><button class="btn-copy" onclick="copyLink()">复制链接</button><a href="blog.html" class="btn-back">← 返回博客列表</a></div>';
+  h += '</div>';
+  wrap.innerHTML = h;
+}
+
+function copyLink() {
+  var url = window.location.href;
+  if (navigator.clipboard) { navigator.clipboard.writeText(url).then(function(){alert('链接已复制到剪贴板');}); }
+  else { var ta=document.createElement('textarea');ta.value=url;ta.style.position='fixed';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);alert('链接已复制到剪贴板'); }
+}
+
+(function() {
+  var slug = new URLSearchParams(window.location.search).get('slug');
+  if (!slug) { render(null); return; }
+  fetch('/api/blog?slug='+encodeURIComponent(slug)).then(function(r){return r.json();}).then(function(d){
+    if (d && d.slug) render(d); else if (d && d.article) render(d.article); else render(null);
+  }).catch(function(){render(null);});
+})();
+</script>
+
+</body>
+</html>

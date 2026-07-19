@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>最新博客 | 青松设计</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1D1D1F; background: #FFFFFF; line-height: 1.6; }
+
+.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 0 40px; height: 72px; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.06); }
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.nav-logo img { height: 36px; }
+.nav-logo span { font-size: 18px; font-weight: 700; color: #1D1D1F; }
+.nav-links { display: flex; align-items: center; gap: 32px; list-style: none; }
+.nav-links a { text-decoration: none; color: #555; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+.nav-links a:hover, .nav-links a.active { color: #C41E3A; }
+.nav-cta { background: #D4A843; color: #0D0D0D; border: none; padding: 10px 24px; border-radius: 24px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+.nav-cta:hover { background: #C4942E; }
+
+.page-header { padding: 120px 40px 60px; text-align: center; }
+.page-header h1 { font-size: 42px; font-weight: 800; letter-spacing: -1px; margin-bottom: 12px; }
+.page-header h1 span { color: #C41E3A; }
+.page-header p { font-size: 17px; color: #86868B; max-width: 500px; margin: 0 auto; }
+
+.blog-container { max-width: 1200px; margin: 0 auto; padding: 0 40px 80px; }
+.blog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.blog-card { border-radius: 14px; overflow: hidden; background: #FFF; border: 1px solid #F0F0F2; cursor: pointer; transition: all 0.3s; text-decoration: none; color: inherit; display: block; }
+.blog-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.1); border-color: #E0D5C0; }
+.blog-card-img { width: 100%; height: 200px; object-fit: cover; background: #F5F5F7; }
+.blog-card-body { padding: 20px; }
+.blog-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.blog-card-tag { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(201,169,110,0.1); color: #C9A96E; font-weight: 500; }
+.blog-card-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.blog-card-summary { font-size: 14px; color: #86868B; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 12px; }
+.blog-card-date { font-size: 12px; color: #B0B0B5; }
+
+.pagination { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 48px; }
+.pagination button { min-width: 40px; height: 40px; border: 1px solid #E0E0E0; border-radius: 8px; background: #FFF; color: #555; font-size: 14px; cursor: pointer; transition: all 0.15s; padding: 0 12px; }
+.pagination button:hover { border-color: #C9A96E; color: #C9A96E; }
+.pagination button.active { background: #C9A96E; color: #FFF; border-color: #C9A96E; }
+.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.footer { text-align: center; padding: 40px; color: #86868B; font-size: 13px; border-top: 1px solid #F0F0F2; }
+.loading { text-align: center; padding: 60px 20px; color: #86868B; font-size: 15px; }
+.empty { text-align: center; padding: 80px 20px; }
+.empty h3 { font-size: 20px; color: #555; margin-bottom: 8px; }
+.empty p { color: #86868B; }
+
+@media (max-width: 1024px) { .blog-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) {
+  .nav { padding: 0 20px; }
+  .nav-links { gap: 16px; }
+  .nav-links a { font-size: 12px; }
+  .page-header { padding: 100px 20px 40px; }
+  .page-header h1 { font-size: 28px; }
+  .blog-container { padding: 0 20px 60px; }
+  .blog-grid { grid-template-columns: 1fr; gap: 20px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="nav-logo">
+    <img src="images/logo.jpg" alt="青松设计">
+    <span>青松设计</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html">首页</a></li>
+    <li><a href="qing-song-design.html#services">服务项目</a></li>
+    <li><a href="qing-song-design.html#process">设计流程</a></li>
+    <li><a href="cases.html">设计案例</a></li>
+    <li><a href="blog.html" class="active">最新博客</a></li>
+    <li><a href="qing-song-design.html#about">关于我们</a></li>
+  </ul>
+  <a href="tel:19907444111" class="nav-cta">预约咨询</a>
+</nav>
+
+<section class="page-header">
+  <h1>最新<span>博客</span></h1>
+  <p>分享设计理念与行业洞察，探索空间美学的无限可能</p>
+</section>
+
+<section class="blog-container">
+  <div class="blog-grid" id="blogGrid"></div>
+  <div class="pagination" id="pagination"></div>
+</section>
+
+<div class="footer">&copy; 2026 青松空间设计有限公司. All rights reserved.</div>
+
+<script>
+var cp = 1, tp = 1;
+function fd(s) { if(!s)return''; var d=new Date(s); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function render(articles) {
+  var g = document.getElementById('blogGrid');
+  if (!articles || !articles.length) { g.innerHTML = '<div class="empty"><h3>暂无文章</h3><p>博客内容正在筹备中</p></div>'; return; }
+  g.innerHTML = articles.map(function(a) {
+    var cover = a.cover ? '<img class="blog-card-img" src="'+a.cover+'" alt="'+a.title+'" loading="lazy" onerror="this.style.display=\'none\'">' : '<div class="blog-card-img" style="display:flex;align-items:center;justify-content:center;color:#ccc;font-size:32px;">&#9998;</div>';
+    var tags = a.tags ? '<div class="blog-card-tags">'+a.tags.map(function(t){return'<span class="blog-card-tag">'+t+'</span>';}).join('')+'</div>' : '';
+    return '<a class="blog-card" href="article.html?slug='+encodeURIComponent(a.slug)+'">'+cover+'<div class="blog-card-body">'+tags+'<h3 class="blog-card-title">'+a.title+'</h3><p class="blog-card-summary">'+(a.summary||'')+'</p><span class="blog-card-date">'+fd(a.createdAt)+'</span></div></a>';
+  }).join('');
+}
+function renderPg() {
+  var el = document.getElementById('pagination');
+  if (tp <= 1) { el.innerHTML = ''; return; }
+  var h = '<button '+(cp<=1?'disabled':'')+' onclick="go('+(cp-1)+')">上一页</button>';
+  for (var i=1;i<=tp;i++) h += '<button class="'+(i===cp?'active':'')+'" onclick="go('+i+')">'+i+'</button>';
+  h += '<button '+(cp>=tp?'disabled':'')+' onclick="go('+(cp+1)+')">下一页</button>';
+  el.innerHTML = h;
+}
+function go(p) { if(p<1||p>tp)return; cp=p; load(); window.scrollTo({top:300,behavior:'smooth'}); }
+function load() {
+  document.getElementById('blogGrid').innerHTML = '<div class="loading">加载中...</div>';
+  fetch('/api/blog?page='+cp+'&limit=9').then(function(r){return r.json();}).then(function(d){
+    if(d.articles) { render(d.articles); tp = d.totalPages||1; renderPg(); } else render([]);
+  }).catch(function(){ render([]); });
+}
+load();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>后台管理 | 青松设计</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #F5F5F7;
+  color: #1D1D1F;
+  display: flex;
+  min-height: 100vh;
+}
+a { color: #C9A96E; text-decoration: none; }
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background: #1D1D1F;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 10;
+}
+.sidebar-header {
+  padding: 24px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-header h2 {
+  font-size: 18px;
+  color: #C9A96E;
+  letter-spacing: 1px;
+}
+.sidebar-header p {
+  font-size: 11px;
+  color: #86868B;
+  margin-top: 4px;
+}
+.sidebar-nav {
+  flex: 1;
+  padding: 16px 0;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  cursor: pointer;
+  color: #A8A8A8;
+  font-size: 14px;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+}
+.nav-item:hover { background: rgba(255,255,255,0.04); color: #fff; }
+.nav-item.active {
+  background: rgba(201,169,110,0.08);
+  color: #C9A96E;
+  border-left-color: #C9A96E;
+}
+.nav-item svg { width: 18px; height: 18px; fill: currentColor; }
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-footer a {
+  font-size: 13px;
+  color: #C9A96E;
+}
+
+/* Main */
+.main {
+  margin-left: 220px;
+  flex: 1;
+  padding: 32px;
+  max-width: 1100px;
+}
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: #1D1D1F;
+}
+
+/* Cards */
+.card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid #E8E8ED;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.card-header h3 { font-size: 16px; font-weight: 600; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary { background: #C9A96E; color: #fff; }
+.btn-primary:hover { background: #B8995E; }
+.btn-outline { background: #fff; color: #555; border: 1px solid #D1D1D6; }
+.btn-outline:hover { background: #F5F5F7; }
+.btn-danger { background: #fff; color: #E74C3C; border: 1px solid #E74C3C; }
+.btn-danger:hover { background: #FDEDEC; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-group { display: flex; gap: 8px; }
+
+/* Forms */
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 13px; font-weight: 500; color: #555; margin-bottom: 6px; }
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #D1D1D6;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  background: #fff;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none;
+  border-color: #C9A96E;
+}
+.form-textarea { min-height: 80px; resize: vertical; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 12px 16px; background: #FAFAFA; color: #86868B; font-weight: 500; border-bottom: 1px solid #E8E8ED; }
+td { padding: 12px 16px; border-bottom: 1px solid #F0F0F2; vertical-align: middle; }
+tr:hover td { background: #FAFAFA; }
+.tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+.tag-home { background: rgba(201,169,110,0.1); color: #C9A96E; }
+.tag-commercial { background: rgba(108,117,125,0.1); color: #6C757D; }
+
+/* Image preview */
+.img-thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.img-thumb { width: 80px; height: 60px; border-radius: 6px; border: 1px solid #E8E8ED; object-fit: cover; cursor: pointer; }
+.img-thumb:hover { border-color: #C9A96E; }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 100;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 90%; max-width: 700px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 32px;
+}
+.modal h3 { font-size: 18px; margin-bottom: 20px; }
+
+/* Blog editor modal — fixed footer, scrollable body */
+.modal.modal-blog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+.modal.modal-blog > h3 {
+  flex-shrink: 0;
+  padding: 28px 28px 0;
+  margin-bottom: 16px;
+}
+.modal-blog-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 28px;
+}
+.modal-blog-footer {
+  flex-shrink: 0;
+  padding: 16px 28px;
+  border-top: 1px solid #E8E8ED;
+  background: #fff;
+  border-radius: 0 0 12px 12px;
+}
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 32px; right: 32px;
+  background: #1D1D1F; color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 200;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: all 0.3s;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { background: #27AE60; }
+
+/* Message bar */
+.msg-bar {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.msg-info { background: rgba(201,169,110,0.08); color: #C9A96E; border: 1px solid rgba(201,169,110,0.2); }
+.msg-warn { background: rgba(230,126,34,0.08); color: #E67E22; border: 1px solid rgba(230,126,34,0.2); }
+
+.hidden { display: none; }
+
+/* Blog editor toolbar */
+.be-tb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #D1D1D6;
+  border-radius: 4px;
+  background: #fff;
+  color: #555;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.be-tb-btn:hover { background: #F0F0F2; border-color: #C9A96E; color: #C9A96E; }
+.be-tb-btn:active { background: #E8E8ED; }
+
+#blogEditor:empty:before {
+  content: attr(placeholder);
+  color: #B0B0B5;
+  pointer-events: none;
+}
+#blogEditor img { max-width: 100%; border-radius: 8px; margin: 12px 0; }
+#blogEditor video { max-width: 100%; border-radius: 8px; margin: 12px 0; }
+#blogEditor audio { width: 100%; max-width: 500px; margin: 12px 0; }
+#blogEditor blockquote { border-left: 3px solid #C9A96E; padding-left: 16px; color: #86868B; margin: 16px 0; }
+#blogEditor a { color: #C9A96E; }
+#blogEditor h2 { margin: 20px 0 10px; font-size: 20px; }
+#blogEditor h3 { margin: 16px 0 8px; font-size: 17px; }
+#blogEditor ul, #blogEditor ol { padding-left: 24px; margin: 8px 0; }
+#blogEditor ul li, #blogEditor ol li { margin-bottom: 4px; }
+
+@media (max-width: 768px) {
+  .sidebar { width: 180px; }
+  .main { margin-left: 180px; padding: 20px; }
+  .form-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <h2>青松设计</h2>
+    <p>后台管理系统</p>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" data-page="cases">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      案例管理
+    </div>
+    <div class="nav-item" data-page="homepage">
+      <svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9"/><rect x="5" y="10" width="14" height="11" rx="1"/></svg>
+      首页内容
+    </div>
+    <div class="nav-item" data-page="data">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>
+      数据管理
+    </div>
+    <div class="nav-item" data-page="blog">
+      <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/><path d="M10 9h8v2h-8zm0 3h8v2h-8zm0-6h8v2h-8z"/></svg>
+      博客管理
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="qing-song-design.html" target="_blank">→ 打开官网预览</a>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<div class="main" id="mainContent"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== DATA STORE ====================
+const STORAGE_KEY = 'qs_design_data';
+
+function getDefaultData() {
+  return {
+    homepage: {
+      heroTitle: '用设计重塑生活',
+      heroSub: '张家界青松空间设计有限公司，专注室内设计 19 年。\n从方案设计到施工落地，用匠心打造有温度的空间',
+      aboutTitle: '关于我们',
+      aboutText: '杜青松，19 年室内设计经验。擅长 SU 三维设计，精通各类商业空间与住宅空间方案。\n2019 年成立张家界青松空间设计有限公司，致力于为客户提供从方案到施工图的全流程设计服务。',
+      services: [
+        { id: 1, name: 'SU 彩平设计方案', price: '500', unit: '套', desc: '基于 SketchUp 的彩色平面图设计方案，直观展示空间布局与色彩搭配', img: 'images/service_caiping.jpg' },
+        { id: 2, name: 'SU 静态效果图', price: '800', unit: '张', desc: '高精度静态渲染效果图，真实还原材质光影与空间氛围', img: 'images/service_xiaoguotu.jpg' },
+        { id: 3, name: 'SU 全景效果图', price: '1200', unit: '空间', desc: '720° 全景漫游效果图，沉浸式体验设计方案', img: 'images/service_quanjing.jpg' },
+        { id: 4, name: '动态视频效果图', price: '1500', unit: '分钟', desc: '全场景动态漫游视频，精准呈现空间流转与设计亮点', img: 'images/service_dongtai.jpg' },
+        { id: 5, name: 'SU 施工图', price: '2680', unit: '套', desc: '完整施工图纸，含平立剖、节点大样，精准指导施工', img: 'images/service_shigong.jpg' },
+        { id: 6, name: '全套设计', price: '6000', unit: '套', desc: '全套设计图纸，含平面图、效果图、施工图、全景图及视频', img: 'images/service_quantao.png' }
+      ]
+    },
+    cases: [
+      { id: 'project-huajie', name: '华姐南庄坪雅居', type: '家装', location: '湖南 · 张家界', desc: '现代简约风格住宅设计，注重空间通透感与自然采光，营造舒适宜居的生活氛围', images: ['images/project_huajie_1.jpg','images/project_huajie_2.jpg','images/project_huajie_3.jpg','images/project_huajie_4.jpg','images/project_huajie_5.jpg'], video: '' },
+      { id: 'project-shanshui', name: '山水印象澜庭', type: '家装', location: '湖南 · 张家界', desc: '现代极简风格住宅，极简黑白搭配与现代生活方式，打造宁静雅致的居住环境。127 平，半包造价 12.3 万', images: ['images/project_shanshui_1.jpg','images/project_shanshui_2.jpg','images/project_shanshui_3.jpg','images/project_shanshui_4.jpg'], video: '' },
+      { id: 'project-huadu', name: '華都山莊田總獨棟別墅', type: '家装', location: '湖南 · 常德', desc: '中式轻奢风格，600 平独栋别墅。融合现代元素与传统美学，呈现高端品质生活空间。设计费 4 万元，半包造价 75 万', images: ['images/project_huadu_1.jpg','images/project_huadu_2.jpg','images/project_huadu_3.jpg','images/project_huadu_4.jpg'], video: '' },
+      { id: 'project-xuzong', name: '许总雅居', type: '工装', location: '湖南 · 张家界', desc: '现代简约商业空间设计，以红色主题色块贯穿展厅，大面积留白与通透隔断营造出静谧优雅的商业展示环境。阳湖坪义务商城耀元门窗超市', images: ['images/project_xuzong_1.jpg','images/project_xuzong_2.jpg','images/project_xuzong_3.jpg','images/project_xuzong_4.jpg','images/project_xuzong_5.jpg'], video: '' },
+      { id: 'project-jinghao', name: '景豪酒店', type: '工装', location: '湖南 · 张家界', desc: '张家界早期五星级酒店，共 6 层，每层 1000 平米。配置全面，从洗浴中心到健身房及用餐住宿一应俱全', images: ['images/project_jinghao_1.jpg','images/project_jinghao_2.jpg','images/project_jinghao_3.jpg','images/project_jinghao_4.jpg'], video: '' },
+      { id: 'project-guyun', name: '谷韵山居民宿', type: '工装', location: '湖南 · 张家界', desc: '野生动物大鲵的故乡，以传统土家吊脚楼的建筑形态将民宿融入绝美的自然风光，形成人与自然和谐的统一', images: ['images/project_guyun_1.jpg','images/project_guyun_2.jpg','images/project_guyun_3.jpg','images/project_guyun_4.jpg'], video: '' },
+      { id: 'project-tongmeng', name: '童蒙国际早教中心', type: '工装', location: '湖南 · 张家界', desc: '教育文化空间设计，以英伦风情的形态造型配合温润木色与开放式布局，打造沉浸式阅读与学习环境', images: ['images/project_tongmeng_1.jpg','images/project_tongmeng_2.jpg','images/project_tongmeng_3.jpg','images/project_tongmeng_4.jpg'], video: '' },
+      { id: 'project-zhangxiaorong', name: '张小嵘土菜馆', type: '工装', location: '湖南 · 张家界', desc: '新中式侘寂风 × 在地文化叙事空间。融合东方禅意与手作质感，将"土菜"主题转化为触觉、视觉、嗅觉、味觉的多维体验', images: ['images/project_zhangxiaorong_1.jpg','images/project_zhangxiaorong_2.jpg','images/project_zhangxiaorong_3.jpg','images/project_zhangxiaorong_4.jpg'], video: '' }
+    ]
+  };
+}
+
+function loadData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    try { return JSON.parse(raw); } catch(e) {}
+  }
+  const defaults = getDefaultData();
+  saveData(defaults);
+  return defaults;
+}
+
+function saveData(data) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch(e) {
+    showToast('保存失败：存储空间不足或数据异常，请尝试减少图片数量');
+    throw e;
+  }
+}
+
+let appData = loadData();
+
+// ==================== UI ====================
+const mainContent = document.getElementById('mainContent');
+const modalOverlay = document.getElementById('modalOverlay');
+const modalContent = document.getElementById('modalContent');
+const toast = document.getElementById('toast');
+
+function showToast(msg, success) {
+  toast.textContent = msg;
+  toast.className = 'toast ' + (success ? 'success' : '') + ' show';
+  setTimeout(() => { toast.className = 'toast'; }, 2500);
+}
+
+function openModal(html, isBlog) {
+  modalContent.innerHTML = html;
+  if (isBlog) modalContent.classList.add('modal-blog');
+  else modalContent.classList.remove('modal-blog');
+  modalOverlay.classList.add('show');
+}
+function closeModal() {
+  // Check blog editor for unsaved content
+  const editor = document.getElementById('blogEditor');
+  const titleInput = document.getElementById('be-title');
+  if (editor && titleInput) {
+    var hasTitle = titleInput.value.trim().length > 0;
+    var hasBody = editor.textContent.trim().length > 0;
+    if (hasTitle || hasBody) {
+      if (!confirm('您有未保存的内容，确定要关闭吗？')) return;
+    }
+  }
+  modalOverlay.classList.remove('show');
+}
+
+// Navigation
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    this.classList.add('active');
+    const page = this.dataset.page;
+    if (page === 'cases') renderCases();
+    else if (page === 'homepage') renderHomepage();
+    else if (page === 'data') renderDataPage();
+    else if (page === 'blog') renderBlogPage();
+  });
+});
+
+
+// ==================== IMAGE UPLOAD (Cloudflare R2) ====================
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(2) + ' MB';
+}
+
+// 使用 Canvas 自动压缩图片：宽度上限 1200px，JPEG 质量 0.8，PNG 保持格式
+async function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = function () {
+      URL.revokeObjectURL(objectUrl);
+      const MAX_WIDTH = 1200;
+      let { width, height } = img;
+      if (width > MAX_WIDTH) {
+        height = Math.round(height * (MAX_WIDTH / width));
+        width = MAX_WIDTH;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      const isPNG = file.type === 'image/png';
+      const mimeType = isPNG ? 'image/png' : 'image/jpeg';
+      const quality = isPNG ? undefined : 0.8;
+      canvas.toBlob(function (blob) {
+        if (blob) {
+          resolve({ blob: blob, originalSize: file.size, compressedSize: blob.size });
+        } else {
+          reject(new Error('图片压缩失败'));
+        }
+      }, mimeType, quality);
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('图片加载失败'));
+    };
+    img.src = objectUrl;
+  });
+}
+
+async function uploadToR2(file, statusEl) {
+  if (statusEl) statusEl.textContent = '压缩中...';
+  let blob = file;
+  let originalSize = file.size;
+  let compressedSize = file.size;
+  if (file.type && file.type.startsWith('image/')) {
+    try {
+      const result = await compressImage(file);
+      blob = result.blob;
+      originalSize = result.originalSize;
+      compressedSize = result.compressedSize;
+    } catch (e) {
+      if (statusEl) statusEl.textContent = '压缩失败';
+      throw e;
+    }
+  }
+  if (statusEl) statusEl.textContent = '上传中...';
+  const formData = new FormData();
+  formData.append('file', blob, file.name);
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '上传失败');
+    if (statusEl) statusEl.textContent = data.url;
+    return { url: data.url, originalSize: originalSize, compressedSize: compressedSize };
+  } catch (e) {
+    if (statusEl) statusEl.textContent = '上传失败';
+    throw e;
+  }
+}
+
+async function handleImageUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const parentDiv = input.parentElement.parentElement;
+  const textInput = parentDiv.querySelector('input.form-input');
+  const label = input.parentElement;
+  // Create status indicator
+  const statusSpan = document.createElement('span');
+  statusSpan.style.cssText = 'font-size:12px;color:#C9A96E;margin-left:6px;white-space:nowrap;';
+  statusSpan.textContent = '压缩中...';
+  label.insertAdjacentElement('afterend', statusSpan);
+  input.disabled = true;
+  try {
+    const result = await uploadToR2(file, statusSpan);
+    if (textInput) textInput.value = result.url;
+    showToast('上传成功: ' + formatBytes(result.originalSize) + ' → ' + formatBytes(result.compressedSize), true);
+  } catch (e) {
+    showToast('上传失败: ' + (e.message || '网络错误'));
+    statusSpan.textContent = '上传失败';
+  }
+  input.value = '';
+  input.disabled = false;
+}
+
+async function handleServiceImgUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const parentDiv = input.parentElement.parentElement;
+  const textInput = parentDiv.querySelector('input.hp-sv-img');
+  const label = input.parentElement;
+  const statusSpan = document.createElement('span');
+  statusSpan.style.cssText = 'font-size:12px;color:#C9A96E;margin-left:6px;white-space:nowrap;';
+  statusSpan.textContent = '压缩中...';
+  label.insertAdjacentElement('afterend', statusSpan);
+  input.disabled = true;
+  try {
+    const result = await uploadToR2(file, statusSpan);
+    if (textInput) textInput.value = result.url;
+    showToast('上传成功: ' + formatBytes(result.originalSize) + ' → ' + formatBytes(result.compressedSize), true);
+  } catch (e) {
+    showToast('上传失败: ' + (e.message || '网络错误'));
+    statusSpan.textContent = '上传失败';
+  }
+  input.value = '';
+  input.disabled = false;
+}
+
+// ==================== CASES PAGE ====================
+function renderCases() {
+  const homeCases = appData.cases.filter(c => c.type === '家装');
+  const commercialCases = appData.cases.filter(c => c.type === '工装');
+
+  let html = '<div class="page-title">案例管理</div>';
+
+  var dataSizeKB = (JSON.stringify(appData).length / 1024).toFixed(1);
+  if (dataSizeKB > 4000) {
+    html += '<div class="msg-warn msg-bar"><b>存储空间告警</b>：当前数据量 ' + dataSizeKB + ' KB，接近浏览器 localStorage 上限（约 5MB）。继续添加图片可能导致数据保存失败或图片截断，建议删除部分案例或减少图片数量。</div>';
+  }
+
+  html += '<div class="msg-info msg-bar">共 ' + appData.cases.length + ' 个项目（家装 ' + homeCases.length + '，工装 ' + commercialCases.length + '）。点击编辑修改内容，修改后自动保存。</div>';
+
+  html += '<div class="btn-group" style="margin-bottom:20px;">';
+  html += '<button class="btn btn-primary" onclick="openCaseForm()">+ 新增案例</button>';
+  html += '</div>';
+
+  function renderCaseList(cases, label) {
+    if (cases.length === 0) return '';
+    let h = '<div class="card"><div class="card-header"><h3>' + label + '</h3></div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>图片</th><th>项目名称</th><th>类型</th><th>地点</th><th>描述</th><th>图片数</th><th>操作</th></tr></thead><tbody>';
+    cases.forEach(c => {
+      const tagClass = c.type === '家装' ? 'tag-home' : 'tag-commercial';
+      const thumb = c.images && c.images[0] ? '<img src="' + c.images[0] + '" class="img-thumb" style="width:60px;height:45px;" onerror="this.onerror=null;this.style.display=\'none\';this.parentElement.textContent=\'无图\'">' : '<span style="color:#ccc;font-size:12px;">无图</span>';
+      const desc = c.desc.length > 30 ? c.desc.substring(0, 30) + '...' : c.desc;
+      h += '<tr>';
+      h += '<td>' + thumb + '</td>';
+      h += '<td><b>' + c.name + '</b></td>';
+      h += '<td><span class="tag ' + tagClass + '">' + c.type + '</span></td>';
+      h += '<td>' + c.location + '</td>';
+      h += '<td style="max-width:200px;">' + desc + '</td>';
+      h += '<td>' + (c.images ? c.images.length : 0) + ' 张</td>';
+      h += '<td><div class="btn-group">';
+      h += '<button class="btn btn-outline btn-sm" onclick="openCaseForm(\'' + c.id + '\')">编辑</button>';
+      h += '<button class="btn btn-danger btn-sm" onclick="deleteCase(\'' + c.id + '\')">删除</button>';
+      h += '</div></td>';
+      h += '</tr>';
+    });
+    h += '</tbody></table></div></div>';
+    return h;
+  }
+
+  html += renderCaseList(homeCases, '家装案例');
+  html += renderCaseList(commercialCases, '工装案例');
+
+  mainContent.innerHTML = html;
+}
+
+function deleteCase(id) {
+  if (!confirm('确定删除该项目？此操作不可恢复。')) return;
+  appData.cases = appData.cases.filter(c => c.id !== id);
+  saveData(appData);
+  showToast('已删除', true);
+  renderCases();
+}
+
+function openCaseForm(editId) {
+  const c = editId ? appData.cases.find(x => x.id === editId) : null;
+  const isEdit = !!c;
+
+  let html = '<h3>' + (isEdit ? '编辑案例' : '新增案例') + '</h3>';
+
+  html += '<div class="form-row">';
+  html += '<div class="form-group"><label class="form-label">项目名称 *</label><input class="form-input" id="cf-name" value="' + (c ? c.name : '') + '"></div>';
+  html += '<div class="form-group"><label class="form-label">项目类型 *</label><select class="form-select" id="cf-type"><option value="家装"' + (c && c.type === '家装' ? ' selected' : '') + '>家装</option><option value="工装"' + (c && c.type === '工装' ? ' selected' : '') + '>工装</option></select></div>';
+  html += '</div>';
+
+  html += '<div class="form-group"><label class="form-label">地点</label><input class="form-input" id="cf-location" value="' + (c ? c.location : '') + '"></div>';
+  html += '<div class="form-group"><label class="form-label">项目描述</label><textarea class="form-textarea" id="cf-desc">' + (c ? c.desc : '') + '</textarea></div>';
+
+  // Images
+  html += '<div class="form-group"><label class="form-label">案例图片（相对路径，如 images/project_xxx.jpg）</label>';
+  html += '<div id="cf-images">';
+  const imgs = c ? c.images : [];
+  imgs.forEach((img, i) => {
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">';
+    html += '<input class="form-input" value="' + img + '" style="flex:1;" data-img-idx="' + i + '">';
+    html += '<label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;flex-shrink:0;">上传<input type="file" accept="image/*" style="display:none;" onchange="handleImageUpload(this)"></label>';
+    html += '<button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">×</button>';
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '<button class="btn btn-outline btn-sm" onclick="addImgField()">+ 添加图片</button>';
+  html += '</div>';
+
+  // Video
+  html += '<div class="form-group"><label class="form-label">B站视频链接（可选）</label><input class="form-input" id="cf-video" value="' + (c ? (c.video || '') : '') + '" placeholder="https://www.bilibili.com/video/BVxxx"></div>';
+
+  html += '<div class="btn-group" style="margin-top:20px;">';
+  html += '<button class="btn btn-primary" onclick="saveCase(\'' + (isEdit ? editId : '') + '\')">保存</button>';
+  html += '<button class="btn btn-outline" onclick="closeModal()">取消</button>';
+  html += '</div>';
+
+  openModal(html);
+
+  // Store current edit ID for save
+  window._caseEditId = editId || '';
+}
+
+function addImgField() {
+  const container = document.getElementById('cf-images');
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:6px;';
+  div.innerHTML = '<input class="form-input" value="" style="flex:1;">' +
+    '<label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;flex-shrink:0;">上传<input type="file" accept="image/*" style="display:none;" onchange="handleImageUpload(this)"></label>' +
+    '<button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">×</button>';
+  container.appendChild(div);
+}
+
+function saveCase(editId) {
+  try {
+    const nameEl = document.getElementById('cf-name');
+    const typeEl = document.getElementById('cf-type');
+    const locEl = document.getElementById('cf-location');
+    const descEl = document.getElementById('cf-desc');
+    const videoEl = document.getElementById('cf-video');
+
+    if (!nameEl || !typeEl) {
+      showToast('表单元素未找到，请关闭弹窗后重试');
+      return;
+    }
+
+    const name = nameEl.value.trim();
+    const type = typeEl.value;
+    const location = locEl ? locEl.value.trim() : '';
+    const desc = descEl ? descEl.value.trim() : '';
+    const video = videoEl ? videoEl.value.trim() : '';
+
+    if (!name) { showToast('请输入项目名称'); return; }
+
+    // Collect images — only text inputs, exclude hidden file inputs
+    const imgInputs = document.querySelectorAll('#cf-images input.form-input');
+    const images = [];
+    imgInputs.forEach(inp => {
+      const v = inp.value.trim();
+      if (v) images.push(v);
+    });
+
+    if (editId) {
+      const idx = appData.cases.findIndex(x => x.id === editId);
+      if (idx >= 0) {
+        appData.cases[idx].name = name;
+        appData.cases[idx].type = type;
+        appData.cases[idx].location = location;
+        appData.cases[idx].desc = desc;
+        appData.cases[idx].images = images;
+        appData.cases[idx].video = video;
+      }
+    } else {
+      const newId = 'project-' + Date.now();
+      appData.cases.push({
+        id: newId,
+        name: name,
+        type: type,
+        location: location,
+        desc: desc,
+        images: images,
+        video: video
+      });
+    }
+
+    saveData(appData);
+    closeModal();
+    showToast('保存成功', true);
+    renderCases();
+  } catch(e) {
+    console.error('saveCase error:', e);
+    showToast('保存失败：' + (e.message || '未知错误'));
+  }
+}
+
+// ==================== HOMEPAGE PAGE ====================
+function renderHomepage() {
+  const hp = appData.homepage;
+  let html = '<div class="page-title">首页内容编辑</div>';
+  html += '<div class="msg-info msg-bar">修改以下内容后点击"保存"按钮生效。修改会自动同步到官网首页。</div>';
+
+  html += '<div class="card"><div class="card-header"><h3>Hero 首屏区域</h3></div>';
+  html += '<div class="form-group"><label class="form-label">主标题</label><input class="form-input" id="hp-heroTitle" value="' + hp.heroTitle + '"></div>';
+  html += '<div class="form-group"><label class="form-label">副标题</label><textarea class="form-textarea" id="hp-heroSub">' + hp.heroSub + '</textarea></div>';
+  html += '</div>';
+
+  html += '<div class="card"><div class="card-header"><h3>关于我们</h3></div>';
+  html += '<div class="form-group"><label class="form-label">标题</label><input class="form-input" id="hp-aboutTitle" value="' + hp.aboutTitle + '"></div>';
+  html += '<div class="form-group"><label class="form-label">内容</label><textarea class="form-textarea" id="hp-aboutText" style="min-height:120px;">' + hp.aboutText + '</textarea></div>';
+  html += '</div>';
+
+  html += '<div class="card"><div class="card-header"><h3>服务卡片</h3></div>';
+  hp.services.forEach((s, i) => {
+    html += '<div style="border:1px solid #E8E8ED;border-radius:8px;padding:16px;margin-bottom:12px;">';
+    html += '<b style="font-size:14px;">服务 #' + (i + 1) + '</b>';
+    html += '<div class="form-row" style="margin-top:8px;">';
+    html += '<div class="form-group"><label class="form-label">名称</label><input class="form-input hp-sv-name" value="' + s.name + '" data-idx="' + i + '"></div>';
+    html += '<div class="form-group"><label class="form-label">价格</label><input class="form-input hp-sv-price" value="' + s.price + '" data-idx="' + i + '"></div>';
+    html += '</div>';
+    html += '<div class="form-row">';
+    html += '<div class="form-group"><label class="form-label">单位</label><input class="form-input hp-sv-unit" value="' + s.unit + '" data-idx="' + i + '"></div>';
+    html += '<div class="form-group"><label class="form-label">图片</label><div style="display:flex;gap:6px;align-items:center;"><input class="form-input hp-sv-img" value="' + s.img + '" data-idx="' + i + '" style="flex:1;"><label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;flex-shrink:0;white-space:nowrap;">上传图片<input type="file" accept="image/*" style="display:none;" onchange="handleServiceImgUpload(this)"></label></div></div>';
+    html += '</div>';
+    html += '<div class="form-group"><label class="form-label">描述</label><textarea class="form-textarea hp-sv-desc" data-idx="' + i + '" style="min-height:60px;">' + s.desc + '</textarea></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  html += '<div class="btn-group">';
+  html += '<button class="btn btn-primary" onclick="saveHomepage()">保存首页内容</button>';
+  html += '</div>';
+
+  mainContent.innerHTML = html;
+}
+
+function saveHomepage() {
+  appData.homepage.heroTitle = document.getElementById('hp-heroTitle').value.trim();
+  appData.homepage.heroSub = document.getElementById('hp-heroSub').value.trim();
+  appData.homepage.aboutTitle = document.getElementById('hp-aboutTitle').value.trim();
+  appData.homepage.aboutText = document.getElementById('hp-aboutText').value.trim();
+
+  document.querySelectorAll('.hp-sv-name').forEach(el => {
+    const i = parseInt(el.dataset.idx);
+    appData.homepage.services[i].name = el.value.trim();
+  });
+  document.querySelectorAll('.hp-sv-price').forEach(el => {
+    const i = parseInt(el.dataset.idx);
+    appData.homepage.services[i].price = el.value.trim();
+  });
+  document.querySelectorAll('.hp-sv-unit').forEach(el => {
+    const i = parseInt(el.dataset.idx);
+    appData.homepage.services[i].unit = el.value.trim();
+  });
+  document.querySelectorAll('.hp-sv-img').forEach(el => {
+    const i = parseInt(el.dataset.idx);
+    appData.homepage.services[i].img = el.value.trim();
+  });
+  document.querySelectorAll('.hp-sv-desc').forEach(el => {
+    const i = parseInt(el.dataset.idx);
+    appData.homepage.services[i].desc = el.value.trim();
+  });
+
+  saveData(appData);
+  showToast('首页内容已保存', true);
+}
+
+// ==================== DATA PAGE ====================
+function renderDataPage() {
+  let html = '<div class="page-title">数据管理</div>';
+
+  // Data info
+  const caseCount = appData.cases.length;
+  const homeCaseC = appData.cases.filter(c => c.type === '家装').length;
+  const commCaseC = appData.cases.filter(c => c.type === '工装').length;
+  const svcCount = appData.homepage.services.length;
+  const dataSize = (JSON.stringify(appData).length / 1024).toFixed(1);
+
+  html += '<div class="card"><div class="card-header"><h3>数据概览</h3></div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;text-align:center;">';
+  html += '<div><div style="font-size:28px;font-weight:700;color:#C9A96E;">' + caseCount + '</div><div style="font-size:12px;color:#86868B;">总项目数</div></div>';
+  html += '<div><div style="font-size:28px;font-weight:700;color:#C9A96E;">' + homeCaseC + '</div><div style="font-size:12px;color:#86868B;">家装案例</div></div>';
+  html += '<div><div style="font-size:28px;font-weight:700;color:#C9A96E;">' + commCaseC + '</div><div style="font-size:12px;color:#86868B;">工装案例</div></div>';
+  html += '<div><div style="font-size:28px;font-weight:700;color:#C9A96E;">' + dataSize + ' KB</div><div style="font-size:12px;color:#86868B;">数据量</div></div>';
+  html += '</div></div>';
+
+  // Export
+  html += '<div class="card"><div class="card-header"><h3>数据备份</h3></div>';
+  html += '<p style="font-size:13px;color:#86868B;margin-bottom:12px;">将当前所有数据导出为 JSON 文件，可用于备份或迁移。</p>';
+  html += '<button class="btn btn-primary" onclick="exportData()">导出数据 (JSON)</button>';
+  html += '</div>';
+
+  // Import
+  html += '<div class="card"><div class="card-header"><h3>数据恢复</h3></div>';
+  html += '<p style="font-size:13px;color:#86868B;margin-bottom:12px;">上传之前导出的 JSON 文件来恢复数据。<b style="color:#E67E22;">注意：此操作将覆盖当前所有数据。</b></p>';
+  html += '<input type="file" id="importFile" accept=".json" style="margin-bottom:12px;">';
+  html += '<button class="btn btn-outline" onclick="importData()">导入数据</button>';
+  html += '</div>';
+
+  // Reset
+  html += '<div class="card"><div class="card-header"><h3>重置数据</h3></div>';
+  html += '<p style="font-size:13px;color:#86868B;margin-bottom:12px;">恢复为系统默认数据。<b style="color:#E74C3C;">此操作不可撤销。</b></p>';
+  html += '<button class="btn btn-danger" onclick="resetData()">重置为默认数据</button>';
+  html += '</div>';
+
+  mainContent.innerHTML = html;
+}
+
+function exportData() {
+  const json = JSON.stringify(appData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const ts = now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) + '_' + ('0'+now.getHours()).slice(-2) + ('0'+now.getMinutes()).slice(-2);
+  a.href = url;
+  a.download = 'qingsong-backup-' + ts + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('数据已导出', true);
+}
+
+function importData() {
+  const fileInput = document.getElementById('importFile');
+  const file = fileInput.files[0];
+  if (!file) { showToast('请先选择 JSON 文件'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.cases || !data.homepage) {
+        showToast('数据格式不正确'); return;
+      }
+      if (!confirm('确认导入？当前数据将被覆盖。')) return;
+      appData = data;
+      saveData(appData);
+      showToast('数据已导入', true);
+      renderDataPage();
+    } catch(err) {
+      showToast('JSON 解析失败，请检查文件');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function resetData() {
+  if (!confirm('确定重置为默认数据？所有修改将丢失。')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  appData = getDefaultData();
+  saveData(appData);
+  showToast('已重置为默认数据', true);
+  renderDataPage();
+}
+
+// ==================== BLOG PAGE ====================
+let blogArticles = [];
+
+async function loadBlogArticles() {
+  try {
+    const res = await fetch('/api/blog?page=1&limit=100');
+    const data = await res.json();
+    blogArticles = data.articles || [];
+  } catch(e) {
+    blogArticles = [];
+  }
+}
+
+async function renderBlogPage() {
+  mainContent.innerHTML = '<div class="page-title">博客管理</div><div style="text-align:center;color:#86868B;padding:40px;">加载中...</div>';
+  await loadBlogArticles();
+  buildBlogUI();
+}
+
+function buildBlogUI() {
+  let html = '<div class="page-title">博客管理</div>';
+  html += '<div class="msg-info msg-bar">共 ' + blogArticles.length + ' 篇文章。管理博客内容，支持图文音视频。</div>';
+
+  // New article button
+  html += '<div class="btn-group" style="margin-bottom:20px;">';
+  html += '<button class="btn btn-primary" onclick="openBlogEditor()">+ 新建文章</button>';
+  html += '</div>';
+
+  // Article list
+  if (blogArticles.length > 0) {
+    html += '<div class="card"><div class="table-wrap"><table><thead><tr><th>封面</th><th>标题</th><th>标签</th><th>日期</th><th>音视频</th><th>操作</th></tr></thead><tbody>';
+    blogArticles.forEach(function(a) {
+      const coverCell = a.cover ? '<img src="' + a.cover + '" style="width:60px;height:45px;object-fit:cover;border-radius:4px;" onerror="this.style.display=\'none\'">' : '<span style="color:#ccc;">无</span>';
+      const tags = a.tags ? a.tags.map(function(t) { return '<span class="tag tag-home">' + t + '</span>'; }).join(' ') : '';
+      const date = a.createdAt ? new Date(a.createdAt).toLocaleDateString('zh-CN') : '';
+      const media = (a.hasAudio ? '🎵' : '') + (a.hasVideo ? '🎬' : '') || '—';
+      html += '<tr>';
+      html += '<td>' + coverCell + '</td>';
+      html += '<td><b>' + (a.title || '') + '</b></td>';
+      html += '<td>' + tags + '</td>';
+      html += '<td>' + date + '</td>';
+      html += '<td>' + media + '</td>';
+      html += '<td><div class="btn-group">';
+      html += '<button class="btn btn-outline btn-sm" onclick="openBlogEditor(\'' + (a.slug || '') + '\')">编辑</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="deleteBlog(\'' + (a.slug || '') + '\')">删除</button>';
+      html += '</div></td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+  } else {
+    html += '<div class="card"><p style="text-align:center;color:#86868B;padding:30px;">暂无文章，点击上方按钮创建第一篇博客</p></div>';
+  }
+
+  mainContent.innerHTML = html;
+}
+
+async function deleteBlog(slug) {
+  if (!confirm('确定删除这篇文章？此操作不可撤销。')) return;
+  try {
+    const res = await fetch('/api/blog?slug=' + encodeURIComponent(slug), { method: 'DELETE', headers: { 'x-admin-key': 'qingsong2024' } });
+    const data = await res.json();
+    if (data.success) {
+      showToast('文章已删除', true);
+      renderBlogPage();
+    } else {
+      showToast('删除失败: ' + (data.error || '未知错误'));
+    }
+  } catch(e) {
+    showToast('删除失败: ' + e.message);
+  }
+}
+
+function openBlogEditor(slug) {
+  const isEdit = !!slug;
+  let article = null;
+  if (isEdit) {
+    article = blogArticles.find(function(a) { return a.slug === slug; });
+  }
+
+  let html = '<h3>' + (isEdit ? '编辑文章' : '新建文章') + '</h3>';
+  html += '<div class="blog-modal-body">';
+
+  // Title
+  html += '<div class="form-group"><label class="form-label">文章标题 *</label><input class="form-input" id="be-title" value="' + (article ? (article.title || '') : '') + '"></div>';
+
+  // Slug  
+  html += '<div class="form-group"><label class="form-label">Slug（URL标识）</label><input class="form-input" id="be-slug" value="' + (article ? (article.slug || '') : '') + '" placeholder="留空自动生成"></div>';
+
+  // Summary
+  html += '<div class="form-group"><label class="form-label">摘要</label><textarea class="form-textarea" id="be-summary" style="min-height:50px;">' + (article ? (article.summary || '') : '') + '</textarea></div>';
+
+  // Tags
+  html += '<div class="form-group"><label class="form-label">标签（逗号分隔）</label><input class="form-input" id="be-tags" value="' + (article && article.tags ? article.tags.join(',') : '') + '" placeholder="设计,装修,干货">';
+
+  // Cover image upload
+  html += '<div class="form-group" style="margin-top:8px;"><label class="form-label">封面图</label>';
+  html += '<div style="display:flex;align-items:center;gap:8px;">';
+  html += '<input class="form-input" id="be-cover" value="' + (article ? (article.cover || '') : '') + '" placeholder="图片 URL" style="flex:1;">';
+  html += '<label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;white-space:nowrap;">上传<input type="file" accept="image/*" style="display:none;" onchange="handleBlogCoverUpload(this)"></label>';
+  html += '</div></div>';
+
+  // Audio
+  html += '<div class="form-group"><label class="form-label">音频 MP3</label>';
+  html += '<div style="display:flex;align-items:center;gap:8px;">';
+  html += '<input class="form-input" id="be-audio" value="' + (article ? (article.audioUrl || '') : '') + '" placeholder="音频 URL">';
+  html += '<label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;white-space:nowrap;">上传<input type="file" accept="audio/mp3" style="display:none;" onchange="handleBlogAudioUpload(this)"></label>';
+  html += '</div></div>';
+
+  // Video
+  html += '<div class="form-group"><label class="form-label">视频 MP4</label>';
+  html += '<div style="display:flex;align-items:center;gap:8px;">';
+  html += '<input class="form-input" id="be-video" value="' + (article ? (article.videoUrl || '') : '') + '" placeholder="视频 URL">';
+  html += '<label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;white-space:nowrap;">上传<input type="file" accept="video/mp4" style="display:none;" onchange="handleBlogVideoUpload(this)"></label>';
+  html += '</div></div>';
+
+  // Rich text editor
+  html += '<div class="form-group"><label class="form-label">正文内容</label>';
+  html += '<div style="border:1px solid #D1D1D6;border-radius:8px;overflow:hidden;">';
+  // Toolbar
+  html += '<div id="blogToolbar" style="display:flex;flex-wrap:wrap;gap:2px;padding:8px;background:#FAFAFA;border-bottom:1px solid #E8E8ED;overflow-x:auto;-webkit-overflow-scrolling:touch;">';
+  html += '<button class="be-tb-btn" data-cmd="formatBlock" data-val="h2" title="H2标题">H2</button>';
+  html += '<button class="be-tb-btn" data-cmd="formatBlock" data-val="h3" title="H3标题">H3</button>';
+  html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
+  html += '<button class="be-tb-btn" data-cmd="bold" title="加粗"><b>B</b></button>';
+  html += '<button class="be-tb-btn" data-cmd="italic" title="斜体"><i>I</i></button>';
+  html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
+  html += '<button class="be-tb-btn" data-cmd="insertUnorderedList" title="无序列表">&bull;列</button>';
+  html += '<button class="be-tb-btn" data-cmd="insertOrderedList" title="有序列表">1.列</button>';
+  html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
+  html += '<button class="be-tb-btn" data-cmd="formatBlock" data-val="blockquote" title="引用块">"引</button>';
+  html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
+  html += '<button class="be-tb-btn" onclick="insertBlogImage()" title="插入图片">🖼</button>';
+  html += '<button class="be-tb-btn" onclick="insertBlogVideo()" title="插入视频">🎬</button>';
+  html += '<button class="be-tb-btn" onclick="insertBlogAudio()" title="插入音频">🎵</button>';
+  html += '<button class="be-tb-btn" onclick="insertBlogLink()" title="插入链接">🔗</button>';
+  html += '</div>';
+  // Editor area
+  html += '<div id="blogEditor" contenteditable="true" style="min-height:300px;padding:16px;font-size:15px;line-height:1.8;outline:none;" placeholder="开始写作...">';
+  html += (article ? (article.content || '') : '');
+  html += '</div>';
+  html += '</div></div>';
+
+  html += '</div>'; // close blog-modal-body
+
+  // Submit
+  html += '<div class="blog-modal-footer btn-group">';
+  html += '<button class="btn btn-primary" onclick="publishBlog(\'' + (isEdit ? (article ? article.slug : '') : '') + '\')">发布文章</button>';
+  html += '<button class="btn btn-outline" onclick="closeModal()">取消</button>';
+  html += '</div>';
+
+  openModal(html, true);
+
+  // Init toolbar events
+  setTimeout(function() {
+    document.querySelectorAll('.be-tb-btn[data-cmd]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var cmd = this.dataset.cmd;
+        var val = this.dataset.val || null;
+        document.execCommand(cmd, false, val);
+        document.getElementById('blogEditor').focus();
+      });
+    });
+  }, 100);
+}
+
+function insertBlogImage() {
+  var url = prompt('请输入图片 URL：');
+  if (!url) return;
+  var edt = document.getElementById('blogEditor');
+  if (!edt) return;
+  edt.focus();
+  document.execCommand('insertHTML', false, '<img src="' + url + '" style="max-width:100%;border-radius:8px;margin:12px 0;">');
+}
+
+function insertBlogVideo() {
+  var url = prompt('请输入视频 URL（.mp4 或 B站链接）：');
+  if (!url) return;
+  var edt = document.getElementById('blogEditor');
+  if (!edt) return;
+  var html;
+  if (url.includes('bilibili.com') || url.includes('b23.tv')) {
+    html = '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;margin:12px 0;"><a href="' + url + '" target="_blank" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#C9A96E;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;">🎬 点击观看视频</a></div>';
+  } else {
+    html = '<video src="' + url + '" controls style="max-width:100%;border-radius:8px;margin:12px 0;"></video>';
+  }
+  edt.focus();
+  document.execCommand('insertHTML', false, html);
+}
+
+function insertBlogAudio() {
+  var url = prompt('请输入音频 URL（.mp3）：');
+  if (!url) return;
+  var edt = document.getElementById('blogEditor');
+  if (!edt) return;
+  edt.focus();
+  document.execCommand('insertHTML', false, '<audio src="' + url + '" controls style="width:100%;max-width:500px;margin:12px 0;"></audio>');
+}
+
+function insertBlogLink() {
+  var url = prompt('请输入链接 URL：');
+  if (!url) return;
+  var text = prompt('请输入链接文字：', url);
+  var edt = document.getElementById('blogEditor');
+  if (!edt) return;
+  edt.focus();
+  document.execCommand('insertHTML', false, '<a href="' + url + '" target="_blank">' + (text || url) + '</a>');
+}
+
+async function handleBlogCoverUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const textInput = document.getElementById('be-cover');
+  input.disabled = true;
+  try {
+    const result = await uploadToR2(file, null);
+    if (textInput) textInput.value = result.url;
+    showToast('封面上传成功', true);
+  } catch(e) {
+    showToast('上传失败: ' + e.message);
+  }
+  input.value = '';
+  input.disabled = false;
+}
+
+async function handleBlogAudioUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const textInput = document.getElementById('be-audio');
+  input.disabled = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '上传失败');
+    if (textInput) textInput.value = data.url;
+    showToast('音频上传成功', true);
+  } catch(e) {
+    showToast('上传失败: ' + e.message);
+  }
+  input.value = '';
+  input.disabled = false;
+}
+
+async function handleBlogVideoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const textInput = document.getElementById('be-video');
+  input.disabled = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '上传失败');
+    if (textInput) textInput.value = data.url;
+    showToast('视频上传成功', true);
+  } catch(e) {
+    showToast('上传失败: ' + e.message);
+  }
+  input.value = '';
+  input.disabled = false;
+}
+
+async function publishBlog(oldSlug) {
+  var title = document.getElementById('be-title').value.trim();
+  if (!title) { showToast('请输入标题'); return; }
+
+  var summary = document.getElementById('be-summary').value.trim();
+  var tagsStr = document.getElementById('be-tags').value.trim();
+  var tags = tagsStr ? tagsStr.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+  var cover = document.getElementById('be-cover').value.trim();
+  var audioUrl = document.getElementById('be-audio').value.trim();
+  var videoUrl = document.getElementById('be-video').value.trim();
+  var slug = document.getElementById('be-slug').value.trim() || oldSlug;
+  var content = document.getElementById('blogEditor').innerHTML;
+
+  var body = {
+    title: title,
+    summary: summary,
+    content: content,
+    cover: cover,
+    tags: tags,
+    hasAudio: !!audioUrl,
+    audioUrl: audioUrl,
+    hasVideo: !!videoUrl,
+    videoUrl: videoUrl
+  };
+  if (slug) body.slug = slug;
+
+  var isEdit = !!oldSlug;
+  var method = isEdit ? 'PUT' : 'POST';
+  var url = '/api/blog';
+  if (isEdit) body.oldSlug = oldSlug;
+
+  try {
+    var res = await fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': 'qingsong2024' },
+      body: JSON.stringify(body)
+    });
+    var data = await res.json();
+    if (data.success) {
+      showToast(isEdit ? '文章已更新' : '文章已发布', true);
+      closeModal();
+      renderBlogPage();
+    } else {
+      showToast('发布失败: ' + (data.error || '未知错误'));
+    }
+  } catch(e) {
+    showToast('发布失败: ' + e.message);
+  }
+}
+
+// ==================== INIT ====================
+renderCases();
+</script>
+</body>
+</html>
