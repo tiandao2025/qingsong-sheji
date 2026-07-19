@@ -177,29 +177,119 @@ tr:hover td { background: #FAFAFA; }
 }
 .modal h3 { font-size: 18px; margin-bottom: 20px; }
 
-/* Blog editor modal — fixed footer, scrollable body */
+/* Blog editor modal — header + left-right split */
 .modal.modal-blog {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding: 0;
+  width: 90vw;
+  height: 85vh;
+  max-width: 1200px;
 }
-.modal.modal-blog > h3 {
+.modal.modal-blog > h3 { display: none; }
+
+.blog-editor-header {
   flex-shrink: 0;
-  padding: 28px 28px 0;
-  margin-bottom: 16px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #E8E8ED;
+  background: #FAFAFA;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
-.modal-blog-body {
+.blog-editor-header-close {
+  width: 28px; height: 28px;
+  border: none; background: none;
+  font-size: 18px; color: #86868B;
+  cursor: pointer; border-radius: 6px;
+}
+.blog-editor-header-close:hover { background: #E8E8ED; color: #333; }
+
+/* Left: editor panel */
+.blog-editor-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-right: 1px solid #E8E8ED;
+}
+.blog-editor-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 8px 12px;
+  background: #FAFAFA;
+  border-bottom: 1px solid #E8E8ED;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#blogEditor {
   flex: 1;
   overflow-y: auto;
-  padding: 0 28px;
+  padding: 24px;
+  font-size: 15px;
+  line-height: 1.8;
+  outline: none;
+  min-height: 300px;
 }
-.modal-blog-footer {
+
+/* Right: metadata panel */
+.blog-editor-sidebar {
+  width: 320px;
   flex-shrink: 0;
-  padding: 16px 28px;
-  border-top: 1px solid #E8E8ED;
-  background: #fff;
-  border-radius: 0 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+.blog-editor-sidebar .form-group { margin-bottom: 12px; }
+.blog-sidebar-section-title {
+  font-size: 12px; font-weight: 600;
+  color: #86868B; text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 6px;
+  cursor: pointer; user-select: none;
+  display: flex; align-items: center;
+  justify-content: space-between;
+}
+.blog-sidebar-section-title::after {
+  content: '▾'; font-size: 10px; transition: transform 0.2s;
+}
+.blog-sidebar-section-title.collapsed::after {
+  transform: rotate(-90deg);
+}
+.blog-sidebar-collapsible {
+  overflow: hidden;
+  transition: max-height 0.3s;
+  max-height: 200px;
+}
+.blog-sidebar-collapsible.collapsed { max-height: 0 !important; }
+.blog-publish-btn {
+  width: 100%; padding: 12px;
+  background: #C41E3A; color: #fff;
+  border: none; border-radius: 8px;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; margin-top: auto;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.blog-publish-btn:hover { background: #A01830; }
+.blog-cancel-btn {
+  width: 100%; padding: 10px;
+  background: transparent; color: #86868B;
+  border: 1px solid #E0E0E0; border-radius: 8px;
+  font-size: 14px; cursor: pointer; margin-top: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .modal.modal-blog { flex-direction: column; width: 95vw; height: 90vh; }
+  .blog-editor-main { border-right: none; border-bottom: 1px solid #E8E8ED; flex: 0 0 55%; }
+  .blog-editor-sidebar { width: 100%; flex: 0 0 45%; }
+  #blogEditor { min-height: 250px; }
 }
 
 /* Toast */
@@ -936,6 +1026,13 @@ async function deleteBlog(slug) {
   }
 }
 
+function toggleBlogMedia() {
+  var sec = document.getElementById('blogMediaSection');
+  var t = sec.previousElementSibling;
+  sec.classList.toggle('collapsed');
+  t.classList.toggle('collapsed');
+}
+
 function openBlogEditor(slug) {
   const isEdit = !!slug;
   let article = null;
@@ -943,52 +1040,26 @@ function openBlogEditor(slug) {
     article = blogArticles.find(function(a) { return a.slug === slug; });
   }
 
-  let html = '<h3>' + (isEdit ? '编辑文章' : '新建文章') + '</h3>';
-  html += '<div class="blog-modal-body">';
+  var html = '';
 
-  // Title
-  html += '<div class="form-group"><label class="form-label">文章标题 *</label><input class="form-input" id="be-title" value="' + (article ? (article.title || '') : '') + '"></div>';
+  // Header
+  html += '<div class="blog-editor-header">';
+  html += '<span>' + (isEdit ? '编辑文章' : '新建文章') + '</span>';
+  html += '<button class="blog-editor-header-close" onclick="closeModal()">&times;</button>';
+  html += '</div>';
 
-  // Slug  
-  html += '<div class="form-group"><label class="form-label">Slug（URL标识）</label><input class="form-input" id="be-slug" value="' + (article ? (article.slug || '') : '') + '" placeholder="留空自动生成"></div>';
+  // Body — left/right split
+  html += '<div style="flex:1;display:flex;flex-direction:row;overflow:hidden;">';
 
-  // Summary
-  html += '<div class="form-group"><label class="form-label">摘要</label><textarea class="form-textarea" id="be-summary" style="min-height:50px;">' + (article ? (article.summary || '') : '') + '</textarea></div>';
-
-  // Tags
-  html += '<div class="form-group"><label class="form-label">标签（逗号分隔）</label><input class="form-input" id="be-tags" value="' + (article && article.tags ? article.tags.join(',') : '') + '" placeholder="设计,装修,干货">';
-
-  // Cover image upload
-  html += '<div class="form-group" style="margin-top:8px;"><label class="form-label">封面图</label>';
-  html += '<div style="display:flex;align-items:center;gap:8px;">';
-  html += '<input class="form-input" id="be-cover" value="' + (article ? (article.cover || '') : '') + '" placeholder="图片 URL" style="flex:1;">';
-  html += '<label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;white-space:nowrap;">上传<input type="file" accept="image/*" style="display:none;" onchange="handleBlogCoverUpload(this)"></label>';
-  html += '</div></div>';
-
-  // Audio
-  html += '<div class="form-group"><label class="form-label">音频 MP3</label>';
-  html += '<div style="display:flex;align-items:center;gap:8px;">';
-  html += '<input class="form-input" id="be-audio" value="' + (article ? (article.audioUrl || '') : '') + '" placeholder="音频 URL">';
-  html += '<label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;white-space:nowrap;">上传<input type="file" accept="audio/mp3" style="display:none;" onchange="handleBlogAudioUpload(this)"></label>';
-  html += '</div></div>';
-
-  // Video
-  html += '<div class="form-group"><label class="form-label">视频 MP4</label>';
-  html += '<div style="display:flex;align-items:center;gap:8px;">';
-  html += '<input class="form-input" id="be-video" value="' + (article ? (article.videoUrl || '') : '') + '" placeholder="视频 URL">';
-  html += '<label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;white-space:nowrap;">上传<input type="file" accept="video/mp4" style="display:none;" onchange="handleBlogVideoUpload(this)"></label>';
-  html += '</div></div>';
-
-  // Rich text editor
-  html += '<div class="form-group"><label class="form-label">正文内容</label>';
-  html += '<div style="border:1px solid #D1D1D6;border-radius:8px;overflow:hidden;">';
+  // === LEFT: Editor panel ===
+  html += '<div class="blog-editor-main">';
   // Toolbar
-  html += '<div id="blogToolbar" style="display:flex;flex-wrap:wrap;gap:2px;padding:8px;background:#FAFAFA;border-bottom:1px solid #E8E8ED;overflow-x:auto;-webkit-overflow-scrolling:touch;">';
-  html += '<button class="be-tb-btn" data-cmd="formatBlock" data-val="h2" title="H2标题">H2</button>';
-  html += '<button class="be-tb-btn" data-cmd="formatBlock" data-val="h3" title="H3标题">H3</button>';
-  html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
+  html += '<div class="blog-editor-toolbar">';
   html += '<button class="be-tb-btn" data-cmd="bold" title="加粗"><b>B</b></button>';
   html += '<button class="be-tb-btn" data-cmd="italic" title="斜体"><i>I</i></button>';
+  html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
+  html += '<button class="be-tb-btn" data-cmd="formatBlock" data-val="h2" title="H2标题">H2</button>';
+  html += '<button class="be-tb-btn" data-cmd="formatBlock" data-val="h3" title="H3标题">H3</button>';
   html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
   html += '<button class="be-tb-btn" data-cmd="insertUnorderedList" title="无序列表">&bull;列</button>';
   html += '<button class="be-tb-btn" data-cmd="insertOrderedList" title="有序列表">1.列</button>';
@@ -1001,18 +1072,47 @@ function openBlogEditor(slug) {
   html += '<button class="be-tb-btn" onclick="insertBlogLink()" title="插入链接">🔗</button>';
   html += '</div>';
   // Editor area
-  html += '<div id="blogEditor" contenteditable="true" style="min-height:300px;padding:16px;font-size:15px;line-height:1.8;outline:none;" placeholder="开始写作...">';
+  html += '<div id="blogEditor" contenteditable="true" placeholder="开始写作...">';
   html += (article ? (article.content || '') : '');
   html += '</div>';
-  html += '</div></div>';
-
-  html += '</div>'; // close blog-modal-body
-
-  // Submit
-  html += '<div class="blog-modal-footer btn-group">';
-  html += '<button class="btn btn-primary" onclick="publishBlog(\'' + (isEdit ? (article ? article.slug : '') : '') + '\')">发布文章</button>';
-  html += '<button class="btn btn-outline" onclick="closeModal()">取消</button>';
   html += '</div>';
+
+  // === RIGHT: Metadata sidebar ===
+  html += '<div class="blog-editor-sidebar">';
+  // Title
+  html += '<div class="form-group"><label class="form-label">文章标题 *</label><input class="form-input" id="be-title" value="' + (article ? (article.title || '') : '') + '" placeholder="输入文章标题"></div>';
+  // Summary
+  html += '<div class="form-group"><label class="form-label">摘要</label><textarea class="form-textarea" id="be-summary" rows="3" style="min-height:60px;">' + (article ? (article.summary || '') : '') + '</textarea></div>';
+  // Tags
+  html += '<div class="form-group"><label class="form-label">标签（逗号分隔）</label><input class="form-input" id="be-tags" value="' + (article && article.tags ? article.tags.join(',') : '') + '" placeholder="设计,装修,干货"></div>';
+  // Cover
+  html += '<div class="form-group"><label class="form-label">封面图</label>';
+  html += '<div style="display:flex;align-items:center;gap:8px;">';
+  html += '<input class="form-input" id="be-cover" value="' + (article ? (article.cover || '') : '') + '" placeholder="图片 URL" style="flex:1;">';
+  html += '<label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;white-space:nowrap;flex-shrink:0;">上传<input type="file" accept="image/*" style="display:none;" onchange="handleBlogCoverUpload(this)"></label>';
+  html += '</div></div>';
+  // Slug (hidden)
+  html += '<input type="hidden" id="be-slug" value="' + (article ? (article.slug || '') : '') + '">';
+  // Collapsible media section
+  html += '<div class="blog-sidebar-section-title" onclick="toggleBlogMedia()">多媒体附件</div>';
+  html += '<div class="blog-sidebar-collapsible collapsed" id="blogMediaSection">';
+  html += '<div class="form-group" style="margin-bottom:10px;"><label class="form-label">音频 MP3</label>';
+  html += '<div style="display:flex;align-items:center;gap:8px;">';
+  html += '<input class="form-input" id="be-audio" value="' + (article ? (article.audioUrl || '') : '') + '" placeholder="音频 URL">';
+  html += '<label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;white-space:nowrap;flex-shrink:0;">上传<input type="file" accept="audio/mp3" style="display:none;" onchange="handleBlogAudioUpload(this)"></label>';
+  html += '</div></div>';
+  html += '<div class="form-group"><label class="form-label">视频 MP4</label>';
+  html += '<div style="display:flex;align-items:center;gap:8px;">';
+  html += '<input class="form-input" id="be-video" value="' + (article ? (article.videoUrl || '') : '') + '" placeholder="视频 URL">';
+  html += '<label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;white-space:nowrap;flex-shrink:0;">上传<input type="file" accept="video/mp4" style="display:none;" onchange="handleBlogVideoUpload(this)"></label>';
+  html += '</div></div>';
+  html += '</div>'; // close blogMediaSection
+  // Publish + Cancel buttons
+  html += '<button class="blog-publish-btn" onclick="publishBlog(\'' + (isEdit ? (article ? article.slug : '') : '') + '\')">发布文章</button>';
+  html += '<button class="blog-cancel-btn" onclick="closeModal()">取消</button>';
+  html += '</div>'; // close sidebar
+
+  html += '</div>'; // close flex row
 
   openModal(html, true);
 

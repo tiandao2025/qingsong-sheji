@@ -6,7 +6,7 @@
 <title>文章详情 | 青松设计</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1D1D1F; background: #FFFFFF; line-height: 1.8; }
+body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1D1D1F; background: #FFFFFF; line-height: 1.8; overflow-x: hidden; }
 
 .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 0 40px; height: 72px; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.06); }
 .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
@@ -16,9 +16,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 .nav-cta:hover { background: #C4942E; }
 .nav-back { text-decoration: none; color: #555; font-size: 14px; font-weight: 500; }
 
-.article-wrap { max-width: 800px; margin: 0 auto; }
-.article-cover { width: 100%; max-height: 480px; object-fit: cover; margin-bottom: 40px; background: #F5F5F7; }
-.article-content { padding: 100px 40px 60px; }
+.article-wrap { max-width: 800px; margin: 0 auto; width: 100%; }
+.article-cover { width: 100%; max-height: 480px; object-fit: cover; margin-bottom: 40px; background: #F5F5F7; border-radius: 0; }
+.article-content { padding: 100px 0 60px; overflow-x: hidden; display: flex; justify-content: center; }
 
 .article-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
 .article-date { font-size: 14px; color: #86868B; }
@@ -28,7 +28,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 .article-title { font-size: 36px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; line-height: 1.3; }
 .article-summary { font-size: 17px; color: #86868B; padding-bottom: 32px; border-bottom: 1px solid #F0F0F2; margin-bottom: 32px; }
 
-.article-body { font-size: 16px; line-height: 1.9; color: #333; }
+.article-body { font-size: 16px; line-height: 1.9; color: #333; word-break: break-word; overflow-wrap: break-word; }
 .article-body h2 { font-size: 24px; margin: 40px 0 16px; font-weight: 700; }
 .article-body h3 { font-size: 19px; margin: 28px 0 12px; font-weight: 700; }
 .article-body p { margin-bottom: 16px; }
@@ -56,7 +56,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 
 @media (max-width: 768px) {
   .nav { padding: 0 20px; }
-  .article-content { padding: 90px 20px 40px; }
+  .article-content { padding: 90px 16px 40px; }
+  .article-wrap { max-width: 100%; }
   .article-title { font-size: 24px; }
   .article-cover { border-radius: 0; max-height: 280px; }
 }
@@ -82,6 +83,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 <script>
 function fd(s) { if(!s)return''; var d=new Date(s); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
+function autoLink(html) {
+  return html.replace(/(<[aA]\s[^>]*>.*?<\/[aA]>|<img\s[^>]*>|<video\s[^>]*>|<audio\s[^>]*>)|https?:\/\/[^\s<>"']+/g, function(m, tag) {
+    if (tag) return tag;
+    var url = m;
+    var display = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
+    if (display.length > 50) display = display.substring(0, 47) + '...';
+    return '<a href="'+url+'" target="_blank" rel="noopener">'+display+'</a>';
+  });
+}
+
 function render(article) {
   var wrap = document.getElementById('articleContent');
   if (!article) {
@@ -99,7 +110,7 @@ function render(article) {
   h += '<div class="article-meta"><span class="article-date">'+fd(article.createdAt||article.updatedAt)+'</span>'+tagsH+'</div>';
   h += '<h1 class="article-title">'+article.title+'</h1>';
   if (article.summary) h += '<p class="article-summary">'+article.summary+'</p>';
-  h += '<div class="article-body">'+(article.content||'')+'</div>';
+  h += '<div class="article-body">'+autoLink(article.content||'')+'</div>';
 
   if (article.hasAudio && article.audioUrl) h += '<div class="media-section"><h4>🎵 音频播放</h4><audio src="'+article.audioUrl+'" controls style="width:100%;max-width:500px;"></audio></div>';
   if (article.hasVideo && article.videoUrl) h += '<div class="media-section"><h4>🎬 视频播放</h4><video src="'+article.videoUrl+'" controls style="max-width:100%;border-radius:8px;"></video></div>';
