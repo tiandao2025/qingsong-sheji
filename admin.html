@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v2026.07.19.01 -->
+<!-- v2026.07.19.02 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -1197,8 +1197,116 @@ async function openBlogEditor(slug) {
         var edtRef = document.getElementById('blogEditor');
         edtRef.focus();
 
-        // If HTML has local images but no image items to upload, strip img tags
+        // If HTML has local images but no image items from DataTransferItemList,
+        // try alternative sources: clipboardData.files (Word on some platforms) or data: URIs in HTML
         if (imageItems.length === 0 && hasLocalImg && htmlItem) {
+          // Strategy 1: Try clipboardData.files (Word sometimes provides images as File objects here)
+          var clipFiles = ev.clipboardData.files;
+          var altImageFiles = [];
+          if (clipFiles && clipFiles.length > 0) {
+            for (var f = 0; f < clipFiles.length; f++) {
+              var ft = clipFiles[f].type;
+              var fn = clipFiles[f].name;
+              if (ft.indexOf('image') === 0 || /\.(png|jpe?g|gif|bmp|svg|webp|tiff?)$/i.test(fn)) {
+                altImageFiles.push(clipFiles[f]);
+              }
+            }
+            console.log('[BlogPaste] 从 clipboardData.files 找到图片:', altImageFiles.length, '张');
+          }
+
+          if (altImageFiles.length > 0) {
+            // Upload these files via R2, then replace local img src in HTML
+            ev.preventDefault();
+            var edtRef2 = document.getElementById('blogEditor');
+            edtRef2.focus();
+
+            var altUploads = altImageFiles.map(function(file) {
+              return uploadToR2(file, null);
+            });
+
+            var altPlacholder = '<span class="_bmPastePlaceholder" style="color:#C9A96E;">图片上传中（' + altImageFiles.length + ' 张）...</span>';
+            document.execCommand('insertHTML', false, altPlacholder);
+
+            Promise.all(altUploads).then(function(results) {
+              var urls = results.map(function(r) { return r.url; });
+              console.log('[BlogPaste] files通道上传完成, URLs:', urls);
+              var phs = edtRef2.querySelectorAll('._bmPastePlaceholder');
+              for (var p = 0; p < phs.length; p++) phs[p].remove();
+
+              htmlItem.getAsString(function(html) {
+                var imgIdx = 0;
+                html = html.replace(/<img[^>]*\ssrc\s*=\s*["'](?!https?:\/\/|data:)([^"']*)["'][^>]*>/gi, function(match) {
+                  if (imgIdx < urls.length) {
+                    return match.replace(/\ssrc\s*=\s*["'][^"']*["']/i, ' src="' + urls[imgIdx++] + '"');
+                  }
+                  return match;
+                });
+                document.execCommand('insertHTML', false, html);
+                showToast(altImageFiles.length + ' 张图片上传成功', true);
+              });
+            }).catch(function(err) {
+              console.error('[BlogPaste] files通道上传失败:', err);
+              var phs = edtRef2.querySelectorAll('._bmPastePlaceholder');
+              for (var p = 0; p < phs.length; p++) phs[p].remove();
+              showToast('上传失败: ' + (err.message || '网络错误'));
+            });
+            return;
+          }
+
+          // Strategy 2: Try HTML data: URIs inside img tags
+          try {
+            var rawHtml2 = ev.clipboardData.getData('text/html');
+            var dataUriMatches = rawHtml2.match(/<img[^>]*\ssrc\s*=\s*["'](data:image\/[^"']+)["'][^>]*>/gi);
+            var dataUris = [];
+            if (dataUriMatches) {
+              for (var d = 0; d < dataUriMatches.length; d++) {
+                var m = dataUriMatches[d].match(/src\s*=\s*["'](data:image\/[^"']+)["']/i);
+                if (m) dataUris.push(m[1]);
+              }
+            }
+            console.log('[BlogPaste] HTML中data: URI数量:', dataUris.length);
+
+            if (dataUris.length > 0) {
+              ev.preventDefault();
+              var edtRef3 = document.getElementById('blogEditor');
+              edtRef3.focus();
+
+              var duploads = dataUris.map(function(uri) {
+                return fetch(uri).then(function(r) { return r.blob(); }).then(function(blob) {
+                  return uploadToR2(new File([blob], 'image.png', { type: blob.type }), null);
+                });
+              });
+
+              var dplaceholder = '<span class="_bmPastePlaceholder" style="color:#C9A96E;">图片上传中（' + dataUris.length + ' 张）...</span>';
+              document.execCommand('insertHTML', false, dplaceholder);
+
+              Promise.all(duploads).then(function(results) {
+                var urls = results.map(function(r) { return r.url; });
+                console.log('[BlogPaste] dataURI通道上传完成, URLs:', urls);
+                var phs = edtRef3.querySelectorAll('._bmPastePlaceholder');
+                for (var p = 0; p < phs.length; p++) phs[p].remove();
+
+                var html = rawHtml2;
+                var idx = 0;
+                html = html.replace(/<img[^>]*\ssrc\s*=\s*["']data:image\/[^"']+["'][^>]*>/gi, function(match) {
+                  if (idx < urls.length) {
+                    return match.replace(/\ssrc\s*=\s*["'][^"']*["']/i, ' src="' + urls[idx++] + '"');
+                  }
+                  return match;
+                });
+                document.execCommand('insertHTML', false, html);
+                showToast('图片上传成功', true);
+              }).catch(function(err) {
+                console.error('[BlogPaste] dataURI上传失败:', err);
+                var phs = edtRef3.querySelectorAll('._bmPastePlaceholder');
+                for (var p = 0; p < phs.length; p++) phs[p].remove();
+                showToast('上传失败: ' + (err.message || '网络错误'));
+              });
+              return;
+            }
+          } catch(e) {}
+
+          // Strategy 3: Fallback - strip img tags, keep text
           htmlItem.getAsString(function(html) {
             html = html.replace(/<img[^>]*>/gi, '[图片需通过工具栏上传]');
             document.execCommand('insertHTML', false, html);
