@@ -1160,39 +1160,75 @@ async function openBlogEditor(slug) {
         document.getElementById('blogEditor').focus();
       });
     });
-    // Paste image handler
+    // Paste image handler (supports mixed text+image from Word etc.)
     var edt = document.getElementById('blogEditor');
     if (edt) {
-      edt.addEventListener('paste', async function(ev) {
+      edt.addEventListener('paste', function(ev) {
         var items = ev.clipboardData && ev.clipboardData.items;
         if (!items) return;
+        var imageItems = [];
+        var htmlItem = null;
         for (var i = 0; i < items.length; i++) {
           if (items[i].type.indexOf('image') === 0) {
-            ev.preventDefault();
-            var blob = items[i].getAsFile();
-            console.log('[BlogPaste] 检测到粘贴图片, type:', blob.type, 'size:', blob.size);
-            var holderId = '_bmPaste' + Date.now();
-            document.execCommand('insertHTML', false, '<span id="' + holderId + '" style="color:#C9A96E;">图片上传中...</span>');
-            try {
-              var result = await uploadToR2(blob, null);
-              console.log('[BlogPaste] 上传完成, URL:', result.url);
-              var ph = document.getElementById(holderId);
-              if (ph) {
-                ph.outerHTML = '<img src="' + result.url + '" style="max-width:100%;border-radius:8px;margin:12px 0;">';
-                console.log('[BlogPaste] 图片已插入编辑器');
-              } else {
-                console.warn('[BlogPaste] 占位元素未找到:', holderId);
-              }
-              showToast('图片上传成功', true);
-            } catch(err) {
-              console.error('[BlogPaste] 上传失败:', err);
-              var ph2 = document.getElementById(holderId);
-              if (ph2) ph2.remove();
-              showToast('图片上传失败: ' + err.message);
-            }
-            break;
+            imageItems.push(items[i]);
+          } else if (items[i].type === 'text/html') {
+            htmlItem = items[i];
           }
         }
+        if (imageItems.length === 0) return;
+        ev.preventDefault();
+        console.log('[BlogPaste] 检测到粘贴, 图片数:', imageItems.length, '含HTML:', !!htmlItem);
+        var edtRef = document.getElementById('blogEditor');
+        edtRef.focus();
+
+        // Upload all images in parallel
+        var uploads = imageItems.map(function(it) {
+          return uploadToR2(it.getAsFile(), null);
+        });
+
+        function insertAfterUpload() {
+          Promise.all(uploads).then(function(results) {
+            var urls = results.map(function(r) { return r.url; });
+            console.log('[BlogPaste] 全部上传完成, URLs:', urls);
+            if (htmlItem) {
+              // Mixed content: get HTML, replace local/non-http images with uploaded URLs
+              htmlItem.getAsString(function(html) {
+                var imgIdx = 0;
+                html = html.replace(/<img[^>]*\ssrc\s*=\s*["'](?!https?:\/\/)([^"']*)["'][^>]*>/gi, function(match) {
+                  if (imgIdx < urls.length) {
+                    return match.replace(/\ssrc\s*=\s*["'][^"']*["']/i, ' src="' + urls[imgIdx++] + '"');
+                  }
+                  return match;
+                });
+                document.execCommand('insertHTML', false, html);
+                showToast(imageItems.length + ' 张图片上传成功', true);
+              });
+            } else {
+              // Multiple images, no HTML: insert sequentially
+              for (var k = 0; k < urls.length; k++) {
+                document.execCommand('insertHTML', false,
+                  '<img src="' + urls[k] + '" style="max-width:100%;border-radius:8px;margin:12px 0;">');
+              }
+              showToast(imageItems.length + ' 张图片上传成功', true);
+            }
+          }).catch(function(err) {
+            console.error('[BlogPaste] 上传失败:', err);
+            showToast('上传失败: ' + (err.message || '网络错误'));
+          });
+        }
+
+        // Show uploading placeholder
+        document.execCommand('insertHTML', false,
+          '<span style="color:#C9A96E;">图片上传中（' + imageItems.length + ' 张）...</span>');
+        // Clean up placeholder after uploads complete
+        Promise.all(uploads).then(function() {
+          var edt2 = document.getElementById('blogEditor');
+          if (edt2) {
+            var ph = edt2.querySelector('span[style*="color:#C9A96E"]');
+            if (ph && ph.textContent.indexOf('上传中') !== -1) ph.remove();
+          }
+        });
+        insertAfterUpload();
       });
     }
   }, 100);
