@@ -1239,31 +1239,12 @@ async function handleBlogVideoUpload(input) {
 
 function cleanEditorHTML(html) {
   if (!html) return '';
-  // Remove all <span> tags but keep their inner content
-  html = html.replace(/<span[^>]*>/g, '');
-  html = html.replace(/<\/span>/g, '');
-  // Strip white-space preventing auto-wrap
+  // Strip only white-space that prevents auto-wrap, keep font styles intact
   html = html.replace(/white-space\s*:\s*[^;"]+;?/gi, '');
-  html = html.replace(/font-family\s*:\s*[^;"]+;?/gi, '');
-  html = html.replace(/font-size\s*:\s*[^;"]+;?/gi, '');
   // Clean empty style attributes
   html = html.replace(/\s*style\s*=\s*""/gi, '');
   html = html.replace(/\s*style\s*=\s*''/gi, '');
-  // Convert contenteditable-specific br cleanup
-  html = html.replace(/<br\s*\/?>/gi, '\n');
-  // Wrap bare text lines in <div>
-  var parts = html.split('\n');
-  var result = [];
-  for (var i = 0; i < parts.length; i++) {
-    var line = parts[i].trim();
-    if (!line) continue;
-    if (/^\s*<(h[1-6]|p|div|ul|ol|blockquote|table|img|video|audio|pre|figure)/i.test(line)) {
-      result.push(line);
-    } else {
-      result.push('<div>' + line + '</div>');
-    }
-  }
-  return result.join('');
+  return html;
 }
 
 async function publishBlog(oldSlug) {

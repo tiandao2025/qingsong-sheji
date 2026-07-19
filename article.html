@@ -30,7 +30,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 
 .article-body { font-size: 16px; line-height: 1.9; color: #333; word-break: break-word; overflow-wrap: anywhere; }
 .article-body,
-.article-body * { max-width: 100% !important; box-sizing: border-box !important; white-space: normal !important; word-wrap: break-word !important; overflow-wrap: anywhere !important; }
+.article-body * { max-width: 100% !important; box-sizing: border-box !important; word-wrap: break-word !important; overflow-wrap: anywhere !important; }
+.article-body :not(pre):not(code) { white-space: normal !important; }
+.article-body pre, .article-body code { white-space: pre-wrap !important; word-break: break-all; overflow-wrap: anywhere; font-family: "SF Mono", "Consolas", monospace; font-size: 14px; max-width: 100%; }
 .article-body h2 { font-size: 24px; margin: 40px 0 16px; font-weight: 700; }
 .article-body h3 { font-size: 19px; margin: 28px 0 12px; font-weight: 700; }
 .article-body p { margin-bottom: 16px; }
@@ -42,7 +44,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 .article-body ul, .article-body ol { padding-left: 24px; margin: 12px 0 20px; }
 .article-body li { margin-bottom: 6px; }
 .article-body table { max-width: 100%; display: block; overflow-x: auto; word-break: break-all; }
-.article-body pre, .article-body code { white-space: pre-wrap; word-break: break-all; overflow-wrap: anywhere; font-family: "SF Mono", "Consolas", monospace; font-size: 14px; }
 .article-body iframe { max-width: 100%; }
 .article-body figure { margin: 20px 0; max-width: 100%; }
 .article-body figcaption { font-size: 13px; color: #86868B; text-align: center; margin-top: 8px; }
@@ -92,30 +93,35 @@ function fd(s) { if(!s)return''; var d=new Date(s); return d.getFullYear()+'-'+S
 
 function normalizeContent(html) {
   if (!html) return '';
-  // Strip all white-space and font inline styles that break wrapping
+  // Strip white-space inline styles that prevent wrapping
   html = html.replace(/white-space\s*:\s*[^;"]+;?/gi, '');
-  html = html.replace(/font-family\s*:\s*[^;"]+;?/gi, '');
-  html = html.replace(/font-size\s*:\s*[^;"]+;?/gi, '');
-  // Replace <span> wrappers around text with <div>
-  html = html.replace(/<span[^>]*>/g, '<div>');
-  html = html.replace(/<\/span>/g, '</div>');
-  // Clean empty style attributes
   html = html.replace(/\s*style\s*=\s*""/gi, '');
   html = html.replace(/\s*style\s*=\s*''/gi, '');
-  // Convert Markdown-style headings in <div> to proper heading tags
-  // <div># Title</div> → <h2>Title</h2>
-  // <div>## Title</div> → <h3>Title</h3>
-  // <div>### Title</div> → <h4>Title</h4>
-  html = html.replace(/<div>\s*(#{1,4})\s+([^<]+)<\/div>/g, function(m, hashes, text) {
+
+  // If content already has semantic heading tags, return as-is
+  if (/<h[1-6][^>]*>/i.test(html)) return html;
+
+  // Replace Markdown heading lines anywhere in text content
+  // Matches: after >, after newline, or at string start
+  html = html.replace(/(^|>|\n)\s*(#{1,4})\s+([^\n<]+)/g, function(m, prefix, hashes, text) {
     var tag = 'h' + (hashes.length + 1);
-    return '<' + tag + '>' + text.trim() + '</' + tag + '>';
+    return prefix + '<' + tag + '>' + text.trim() + '</' + tag + '>';
   });
-  // Wrap bare text in div (not already in p/h1-h6/ul/ol/blockquote/img) with <p>
-  html = html.replace(/<div>\s*(?!<[hpoubli])/g, '<p>');
-  html = html.replace(/<\/div>/g, '</p>');
-  // Fix any leftover <p> containing block elements by reverting
-  html = html.replace(/<p>(\s*<(h[1-6]|ul|ol|blockquote|table|img|video|audio|figure|pre))/g, '<div>$1');
-  html = html.replace(/(<\/(h[1-6]|ul|ol|blockquote|table|figure|pre)>)\s*<\/p>/g, '$1</div>');
+
+  // Replace remaining double newlines with paragraph boundaries
+  html = html.replace(/\n\n+/g, '</p><p>');
+  // Replace single newlines with space
+  html = html.replace(/\n/g, ' ');
+
+  // Wrap in paragraph tags if not already wrapped
+  if (!/<p[^>]*>/i.test(html) && !/<h[1-6][^>]*>/i.test(html)) {
+    html = '<p>' + html + '</p>';
+  }
+
+  // Clean up empty paragraphs
+  html = html.replace(/<p>\s*<\/p>/g, '');
+  html = html.replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '');
+
   return html;
 }
 
