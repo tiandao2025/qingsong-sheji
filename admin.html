@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- v2026.07.19.01 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -549,6 +550,7 @@ async function compressImage(file) {
 }
 
 async function uploadToR2(file, statusEl) {
+  console.log('[uploadToR2] 开始上传, 文件类型:', file.type, '大小:', file.size);
   if (statusEl) statusEl.textContent = '压缩中...';
   let blob = file;
   let originalSize = file.size;
@@ -559,21 +561,26 @@ async function uploadToR2(file, statusEl) {
       blob = result.blob;
       originalSize = result.originalSize;
       compressedSize = result.compressedSize;
+      console.log('[uploadToR2] 压缩完成, 原始:', originalSize, '压缩后:', compressedSize);
     } catch (e) {
+      console.error('[uploadToR2] 压缩失败:', e);
       if (statusEl) statusEl.textContent = '压缩失败';
       throw e;
     }
   }
   if (statusEl) statusEl.textContent = '上传中...';
   const formData = new FormData();
-  formData.append('file', blob, file.name);
+  formData.append('file', blob, file.name || 'image.png');
+  console.log('[uploadToR2] 上传中, blob类型:', blob.type, '大小:', blob.size);
   try {
     const res = await fetch('/api/upload', { method: 'POST', body: formData });
     const data = await res.json();
+    console.log('[uploadToR2] API响应:', res.status, data);
     if (!res.ok) throw new Error(data.error || '上传失败');
     if (statusEl) statusEl.textContent = data.url;
     return { url: data.url, originalSize: originalSize, compressedSize: compressedSize };
   } catch (e) {
+    console.error('[uploadToR2] 上传失败:', e);
     if (statusEl) statusEl.textContent = '上传失败';
     throw e;
   }
@@ -1163,16 +1170,22 @@ async function openBlogEditor(slug) {
           if (items[i].type.indexOf('image') === 0) {
             ev.preventDefault();
             var blob = items[i].getAsFile();
+            console.log('[BlogPaste] 检测到粘贴图片, type:', blob.type, 'size:', blob.size);
             var holderId = '_bmPaste' + Date.now();
             document.execCommand('insertHTML', false, '<span id="' + holderId + '" style="color:#C9A96E;">图片上传中...</span>');
             try {
               var result = await uploadToR2(blob, null);
+              console.log('[BlogPaste] 上传完成, URL:', result.url);
               var ph = document.getElementById(holderId);
               if (ph) {
                 ph.outerHTML = '<img src="' + result.url + '" style="max-width:100%;border-radius:8px;margin:12px 0;">';
+                console.log('[BlogPaste] 图片已插入编辑器');
+              } else {
+                console.warn('[BlogPaste] 占位元素未找到:', holderId);
               }
               showToast('图片上传成功', true);
             } catch(err) {
+              console.error('[BlogPaste] 上传失败:', err);
               var ph2 = document.getElementById(holderId);
               if (ph2) ph2.remove();
               showToast('图片上传失败: ' + err.message);
