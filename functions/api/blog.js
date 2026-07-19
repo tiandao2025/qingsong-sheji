@@ -2,7 +2,7 @@
 // Blog CRUD with R2 storage
 
 const ADMIN_KEY = 'qingsong2024';
-const BLOG_BUCKET = 'qingsong-images';
+const BLOG_BUCKET = 'IMAGES';
 
 function corsHeaders() {
   return {
