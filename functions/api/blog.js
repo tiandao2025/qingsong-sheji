@@ -42,25 +42,6 @@ async function checkAuth(request, env) {
   return false;
 }
 
-// Apply Cloudflare Image Resizing to cover URLs for thumbnail optimization.
-// Controlled by env.ENABLE_IMAGE_RESIZING. When enabled, injects
-// /cdn-cgi/image/w=400,quality=80,format=auto into R2 public URLs,
-// reducing full-size originals to ~400px wide thumbnails.
-function transformCoverUrl(url, env) {
-  if (!url || !env || !env.ENABLE_IMAGE_RESIZING) return url || '';
-  // Only transform pub-*.r2.dev URLs
-  if (!url.includes('r2.dev')) return url;
-  try {
-    const parsed = new URL(url);
-    const width = 400;
-    const quality = 80;
-    const cdnPath = `/cdn-cgi/image/w=${width},quality=${quality},format=auto`;
-    // Path already starts with '/'
-    return `${parsed.origin}${cdnPath}${parsed.pathname}`;
-  } catch (e) {
-    return url;
-  }
-}
 
 function slugify(text) {
   return text
@@ -137,13 +118,8 @@ async function listArticles(page, limit, q, env) {
   const total = index.length;
   const start = (page - 1) * limit;
   const articles = index.slice(start, start + limit);
-  // Apply image resizing to cover URLs
-  const optimizedArticles = articles.map(a => ({
-    ...a,
-    cover: transformCoverUrl(a.cover, env),
-  }));
   return new Response(JSON.stringify({
-    success: true, articles: optimizedArticles, total, page, limit,
+    success: true, articles, total, page, limit,
     totalPages: Math.ceil(total / limit),
   }), { headers: corsHeaders() });
 }
@@ -154,7 +130,6 @@ async function getArticle(slug, env) {
     if (obj) {
       const text = await obj.text();
       const article = JSON.parse(text);
-      article.cover = transformCoverUrl(article.cover, env);
       return new Response(JSON.stringify(article), { headers: corsHeaders() });
     }
   } catch (e) {}

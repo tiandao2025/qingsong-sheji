@@ -712,7 +712,38 @@ async function compressImage(file) {
   });
 }
 
-async function uploadToR2(file, statusEl) {
+// 生成 400px 宽 WebP 缩略图（用于博客封面等场景）
+async function generateThumbnail(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = function() {
+      URL.revokeObjectURL(objectUrl);
+      const THUMB_WIDTH = 400;
+      let w = img.width, h = img.height;
+      if (w > THUMB_WIDTH) {
+        h = Math.round(h * (THUMB_WIDTH / w));
+        w = THUMB_WIDTH;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) {
+        if (blob) resolve(blob);
+        else reject(new Error('缩略图生成失败'));
+      }, 'image/webp', 0.8);
+    };
+    img.onerror = function() {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('图片加载失败'));
+    };
+    img.src = objectUrl;
+  });
+}
+
+async function uploadToR2(file, statusEl, options) {
   if (!file || !(file instanceof Blob)) {
     console.error('[uploadToR2] 无效文件对象:', file);
     if (statusEl) statusEl.textContent = '文件无效';
@@ -746,7 +777,30 @@ async function uploadToR2(file, statusEl) {
     console.log('[uploadToR2] API响应:', res.status, data);
     if (!res.ok) throw new Error(data.error || '上传失败');
     if (statusEl) statusEl.textContent = data.url;
-    return { url: data.url, originalSize: originalSize, compressedSize: compressedSize };
+
+    const result = { url: data.url, originalSize: originalSize, compressedSize: compressedSize };
+
+    // Generate and upload thumbnail if requested (for blog covers)
+    if (options && options.generateThumb && file.type && file.type.startsWith('image/')) {
+      try {
+        if (statusEl) statusEl.textContent = '生成缩略图...';
+        const thumbBlob = await generateThumbnail(file);
+        const thumbFormData = new FormData();
+        const baseName = (file.name || 'image.png').replace(/(\.[^.]+)$/, '');
+        thumbFormData.append('file', thumbBlob, baseName + '_thumb.webp');
+        const thumbRes = await fetch('/api/upload', { method: 'POST', body: thumbFormData });
+        const thumbData = await thumbRes.json();
+        if (thumbRes.ok) {
+          result.thumbUrl = thumbData.url;
+        } else {
+          console.error('[uploadToR2] 缩略图上传失败:', thumbData.error);
+        }
+      } catch(e) {
+        console.error('[uploadToR2] 缩略图生成/上传失败:', e);
+      }
+    }
+
+    return result;
   } catch (e) {
     console.error('[uploadToR2] 上传失败:', e);
     if (statusEl) statusEl.textContent = '上传失败';
@@ -1855,9 +1909,9 @@ async function handleBlogCoverUpload(input) {
   const textInput = document.getElementById('be-cover');
   input.disabled = true;
   try {
-    const result = await uploadToR2(file, null);
-    if (textInput) textInput.value = result.url;
-    showToast('封面上传成功', true);
+    const result = await uploadToR2(file, null, { generateThumb: true });
+    if (textInput) textInput.value = result.thumbUrl || result.url;
+    showToast('封面上传成功' + (result.thumbUrl ? '（已生成缩略图）' : ''), true);
   } catch(e) {
     showToast('上传失败: ' + e.message);
   }
