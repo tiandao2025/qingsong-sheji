@@ -1126,6 +1126,7 @@ async function openBlogEditor(slug) {
   html += '<button class="be-tb-btn" onclick="insertBlogMedia(\'video\',event)" title="插入视频">🎬</button>';
   html += '<button class="be-tb-btn" onclick="insertBlogMedia(\'audio\',event)" title="插入音频">🎵</button>';
   html += '<button class="be-tb-btn" onclick="insertBlogLink()" title="插入链接">🔗</button>';
+  html += '<button class="be-tb-btn" onclick="insertEmbedVideo()" title="插入B站/YouTube视频">📺</button>';
   html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
   html += '<button class="be-tb-btn" onclick="importWordDoc(event)" title="导入Word文档" style="font-size:12px;">📄导入Word</button>';
   html += '</div>';
@@ -1614,6 +1615,40 @@ function insertBlogLink() {
   if (!edt) return;
   edt.focus();
   document.execCommand('insertHTML', false, '<a href="' + url + '" target="_blank">' + (text || url) + '</a>');
+}
+
+function insertEmbedVideo() {
+  var url = prompt('请输入B站或YouTube视频链接：');
+  if (!url) return;
+  var edt = document.getElementById('blogEditor');
+  if (!edt) return;
+
+  var iframe = null;
+
+  // B站: bilibili.com/video/BVxxx 或 b23.tv/xxx
+  var bvMatch = url.match(/BV[0-9a-zA-Z]{10}/);
+  var aidMatch = url.match(/bilibili\.com\/video\/av(\d+)/i);
+  if (bvMatch || aidMatch) {
+    var vid = bvMatch ? bvMatch[0] : '';
+    var aid = aidMatch ? aidMatch[1] : '';
+    var src = '//player.bilibili.com/player.html?autoplay=1';
+    if (vid) src += '&bvid=' + vid;
+    if (aid) src += '&aid=' + aid;
+    iframe = '<iframe src="' + src + '" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true" width="100%" height="500" style="max-width:100%;margin:12px 0;border-radius:8px;"></iframe>';
+  } else {
+    // YouTube: youtube.com/watch?v=XXX 或 youtu.be/XXX 或 youtube.com/embed/XXX
+    var ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+    if (ytMatch) {
+      iframe = '<iframe src="https://www.youtube.com/embed/' + ytMatch[1] + '?autoplay=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen width="100%" height="500" style="max-width:100%;margin:12px 0;border-radius:8px;"></iframe>';
+    }
+  }
+
+  if (iframe) {
+    edt.focus();
+    document.execCommand('insertHTML', false, iframe);
+  } else {
+    alert('仅支持B站和YouTube视频链接');
+  }
 }
 
 function importWordDoc(e) {
