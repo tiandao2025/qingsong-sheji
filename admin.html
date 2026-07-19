@@ -486,6 +486,7 @@ function closeModal() {
       if (!confirm('您有未保存的内容，确定要关闭吗？')) return;
     }
   }
+  var mDlg = document.getElementById('blogMediaDialog'); if (mDlg) mDlg.remove();
   modalOverlay.classList.remove('show');
 }
 
@@ -1075,9 +1076,9 @@ async function openBlogEditor(slug) {
   html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
   html += '<button class="be-tb-btn" data-cmd="formatBlock" data-val="blockquote" title="引用块">"引</button>';
   html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
-  html += '<button class="be-tb-btn" onclick="insertBlogImage()" title="插入图片">🖼</button>';
-  html += '<button class="be-tb-btn" onclick="insertBlogVideo()" title="插入视频">🎬</button>';
-  html += '<button class="be-tb-btn" onclick="insertBlogAudio()" title="插入音频">🎵</button>';
+  html += '<button class="be-tb-btn" onclick="insertBlogMedia(\'image\',event)" title="插入图片">🖼</button>';
+  html += '<button class="be-tb-btn" onclick="insertBlogMedia(\'video\',event)" title="插入视频">🎬</button>';
+  html += '<button class="be-tb-btn" onclick="insertBlogMedia(\'audio\',event)" title="插入音频">🎵</button>';
   html += '<button class="be-tb-btn" onclick="insertBlogLink()" title="插入链接">🔗</button>';
   html += '</div>';
   // Editor area
@@ -1138,37 +1139,91 @@ async function openBlogEditor(slug) {
   }, 100);
 }
 
-function insertBlogImage() {
-  var url = prompt('请输入图片 URL：');
-  if (!url) return;
-  var edt = document.getElementById('blogEditor');
-  if (!edt) return;
-  edt.focus();
-  document.execCommand('insertHTML', false, '<img src="' + url + '" style="max-width:100%;border-radius:8px;margin:12px 0;">');
-}
-
-function insertBlogVideo() {
-  var url = prompt('请输入视频 URL（.mp4 或 B站链接）：');
-  if (!url) return;
-  var edt = document.getElementById('blogEditor');
-  if (!edt) return;
-  var html;
-  if (url.includes('bilibili.com') || url.includes('b23.tv')) {
-    html = '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;margin:12px 0;"><a href="' + url + '" target="_blank" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#C9A96E;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;">🎬 点击观看视频</a></div>';
-  } else {
-    html = '<video src="' + url + '" controls style="max-width:100%;border-radius:8px;margin:12px 0;"></video>';
+function insertBlogMedia(type, e) {
+  var old = document.getElementById('blogMediaDialog');
+  if (old) old.remove();
+  var labels = { image: '图片', video: '视频', audio: '音频' };
+  var dlg = document.createElement('div');
+  dlg.id = 'blogMediaDialog';
+  dlg.style.cssText = 'position:fixed;background:#fff;border:1px solid #E8E8ED;border-radius:8px;padding:10px 14px;box-shadow:0 4px 20px rgba(0,0,0,0.15);z-index:350;display:flex;align-items:center;gap:8px;font-size:13px;';
+  var x = (e && e.clientX) || 400;
+  var y = (e && e.clientY) || 200;
+  dlg.style.left = Math.min(x, window.innerWidth - 260) + 'px';
+  dlg.style.top = Math.max(y - 40, 10) + 'px';
+  dlg.innerHTML = '<span style="color:#555;">插入' + labels[type] + '：</span>' +
+    '<button class="btn btn-primary btn-sm" style="padding:5px 14px;">本地上传</button>' +
+    '<button class="btn btn-outline btn-sm">输入 URL</button>' +
+    '<button class="btn btn-outline btn-sm" style="padding:5px 10px;">✕</button>';
+  var btns = dlg.querySelectorAll('button');
+  btns[0].onclick = function() { dlg.remove(); triggerBlogMediaUpload(type); };
+  btns[1].onclick = function() { dlg.remove(); promptBlogMediaUrl(type); };
+  btns[2].onclick = function() { dlg.remove(); };
+  document.body.appendChild(dlg);
+  function closeOnOutside(ev) {
+    if (!dlg.contains(ev.target)) { dlg.remove(); document.removeEventListener('click', closeOnOutside); }
   }
-  edt.focus();
-  document.execCommand('insertHTML', false, html);
+  setTimeout(function() { document.addEventListener('click', closeOnOutside); }, 0);
 }
 
-function insertBlogAudio() {
-  var url = prompt('请输入音频 URL（.mp3）：');
+function triggerBlogMediaUpload(type) {
+  var accepts = { image: 'image/*', video: 'video/mp4', audio: 'audio/mp3' };
+  var inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = accepts[type];
+  inp.style.display = 'none';
+  inp.id = '_bmFile';
+  document.body.appendChild(inp);
+  inp.onchange = async function() {
+    var file = inp.files[0];
+    inp.remove();
+    if (!file) return;
+    var edt = document.getElementById('blogEditor');
+    if (!edt) return;
+    edt.focus();
+    var holderId = '_bmUp' + Date.now();
+    document.execCommand('insertHTML', false, '<span id="' + holderId + '" style="color:#C9A96E;">上传中...</span>');
+    try {
+      var result = await uploadToR2(file, null);
+      var mediaHtml = buildMediaHtml(type, result.url);
+      var ph = document.getElementById(holderId);
+      if (ph) { ph.outerHTML = mediaHtml; }
+      else { document.execCommand('insertHTML', false, mediaHtml); }
+      showToast({ image: '图片', video: '视频', audio: '音频' }[type] + '上传成功', true);
+    } catch(err) {
+      var ph2 = document.getElementById(holderId);
+      if (ph2) ph2.remove();
+      showToast('上传失败: ' + err.message);
+    }
+  };
+  inp.click();
+}
+
+function promptBlogMediaUrl(type) {
+  var labels = { image: '图片', video: '视频', audio: '音频' };
+  var url = prompt('请输入' + labels[type] + ' URL：');
   if (!url) return;
+  insertBlogMediaByUrl(type, url);
+}
+
+function insertBlogMediaByUrl(type, url) {
   var edt = document.getElementById('blogEditor');
   if (!edt) return;
   edt.focus();
-  document.execCommand('insertHTML', false, '<audio src="' + url + '" controls style="width:100%;max-width:500px;margin:12px 0;"></audio>');
+  document.execCommand('insertHTML', false, buildMediaHtml(type, url));
+}
+
+function buildMediaHtml(type, url) {
+  if (type === 'image') {
+    return '<img src="' + url + '" style="max-width:100%;border-radius:8px;margin:12px 0;">';
+  } else if (type === 'video') {
+    if (url.includes('bilibili.com') || url.includes('b23.tv')) {
+      return '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;margin:12px 0;"><a href="' + url + '" target="_blank" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#C9A96E;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;">🎬 点击观看视频</a></div>';
+    }
+    return '<video src="' + url + '" controls style="max-width:100%;border-radius:8px;margin:12px 0;"></video>';
+  } else if (type === 'audio') {
+    return '<audio src="' + url + '" controls style="width:100%;max-width:500px;margin:12px 0;"></audio>';
+  }
+  return '';
 }
 
 function insertBlogLink() {
