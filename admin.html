@@ -387,24 +387,14 @@ tr:hover td { background: #FAFAFA; }
   z-index: 9999;
 }
 .login-logo {
-  font-size: 36px;
-  font-weight: 300;
-  color: #FFFFFF;
-  letter-spacing: 8px;
-  text-align: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 2px solid #C9A96E;
+  object-fit: cover;
   opacity: 0;
   animation: loginFadeIn 0.8s ease-out forwards;
-  font-family: "PingFang SC", "Microsoft YaHei", "Noto Serif SC", Georgia, serif;
-}
-.login-subtitle {
-  font-size: 14px;
-  font-weight: 300;
-  color: rgba(255,255,255,0.45);
-  letter-spacing: 6px;
-  margin-top: 10px;
-  text-align: center;
-  opacity: 0;
-  animation: loginFadeIn 0.8s ease-out 0.15s forwards;
+  filter: brightness(1.15) drop-shadow(0 0 12px rgba(255,255,255,0.15));
 }
 .login-input {
   width: 280px;
@@ -465,8 +455,7 @@ tr:hover td { background: #FAFAFA; }
 
 <!-- Login Overlay -->
 <div class="login-overlay" id="loginOverlay">
-  <div class="login-logo">青松空间设计</div>
-  <div class="login-subtitle">管理后台</div>
+  <img src="images/logo.jpg" alt="青松设计" class="login-logo">
   <input type="password" class="login-input" id="loginPassword" placeholder="输入密码，按回车进入" autocomplete="current-password">
   <div class="login-error" id="loginError"></div>
 </div>
