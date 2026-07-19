@@ -339,6 +339,19 @@ tr:hover td { background: #FAFAFA; }
 }
 .be-tb-btn:hover { background: #F0F0F2; border-color: #C9A96E; color: #C9A96E; }
 .be-tb-btn:active { background: #E8E8ED; }
+.be-tb-sel {
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid #D1D1D6;
+  border-radius: 4px;
+  background: #fff;
+  color: #555;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+.be-tb-sel:hover { border-color: #C9A96E; }
+.be-tb-sel:focus { border-color: #C9A96E; }
 
 #blogEditor:empty:before {
   content: attr(placeholder);
@@ -1095,6 +1108,9 @@ async function openBlogEditor(slug) {
   html += '<div class="blog-editor-main">';
   // Toolbar
   html += '<div class="blog-editor-toolbar">';
+  html += '<select class="be-tb-sel" id="be-fontName" title="字体"><option value="">默认</option><option value="SimSun">宋体</option><option value="SimHei">黑体</option><option value="Microsoft YaHei">微软雅黑</option><option value="KaiTi">楷体</option><option value="FangSong">仿宋</option><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option><option value="Georgia">Georgia</option></select>';
+  html += '<select class="be-tb-sel" id="be-fontSize" title="字号"><option value="12px">12px</option><option value="14px">14px</option><option value="15px" selected>15px</option><option value="16px">16px</option><option value="18px">18px</option><option value="20px">20px</option><option value="24px">24px</option><option value="28px">28px</option><option value="32px">32px</option></select>';
+  html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
   html += '<button class="be-tb-btn" data-cmd="bold" title="加粗"><b>B</b></button>';
   html += '<button class="be-tb-btn" data-cmd="italic" title="斜体"><i>I</i></button>';
   html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
@@ -1168,6 +1184,41 @@ async function openBlogEditor(slug) {
         document.getElementById('blogEditor').focus();
       });
     });
+    // Font name dropdown
+    var fnSel = document.getElementById('be-fontName');
+    if (fnSel) {
+      fnSel.addEventListener('change', function() {
+        var edt = document.getElementById('blogEditor');
+        edt.focus();
+        var val = this.value;
+        if (val) {
+          document.execCommand('fontName', false, val);
+        } else {
+          document.execCommand('removeFormat', false, null);
+        }
+      });
+    }
+    // Font size dropdown — wrap selection in <span style="font-size:..."> for pixel precision
+    var fsSel = document.getElementById('be-fontSize');
+    if (fsSel) {
+      fsSel.addEventListener('change', function() {
+        var edt = document.getElementById('blogEditor');
+        edt.focus();
+        var val = this.value;
+        var sel = window.getSelection();
+        if (sel.rangeCount === 0) return;
+        var range = sel.getRangeAt(0);
+        if (range.collapsed) return;
+        // Remove existing font-size spans within selection first, then wrap
+        var contents = range.extractContents();
+        var span = document.createElement('span');
+        span.style.fontSize = val;
+        span.appendChild(contents);
+        range.insertNode(span);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      });
+    }
     // Paste image handler (supports mixed text+image from Word etc.)
     var edt = document.getElementById('blogEditor');
     if (edt) {
