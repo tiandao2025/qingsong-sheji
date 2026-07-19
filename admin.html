@@ -2002,7 +2002,7 @@ function buildAnalyticsUI(d) {
   const totalPV = (d.totalPV || 0).toLocaleString();
   const uniqueVisitors = (d.uniqueVisitors || 0).toLocaleString();
   const avgDuration = formatDuration(d.avgDuration || 0);
-  const maxHourVal = d.hourlyDistribution ? Math.max.apply(null, d.hourlyDistribution) : 1;
+  const maxHourVal = d.hourlyDistribution ? Math.max.apply(null, d.hourlyDistribution.map(function(h) { return h.count; })) : 1;
 
   let html = '<div class="page-title">访问统计</div>';
 
@@ -2026,8 +2026,9 @@ function buildAnalyticsUI(d) {
   if (d.pageRanking && d.pageRanking.length > 0) {
     html += '<div class="table-wrap"><table><thead><tr><th>页面路径</th><th>PV</th><th>占比</th></tr></thead><tbody>';
     d.pageRanking.forEach(function(p) {
-      const pct = totalPV > 0 ? ((p.count / (d.totalPV || 1)) * 100).toFixed(1) : '0.0';
-      html += '<tr><td>' + (p.page || '/') + '</td><td>' + p.count.toLocaleString() + '</td><td>' + pct + '%</td></tr>';
+      const pv = p.pv || 0;
+      const pct = d.totalPV > 0 ? ((pv / d.totalPV) * 100).toFixed(1) : '0.0';
+      html += '<tr><td>' + (p.page || '/') + '</td><td>' + pv.toLocaleString() + '</td><td>' + pct + '%</td></tr>';
     });
     html += '</tbody></table></div>';
   } else {
@@ -2040,7 +2041,7 @@ function buildAnalyticsUI(d) {
   if (d.countryDistribution && d.countryDistribution.length > 0) {
     html += '<div class="table-wrap"><table><thead><tr><th>国家</th><th>PV</th></tr></thead><tbody>';
     d.countryDistribution.forEach(function(c) {
-      html += '<tr><td>' + (c.country || '未知') + '</td><td>' + c.count.toLocaleString() + '</td></tr>';
+      html += '<tr><td>' + (c.country || '未知') + '</td><td>' + (c.pv || 0).toLocaleString() + '</td></tr>';
     });
     html += '</tbody></table></div>';
   } else {
@@ -2053,10 +2054,11 @@ function buildAnalyticsUI(d) {
   if (d.hourlyDistribution && d.hourlyDistribution.length === 24) {
     html += '<div style="display:flex;align-items:flex-end;gap:3px;height:180px;padding:8px 0;">';
     for (var i = 0; i < 24; i++) {
-      var h = maxHourVal > 0 ? Math.max((d.hourlyDistribution[i] / maxHourVal) * 100, 3) : 0;
+      var count = d.hourlyDistribution[i].count || 0;
+      var h = maxHourVal > 0 ? Math.max((count / maxHourVal) * 100, 3) : 0;
       html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">';
-      html += '<span style="font-size:10px;color:#86868B;">' + d.hourlyDistribution[i] + '</span>';
-      html += '<div style="width:100%;height:' + h + '%;background:linear-gradient(180deg,#C9A96E,#D4B87A);border-radius:4px 4px 0 0;min-height:2px;" title="' + i + ':00 - ' + d.hourlyDistribution[i] + '"></div>';
+      html += '<span style="font-size:10px;color:#86868B;">' + count + '</span>';
+      html += '<div style="width:100%;height:' + h + '%;background:linear-gradient(180deg,#C9A96E,#D4B87A);border-radius:4px 4px 0 0;min-height:2px;" title="' + i + ':00 - ' + count + '"></div>';
       html += '<span style="font-size:10px;color:#B0B0B5;">' + (i < 10 ? '0' + i : i) + '</span>';
       html += '</div>';
     }
