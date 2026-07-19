@@ -89,6 +89,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 <script>
 function fd(s) { if(!s)return''; var d=new Date(s); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
+function normalizeContent(html) {
+  // Convert Markdown-style headings in <div> to proper heading tags
+  // <div># Title</div> → <h2>Title</h2>
+  // <div>## Title</div> → <h3>Title</h3>
+  // <div>### Title</div> → <h4>Title</h4>
+  html = html.replace(/<div>\s*(#{1,4})\s+([^<]+)<\/div>/g, function(m, hashes, text) {
+    var tag = 'h' + (hashes.length + 1);
+    return '<' + tag + '>' + text.trim() + '</' + tag + '>';
+  });
+  // Wrap bare text in div (not already in p/h1-h6/ul/ol/blockquote/img) with <p>
+  html = html.replace(/<div>\s*(?!<[hpoubli])/g, '<p>');
+  html = html.replace(/<\/div>/g, '</p>');
+  // Fix any leftover <p> containing block elements by reverting
+  html = html.replace(/<p>(\s*<(h[1-6]|ul|ol|blockquote|table|img|video|audio|figure|pre))/g, '<div>$1');
+  html = html.replace(/(<\/(h[1-6]|ul|ol|blockquote|table|figure|pre)>)\s*<\/p>/g, '$1</div>');
+  return html;
+}
+
 function autoLink(html) {
   return html.replace(/(<[aA]\s[^>]*>.*?<\/[aA]>|<img\s[^>]*>|<video\s[^>]*>|<audio\s[^>]*>)|https?:\/\/[^\s<>"']+/g, function(m, tag) {
     if (tag) return tag;
@@ -116,7 +134,7 @@ function render(article) {
   h += '<div class="article-meta"><span class="article-date">'+fd(article.createdAt||article.updatedAt)+'</span>'+tagsH+'</div>';
   h += '<h1 class="article-title">'+article.title+'</h1>';
   if (article.summary) h += '<p class="article-summary">'+article.summary+'</p>';
-  h += '<div class="article-body">'+autoLink(article.content||'')+'</div>';
+  h += '<div class="article-body">'+autoLink(normalizeContent(article.content||''))+'</div>';
 
   if (article.hasAudio && article.audioUrl) h += '<div class="media-section"><h4>🎵 音频播放</h4><audio src="'+article.audioUrl+'" controls style="width:100%;max-width:500px;"></audio></div>';
   if (article.hasVideo && article.videoUrl) h += '<div class="media-section"><h4>🎬 视频播放</h4><video src="'+article.videoUrl+'" controls style="max-width:100%;border-radius:8px;"></video></div>';
