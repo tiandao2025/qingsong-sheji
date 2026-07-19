@@ -1109,6 +1109,8 @@ async function openBlogEditor(slug) {
   html += '<button class="be-tb-btn" onclick="insertBlogMedia(\'video\',event)" title="插入视频">🎬</button>';
   html += '<button class="be-tb-btn" onclick="insertBlogMedia(\'audio\',event)" title="插入音频">🎵</button>';
   html += '<button class="be-tb-btn" onclick="insertBlogLink()" title="插入链接">🔗</button>';
+  html += '<span style="width:1px;background:#ddd;margin:0 4px;"></span>';
+  html += '<button class="be-tb-btn" onclick="importWordDoc(event)" title="导入Word文档" style="font-size:12px;">📄导入Word</button>';
   html += '</div>';
   // Editor area
   html += '<div id="blogEditor" contenteditable="true" placeholder="开始写作...">';
@@ -1560,6 +1562,40 @@ function insertBlogLink() {
   if (!edt) return;
   edt.focus();
   document.execCommand('insertHTML', false, '<a href="' + url + '" target="_blank">' + (text || url) + '</a>');
+}
+
+function importWordDoc(e) {
+  var inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.docx';
+  inp.style.display = 'none';
+  document.body.appendChild(inp);
+  inp.onchange = async function() {
+    var file = inp.files[0];
+    inp.remove();
+    if (!file) return;
+    var edt = document.getElementById('blogEditor');
+    if (!edt) return;
+    edt.focus();
+    var holderId = '_bmUp' + Date.now();
+    document.execCommand('insertHTML', false, '<span id="' + holderId + '" style="color:#C9A96E;">正在导入Word文档...</span>');
+    try {
+      var formData = new FormData();
+      formData.append('file', file);
+      var res = await fetch('/api/import-docx', { method: 'POST', body: formData });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || '导入失败');
+      var ph = document.getElementById(holderId);
+      if (ph) { ph.outerHTML = '<div>' + data.html + '</div>'; }
+      else { document.execCommand('insertHTML', false, '<div>' + data.html + '</div>'); }
+      showToast('Word文档导入成功', true);
+    } catch(err) {
+      var ph2 = document.getElementById(holderId);
+      if (ph2) ph2.remove();
+      showToast('导入失败: ' + err.message);
+    }
+  };
+  inp.click();
 }
 
 async function handleBlogCoverUpload(input) {

@@ -1,0 +1,9 @@
+{
+  "name": "qingsong-sheji",
+  "version": "1.0.0",
+  "private": true,
+  "description": "青松设计官网",
+  "dependencies": {
+    "mammoth": "^1.12.0"
+  }
+}
