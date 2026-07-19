@@ -2,7 +2,7 @@
 // Site analytics: POST for beacon data, GET for aggregated query
 // Data stored in R2 bucket: analytics/YYYY-MM-DD.json
 
-const ADMIN_KEY = 'qingsong2024';
+const ADMIN_KEY = 'qingsong2024'; // fallback for backward compat
 const BUCKET_NAME = 'IMAGES';
 
 function corsHeaders() {
@@ -10,9 +10,22 @@ function corsHeaders() {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, x-admin-token',
     'Access-Control-Max-Age': '86400',
   };
+}
+
+async function verifyToken(token, env) {
+  if (!token) return false;
+  try {
+    const obj = await env[BUCKET_NAME].get(`sessions/${token}.json`);
+    if (!obj) return false;
+    const session = JSON.parse(await obj.text());
+    if (Date.now() > session.expiresAtTs) return false;
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 function todayKey() {
@@ -103,9 +116,23 @@ async function handlePost(request, env) {
 async function handleGet(request, env) {
   const url = new URL(request.url);
   const range = url.searchParams.get('range') || 'today';
-  const password = url.searchParams.get('password') || '';
 
-  if (password !== ADMIN_KEY) {
+  // Auth: check x-admin-token header first, then query param token (compat), then legacy password
+  const headerToken = request.headers.get('x-admin-token') || '';
+  const queryToken = url.searchParams.get('token') || '';
+  const legacyPassword = url.searchParams.get('password') || '';
+
+  let authed = false;
+
+  if (headerToken) {
+    authed = await verifyToken(headerToken, env);
+  } else if (queryToken) {
+    authed = await verifyToken(queryToken, env);
+  } else if (legacyPassword === ADMIN_KEY) {
+    authed = true;
+  }
+
+  if (!authed) {
     return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
       status: 401, headers: corsHeaders(),
     });

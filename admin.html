@@ -373,9 +373,103 @@ tr:hover td { background: #FAFAFA; }
   .main { margin-left: 180px; padding: 20px; }
   .form-row { grid-template-columns: 1fr; }
 }
+
+/* Login Overlay */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 40vh;
+  z-index: 9999;
+}
+.login-logo {
+  font-size: 36px;
+  font-weight: 300;
+  color: #FFFFFF;
+  letter-spacing: 8px;
+  text-align: center;
+  opacity: 0;
+  animation: loginFadeIn 0.8s ease-out forwards;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Serif SC", Georgia, serif;
+}
+.login-subtitle {
+  font-size: 14px;
+  font-weight: 300;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 6px;
+  margin-top: 10px;
+  text-align: center;
+  opacity: 0;
+  animation: loginFadeIn 0.8s ease-out 0.15s forwards;
+}
+.login-input {
+  width: 280px;
+  max-width: 80vw;
+  margin-top: 50px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  color: #FFFFFF;
+  font-size: 16px;
+  text-align: center;
+  outline: none;
+  font-family: inherit;
+  letter-spacing: 2px;
+  transition: border-color 0.3s ease, background 0.3s ease;
+  opacity: 0;
+  animation: loginFadeIn 0.8s ease-out 0.3s forwards;
+}
+.login-input::placeholder {
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 1px;
+  font-weight: 300;
+}
+.login-input:focus {
+  border-color: rgba(255,255,255,0.6);
+  background: rgba(255,255,255,0.1);
+}
+.login-error {
+  color: rgba(255,100,100,0.8);
+  font-size: 13px;
+  margin-top: 16px;
+  min-height: 20px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+.login-hidden {
+  display: none !important;
+}
+
+@keyframes loginFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes loginShake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-8px); }
+  40%      { transform: translateX(8px); }
+  60%      { transform: translateX(-5px); }
+  80%      { transform: translateX(5px); }
+}
+.login-shake {
+  animation: loginShake 0.4s ease;
+}
 </style>
 </head>
 <body>
+
+<!-- Login Overlay -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-logo">青松空间设计</div>
+  <div class="login-subtitle">管理后台</div>
+  <input type="password" class="login-input" id="loginPassword" placeholder="输入密码，按回车进入" autocomplete="current-password">
+  <div class="login-error" id="loginError"></div>
+</div>
 
 <!-- Sidebar -->
 <aside class="sidebar">
@@ -423,6 +517,67 @@ tr:hover td { background: #FAFAFA; }
 
 <script src="mammoth.browser.min.js"></script>
 <script>
+// ==================== AUTH ====================
+var ADMIN_TOKEN = sessionStorage.getItem('admin_token') || '';
+
+function getAdminToken() {
+  return ADMIN_TOKEN;
+}
+
+function isLoggedIn() {
+  return !!ADMIN_TOKEN;
+}
+
+async function handleLogin() {
+  var input = document.getElementById('loginPassword');
+  var errorEl = document.getElementById('loginError');
+  var password = input.value.trim();
+
+  if (!password) {
+    errorEl.textContent = '请输入密码';
+    return;
+  }
+
+  input.disabled = true;
+  errorEl.textContent = '';
+
+  try {
+    var res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: password })
+    });
+    var data = await res.json();
+
+    if (data.success && data.token) {
+      ADMIN_TOKEN = data.token;
+      sessionStorage.setItem('admin_token', data.token);
+      document.getElementById('loginOverlay').classList.add('login-hidden');
+      initAdmin();
+    } else {
+      errorEl.textContent = data.error || '密码错误';
+      input.value = '';
+      input.classList.add('login-shake');
+      input.focus();
+      setTimeout(function() { input.classList.remove('login-shake'); }, 500);
+    }
+  } catch (e) {
+    errorEl.textContent = '网络错误，请重试';
+  }
+
+  input.disabled = false;
+}
+
+// Allow Enter key to submit
+document.addEventListener('DOMContentLoaded', function() {
+  var input = document.getElementById('loginPassword');
+  if (input) {
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') handleLogin();
+    });
+  }
+});
+
 // ==================== DATA STORE ====================
 const STORAGE_KEY = 'qs_design_data';
 
@@ -1062,7 +1217,7 @@ function buildBlogUI(filter) {
 async function deleteBlog(slug) {
   if (!confirm('确定删除这篇文章？此操作不可撤销。')) return;
   try {
-    const res = await fetch('/api/blog?slug=' + encodeURIComponent(slug), { method: 'DELETE', headers: { 'x-admin-key': 'qingsong2024' } });
+    const res = await fetch('/api/blog?slug=' + encodeURIComponent(slug), { method: 'DELETE', headers: { 'x-admin-token': getAdminToken() } });
     const data = await res.json();
     if (data.success) {
       showToast('文章已删除', true);
@@ -1805,7 +1960,7 @@ async function publishBlog(oldSlug) {
   try {
     var res = await fetch(url, {
       method: method,
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': 'qingsong2024' },
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': getAdminToken() },
       body: JSON.stringify(body)
     });
     var data = await res.json();
@@ -1822,7 +1977,18 @@ async function publishBlog(oldSlug) {
 }
 
 // ==================== INIT ====================
-renderCases();
+function initAdmin() {
+  document.getElementById('loginOverlay').classList.add('login-hidden');
+  renderCases();
+}
+
+// Check if already logged in (token in sessionStorage)
+if (isLoggedIn()) {
+  initAdmin();
+} else {
+  // Show login overlay (already visible by default)
+  document.getElementById('loginPassword').focus();
+}
 
 // ==================== ANALYTICS PAGE ====================
 let analyticsRange = 'today';
@@ -1834,7 +2000,7 @@ async function renderAnalyticsPage() {
 
 async function loadAnalytics() {
   try {
-    const res = await fetch('/api/analytics?range=' + analyticsRange + '&password=qingsong2024');
+    const res = await fetch('/api/analytics?range=' + analyticsRange, { headers: { 'x-admin-token': getAdminToken() } });
     const data = await res.json();
     if (data.error) { mainContent.innerHTML = '<div class="page-title">访问统计</div><div class="card"><p style="text-align:center;color:#cc4444;">错误: ' + data.error + '</p></div>'; return; }
     buildAnalyticsUI(data);

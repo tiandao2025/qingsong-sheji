@@ -1,7 +1,7 @@
 // Cloudflare Pages Function: /api/blog
 // Blog CRUD with R2 storage
 
-const ADMIN_KEY = 'qingsong2024';
+const ADMIN_KEY = 'qingsong2024'; // fallback for backward compat
 const BLOG_BUCKET = 'IMAGES';
 
 function corsHeaders() {
@@ -9,9 +9,37 @@ function corsHeaders() {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, x-admin-key',
+    'Access-Control-Allow-Headers': 'Content-Type, x-admin-key, x-admin-token',
     'Access-Control-Max-Age': '86400',
   };
+}
+
+async function verifyToken(token, env) {
+  if (!token) return false;
+  try {
+    const obj = await env[BLOG_BUCKET].get(`sessions/${token}.json`);
+    if (!obj) return false;
+    const session = JSON.parse(await obj.text());
+    if (Date.now() > session.expiresAtTs) return false;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function checkAuth(request, env) {
+  // Support both new token-based auth and legacy x-admin-key for backward compat
+  const token = request.headers.get('x-admin-token') || '';
+  const legacyKey = request.headers.get('x-admin-key') || '';
+
+  if (token) {
+    return await verifyToken(token, env);
+  }
+
+  // Legacy fallback: check hardcoded key
+  if (legacyKey === ADMIN_KEY) return true;
+
+  return false;
 }
 
 function slugify(text) {
@@ -41,8 +69,8 @@ export async function onRequest(context) {
       return await listArticles(page, limit, q, env);
     }
 
-    const adminKey = request.headers.get('x-admin-key') || '';
-    if (adminKey !== ADMIN_KEY) {
+    const authed = await checkAuth(request, env);
+    if (!authed) {
       return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
         status: 401, headers: corsHeaders(),
       });
