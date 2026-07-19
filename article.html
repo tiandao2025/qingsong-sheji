@@ -28,17 +28,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 .article-title { font-size: 36px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; line-height: 1.3; }
 .article-summary { font-size: 17px; color: #86868B; padding-bottom: 32px; border-bottom: 1px solid #F0F0F2; margin-bottom: 32px; }
 
-.article-body { font-size: 16px; line-height: 1.9; color: #333; word-break: break-word; overflow-wrap: break-word; }
+.article-body { font-size: 16px; line-height: 1.9; color: #333; word-break: break-word; overflow-wrap: anywhere; }
+.article-body * { max-width: 100%; box-sizing: border-box; word-wrap: break-word; overflow-wrap: anywhere; }
 .article-body h2 { font-size: 24px; margin: 40px 0 16px; font-weight: 700; }
 .article-body h3 { font-size: 19px; margin: 28px 0 12px; font-weight: 700; }
 .article-body p { margin-bottom: 16px; }
-.article-body img { max-width: 100%; border-radius: 12px; margin: 20px 0; }
-.article-body video { max-width: 100%; border-radius: 12px; margin: 20px 0; }
+.article-body img { max-width: 100%; height: auto; border-radius: 12px; margin: 20px 0; display: block; }
+.article-body video { max-width: 100%; height: auto; border-radius: 12px; margin: 20px 0; display: block; }
 .article-body audio { width: 100%; max-width: 500px; margin: 16px 0; }
-.article-body blockquote { border-left: 3px solid #C9A96E; padding-left: 20px; color: #86868B; margin: 24px 0; font-style: italic; }
-.article-body a { color: #C9A96E; }
+.article-body blockquote { border-left: 3px solid #C9A96E; padding-left: 20px; color: #86868B; margin: 24px 0; font-style: italic; word-break: break-word; overflow-wrap: anywhere; }
+.article-body a { color: #C9A96E; word-break: break-all; }
 .article-body ul, .article-body ol { padding-left: 24px; margin: 12px 0 20px; }
 .article-body li { margin-bottom: 6px; }
+.article-body table { max-width: 100%; display: block; overflow-x: auto; word-break: break-all; }
+.article-body pre, .article-body code { white-space: pre-wrap; word-break: break-all; overflow-wrap: anywhere; font-family: "SF Mono", "Consolas", monospace; font-size: 14px; }
+.article-body iframe { max-width: 100%; }
+.article-body figure { margin: 20px 0; max-width: 100%; }
+.article-body figcaption { font-size: 13px; color: #86868B; text-align: center; margin-top: 8px; }
 
 .media-section { margin: 40px 0; padding: 24px; background: #FAFAFA; border-radius: 12px; }
 .media-section h4 { font-size: 15px; margin-bottom: 12px; color: #555; }
