@@ -975,19 +975,34 @@ async function renderBlogPage() {
   buildBlogUI();
 }
 
-function buildBlogUI() {
+function buildBlogUI(filter) {
+  var kw = (filter || '').trim().toLowerCase();
+  var filtered = kw ? blogArticles.filter(function(a) {
+    var inTitle = a.title && a.title.toLowerCase().indexOf(kw) >= 0;
+    var inTags = a.tags && a.tags.some(function(t) { return t.toLowerCase().indexOf(kw) >= 0; });
+    return inTitle || inTags;
+  }) : blogArticles;
+
   let html = '<div class="page-title">博客管理</div>';
-  html += '<div class="msg-info msg-bar">共 ' + blogArticles.length + ' 篇文章。管理博客内容，支持图文音视频。</div>';
+  html += '<div class="msg-info msg-bar">共 ' + blogArticles.length + ' 篇文章' + (kw ? '，筛选出 ' + filtered.length + ' 篇' : '') + '。管理博客内容，支持图文音视频。</div>';
 
   // New article button
   html += '<div class="btn-group" style="margin-bottom:20px;">';
   html += '<button class="btn btn-primary" onclick="openBlogEditor()">+ 新建文章</button>';
   html += '</div>';
 
+  // Search box
+  html += '<div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;">';
+  html += '<input class="form-input" id="blogSearch" placeholder="搜索文章标题或标签..." value="' + (filter || '') + '" style="max-width:360px;" oninput="buildBlogUI(this.value)">';
+  if (kw) {
+    html += '<button class="btn btn-outline btn-sm" onclick="buildBlogUI(\'\')">清除</button>';
+  }
+  html += '</div>';
+
   // Article list
-  if (blogArticles.length > 0) {
+  if (filtered.length > 0) {
     html += '<div class="card"><div class="table-wrap"><table><thead><tr><th>封面</th><th>标题</th><th>标签</th><th>日期</th><th>音视频</th><th>操作</th></tr></thead><tbody>';
-    blogArticles.forEach(function(a) {
+    filtered.forEach(function(a) {
       const coverCell = a.cover ? '<img src="' + a.cover + '" style="width:60px;height:45px;object-fit:cover;border-radius:4px;" onerror="this.style.display=\'none\'">' : '<span style="color:#ccc;">无</span>';
       const tags = a.tags ? a.tags.map(function(t) { return '<span class="tag tag-home">' + t + '</span>'; }).join(' ') : '';
       const date = a.createdAt ? new Date(a.createdAt).toLocaleDateString('zh-CN') : '';
@@ -1004,6 +1019,8 @@ function buildBlogUI() {
       html += '</div></td></tr>';
     });
     html += '</tbody></table></div></div>';
+  } else if (kw) {
+    html += '<div class="card"><p style="text-align:center;color:#86868B;padding:30px;">没有匹配"<b>' + kw + '</b>"的文章</p></div>';
   } else {
     html += '<div class="card"><p style="text-align:center;color:#86868B;padding:30px;">暂无文章，点击上方按钮创建第一篇博客</p></div>';
   }
