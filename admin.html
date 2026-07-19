@@ -1033,11 +1033,20 @@ function toggleBlogMedia() {
   t.classList.toggle('collapsed');
 }
 
-function openBlogEditor(slug) {
+async function openBlogEditor(slug) {
   const isEdit = !!slug;
   let article = null;
   if (isEdit) {
-    article = blogArticles.find(function(a) { return a.slug === slug; });
+    // Fetch full article (index doesn't contain content)
+    try {
+      const res = await fetch('/api/blog?slug=' + encodeURIComponent(slug));
+      const data = await res.json();
+      if (data.success !== false) { article = data; }
+    } catch(e) {}
+    // Fallback to index entry if fetch fails
+    if (!article) {
+      article = blogArticles.find(function(a) { return a.slug === slug; });
+    }
   }
 
   var html = '';
