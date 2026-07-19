@@ -29,7 +29,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 .article-summary { font-size: 17px; color: #86868B; padding-bottom: 32px; border-bottom: 1px solid #F0F0F2; margin-bottom: 32px; }
 
 .article-body { font-size: 16px; line-height: 1.9; color: #333; word-break: break-word; overflow-wrap: anywhere; }
-.article-body * { max-width: 100%; box-sizing: border-box; word-wrap: break-word; overflow-wrap: anywhere; }
+.article-body,
+.article-body * { max-width: 100% !important; box-sizing: border-box !important; white-space: normal !important; word-wrap: break-word !important; overflow-wrap: anywhere !important; }
 .article-body h2 { font-size: 24px; margin: 40px 0 16px; font-weight: 700; }
 .article-body h3 { font-size: 19px; margin: 28px 0 12px; font-weight: 700; }
 .article-body p { margin-bottom: 16px; }
@@ -90,6 +91,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 function fd(s) { if(!s)return''; var d=new Date(s); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 function normalizeContent(html) {
+  if (!html) return '';
+  // Strip all white-space and font inline styles that break wrapping
+  html = html.replace(/white-space\s*:\s*[^;"]+;?/gi, '');
+  html = html.replace(/font-family\s*:\s*[^;"]+;?/gi, '');
+  html = html.replace(/font-size\s*:\s*[^;"]+;?/gi, '');
+  // Replace <span> wrappers around text with <div>
+  html = html.replace(/<span[^>]*>/g, '<div>');
+  html = html.replace(/<\/span>/g, '</div>');
+  // Clean empty style attributes
+  html = html.replace(/\s*style\s*=\s*""/gi, '');
+  html = html.replace(/\s*style\s*=\s*''/gi, '');
   // Convert Markdown-style headings in <div> to proper heading tags
   // <div># Title</div> → <h2>Title</h2>
   // <div>## Title</div> → <h3>Title</h3>
