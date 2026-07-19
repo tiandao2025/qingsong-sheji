@@ -3,6 +3,10 @@ pages_build_output_dir = "."
 
 [vars]
 CF_ACCOUNT_ID = "3d9087e0e073718babbb3e287f849382"
+# 启用后会在封面图 URL 中注入 Cloudflare Image Resizing 参数 (/cdn-cgi/image/w=400,quality=80,format=auto)
+# 前提：Cloudflare 账号需开通 Image Resizing（Pro 及以上套餐或付费 Images 订阅）
+# 如未开通请注释此行，否则封面图将无法加载
+ENABLE_IMAGE_RESIZING = "true"
 
 [[r2_buckets]]
 binding = "IMAGES"
