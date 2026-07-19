@@ -550,6 +550,11 @@ async function compressImage(file) {
 }
 
 async function uploadToR2(file, statusEl) {
+  if (!file || !(file instanceof Blob)) {
+    console.error('[uploadToR2] 无效文件对象:', file);
+    if (statusEl) statusEl.textContent = '文件无效';
+    throw new Error('无效的文件对象');
+  }
   console.log('[uploadToR2] 开始上传, 文件类型:', file.type, '大小:', file.size);
   if (statusEl) statusEl.textContent = '压缩中...';
   let blob = file;
@@ -1253,6 +1258,99 @@ async function openBlogEditor(slug) {
             return;
           }
 
+          // Strategy RTF: Parse embedded images from Word's RTF clipboard data
+          try {
+            var rtfData = ev.clipboardData.getData('text/rtf');
+            if (rtfData) {
+              console.log('[BlogPaste] RTF数据长度:', rtfData.length);
+              // Find \pngblip or \jpegblip keywords and extract hex data after them
+              var blipRegex = /\\(pngblip|jpegblip)/gi;
+              var rtfImages = [];
+              var blipMatch;
+              while ((blipMatch = blipRegex.exec(rtfData)) !== null) {
+                var fmt = blipMatch[1];
+                var idx = blipRegex.lastIndex;
+                var hexStr = '';
+                while (idx < rtfData.length) {
+                  var ch = rtfData[idx];
+                  if (ch === '\\') {
+                    idx++;
+                    while (idx < rtfData.length && /[a-zA-Z]/.test(rtfData[idx])) idx++;
+                    while (idx < rtfData.length && /[0-9\-]/.test(rtfData[idx])) idx++;
+                    if (idx < rtfData.length && rtfData[idx] === ' ') idx++;
+                    continue;
+                  }
+                  if (ch === ' ' || ch === '\r' || ch === '\n' || ch === '\t') { idx++; continue; }
+                  if (/[0-9a-fA-F]/.test(ch)) { hexStr += ch; idx++; }
+                  else if (ch === '}' || ch === '{') break;
+                  else break;
+                }
+                if (hexStr.length >= 4) {
+                  rtfImages.push({ format: fmt, hex: hexStr });
+                }
+              }
+              console.log('[BlogPaste] RTF中提取到图片数量:', rtfImages.length);
+
+              if (rtfImages.length > 0) {
+                ev.preventDefault();
+                var edtRefRtf = document.getElementById('blogEditor');
+                edtRefRtf.focus();
+
+                var rtfBlobs = rtfImages.map(function(img) {
+                  var hex = img.hex;
+                  if (hex.length % 2 !== 0) hex = hex.slice(0, -1);
+                  var bytes = new Uint8Array(hex.length / 2);
+                  for (var bi = 0; bi < hex.length; bi += 2) {
+                    bytes[bi / 2] = parseInt(hex.substr(bi, 2), 16);
+                  }
+                  var mime = img.format === 'jpegblip' ? 'image/jpeg' : 'image/png';
+                  return new Blob([bytes], { type: mime });
+                });
+
+                var rtfUploads = rtfBlobs.map(function(blob) {
+                  return uploadToR2(new File([blob], 'image.' + (blob.type === 'image/jpeg' ? 'jpg' : 'png'), { type: blob.type }), null);
+                });
+
+                var rtfPh = '<span class="_bmPastePlaceholder" style="color:#C9A96E;">图片上传中（' + rtfBlobs.length + ' 张）...</span>';
+                document.execCommand('insertHTML', false, rtfPh);
+
+                Promise.all(rtfUploads).then(function(results) {
+                  var urls = results.map(function(r) { return r.url; });
+                  console.log('[BlogPaste] RTF通道上传完成, URLs:', urls);
+                  var phs = edtRefRtf.querySelectorAll('._bmPastePlaceholder');
+                  for (var p = 0; p < phs.length; p++) phs[p].remove();
+
+                  var rawHtmlForRtf = ev.clipboardData.getData('text/html');
+                  if (!rawHtmlForRtf) {
+                    var imgTags = '';
+                    for (var ik = 0; ik < urls.length; ik++) {
+                      imgTags += '<img src="' + urls[ik] + '" style="max-width:100%;border-radius:8px;margin:12px 0;">';
+                    }
+                    document.execCommand('insertHTML', false, imgTags);
+                  } else {
+                    var ii = 0;
+                    rawHtmlForRtf = rawHtmlForRtf.replace(/<img[^>]*\ssrc\s*=\s*["'](?!https?:\/\/|data:)([^"']*)["'][^>]*>/gi, function(imgMatch) {
+                      if (ii < urls.length) {
+                        return imgMatch.replace(/\ssrc\s*=\s*["'][^"']*["']/i, ' src="' + urls[ii++] + '"');
+                      }
+                      return imgMatch;
+                    });
+                    document.execCommand('insertHTML', false, rawHtmlForRtf);
+                  }
+                  showToast(rtfBlobs.length + ' 张图片上传成功', true);
+                }).catch(function(err) {
+                  console.error('[BlogPaste] RTF通道上传失败:', err);
+                  var phs = edtRefRtf.querySelectorAll('._bmPastePlaceholder');
+                  for (var p = 0; p < phs.length; p++) phs[p].remove();
+                  showToast('上传失败: ' + (err.message || '网络错误'));
+                });
+                return;
+              }
+            }
+          } catch(e) {
+            console.warn('[BlogPaste] RTF解析异常:', e);
+          }
+
           // Strategy 2: Try HTML data: URIs inside img tags
           try {
             var rawHtml2 = ev.clipboardData.getData('text/html');
@@ -1317,7 +1415,12 @@ async function openBlogEditor(slug) {
 
         // Upload all images in parallel
         var uploads = imageItems.map(function(it) {
-          return uploadToR2(it.getAsFile(), null);
+          var f = it.getAsFile();
+          if (!f) {
+            console.error('[BlogPaste] getAsFile() 返回 null, 跳过该项');
+            return Promise.reject(new Error('getAsFile 返回 null'));
+          }
+          return uploadToR2(f, null);
         });
 
         var placeholderHtml = '<span class="_bmPastePlaceholder" style="color:#C9A96E;">图片上传中（' + imageItems.length + ' 张）...</span>';
