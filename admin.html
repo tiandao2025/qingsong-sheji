@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v2026.07.19.02 -->
+<!-- v2026.07.19.03 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -404,6 +404,7 @@ tr:hover td { background: #FAFAFA; }
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<script src="mammoth.browser.min.js"></script>
 <script>
 // ==================== DATA STORE ====================
 const STORAGE_KEY = 'qs_design_data';
@@ -1578,21 +1579,36 @@ function importWordDoc(e) {
     if (!edt) return;
     edt.focus();
     var holderId = '_bmUp' + Date.now();
-    document.execCommand('insertHTML', false, '<span id="' + holderId + '" style="color:#C9A96E;">正在导入Word文档...</span>');
+    document.execCommand('insertHTML', false, '<span id="' + holderId + '" style="color:#C9A96E;">正在解析Word文档...</span>');
     try {
-      var formData = new FormData();
-      formData.append('file', file);
-      var res = await fetch('/api/import-docx', { method: 'POST', body: formData });
-      var data = await res.json();
-      if (!res.ok) throw new Error(data.error || '导入失败');
+      var arrayBuffer = await file.arrayBuffer();
+      var result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer}, {
+        convertImage: mammoth.images.imgElement(function(image) {
+          return image.read().then(function(imageBuffer) {
+            var contentType = image.contentType || 'image/png';
+            var blob = new Blob([imageBuffer], {type: contentType});
+            var imgFile = new File([blob], 'image.' + (contentType.split('/')[1] || 'png'), {type: contentType});
+            return uploadToR2(imgFile, null).then(function(r) {
+              return {src: r.url};
+            }).catch(function() {
+              return {src: ''};
+            });
+          });
+        })
+      });
+      if (result.messages && result.messages.length > 0) {
+        console.log('[importWordDoc] mammoth warnings:', result.messages);
+      }
       var ph = document.getElementById(holderId);
-      if (ph) { ph.outerHTML = '<div>' + data.html + '</div>'; }
-      else { document.execCommand('insertHTML', false, '<div>' + data.html + '</div>'); }
+      var html = result.value || '';
+      if (ph) { ph.outerHTML = '<div>' + html + '</div>'; }
+      else { document.execCommand('insertHTML', false, '<div>' + html + '</div>'); }
       showToast('Word文档导入成功', true);
     } catch(err) {
+      console.error('[importWordDoc] 导入失败:', err);
       var ph2 = document.getElementById(holderId);
       if (ph2) ph2.remove();
-      showToast('导入失败: ' + err.message);
+      showToast('导入失败: ' + (err.message || '解析错误'));
     }
   };
   inp.click();
