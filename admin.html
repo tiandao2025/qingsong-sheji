@@ -1153,6 +1153,35 @@ async function openBlogEditor(slug) {
         document.getElementById('blogEditor').focus();
       });
     });
+    // Paste image handler
+    var edt = document.getElementById('blogEditor');
+    if (edt) {
+      edt.addEventListener('paste', async function(ev) {
+        var items = ev.clipboardData && ev.clipboardData.items;
+        if (!items) return;
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') === 0) {
+            ev.preventDefault();
+            var blob = items[i].getAsFile();
+            var holderId = '_bmPaste' + Date.now();
+            document.execCommand('insertHTML', false, '<span id="' + holderId + '" style="color:#C9A96E;">图片上传中...</span>');
+            try {
+              var result = await uploadToR2(blob, null);
+              var ph = document.getElementById(holderId);
+              if (ph) {
+                ph.outerHTML = '<img src="' + result.url + '" style="max-width:100%;border-radius:8px;margin:12px 0;">';
+              }
+              showToast('图片上传成功', true);
+            } catch(err) {
+              var ph2 = document.getElementById(holderId);
+              if (ph2) ph2.remove();
+              showToast('图片上传失败: ' + err.message);
+            }
+            break;
+          }
+        }
+      });
+    }
   }, 100);
 }
 
