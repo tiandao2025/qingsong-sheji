@@ -24,6 +24,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 .page-header p { font-size: 17px; color: #86868B; max-width: 500px; margin: 0 auto; }
 
 .blog-container { max-width: 1200px; margin: 0 auto; padding: 0 40px 80px; }
+.blog-search { display: flex; justify-content: center; margin-bottom: 32px; }
+.blog-search input { width: 100%; max-width: 480px; padding: 12px 20px; border: 1px solid #E0E0E0; border-radius: 28px; font-size: 15px; font-family: inherit; outline: none; transition: border-color 0.2s, box-shadow 0.2s; background: #FAFAFA; }
+.blog-search input:focus { border-color: #C9A96E; box-shadow: 0 0 0 3px rgba(201,169,110,0.12); background: #FFF; }
+.blog-search input::placeholder { color: #B0B0B5; }
+.search-info { text-align: center; color: #86868B; font-size: 14px; margin-bottom: 24px; }
+.search-info b { color: #C9A96E; }
 .blog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
 .blog-card { border-radius: 14px; overflow: hidden; background: #FFF; border: 1px solid #F0F0F2; cursor: pointer; transition: all 0.3s; text-decoration: none; color: inherit; display: block; }
 .blog-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.1); border-color: #E0D5C0; }
@@ -83,6 +89,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 </section>
 
 <section class="blog-container">
+  <div class="blog-search"><input type="text" id="searchInput" placeholder="搜索文章标题或标签..." autocomplete="off"></div>
+  <div class="search-info" id="searchInfo" style="display:none"></div>
   <div class="blog-grid" id="blogGrid"></div>
   <div class="pagination" id="pagination"></div>
 </section>
@@ -90,7 +98,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 <div class="footer">&copy; 2026 青松空间设计有限公司. All rights reserved.</div>
 
 <script>
-var cp = 1, tp = 1;
+var cp = 1, tp = 1, searchTimer = null;
 function fd(s) { if(!s)return''; var d=new Date(s); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function render(articles) {
   var g = document.getElementById('blogGrid');
@@ -111,11 +119,26 @@ function renderPg() {
 }
 function go(p) { if(p<1||p>tp)return; cp=p; load(); window.scrollTo({top:300,behavior:'smooth'}); }
 function load() {
+  var q = document.getElementById('searchInput').value.trim();
   document.getElementById('blogGrid').innerHTML = '<div class="loading">加载中...</div>';
-  fetch('/api/blog?page='+cp+'&limit=9').then(function(r){return r.json();}).then(function(d){
-    if(d.articles) { render(d.articles); tp = d.totalPages||1; renderPg(); } else render([]);
-  }).catch(function(){ render([]); });
+  var si = document.getElementById('searchInfo');
+  if (q) {
+    si.style.display = 'block'; si.innerHTML = '搜索 <b>"'+q+'"</b> 的结果：';
+    fetch('/api/blog?limit=50&q='+encodeURIComponent(q)).then(function(r){return r.json();}).then(function(d){
+      if (d.articles) { render(d.articles); si.innerHTML = '搜索 <b>"'+q+'"</b>，共 '+d.total+' 篇'; document.getElementById('pagination').innerHTML=''; }
+      else { render([]); si.innerHTML = '搜索 <b>"'+q+'"</b>，未找到匹配文章'; }
+    }).catch(function(){ render([]); });
+  } else {
+    si.style.display = 'none';
+    fetch('/api/blog?page='+cp+'&limit=9').then(function(r){return r.json();}).then(function(d){
+      if(d.articles) { render(d.articles); tp = d.totalPages||1; renderPg(); } else render([]);
+    }).catch(function(){ render([]); });
+  }
 }
+document.getElementById('searchInput').addEventListener('input', function() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(function() { cp = 1; load(); }, 300);
+});
 load();
 </script>
 

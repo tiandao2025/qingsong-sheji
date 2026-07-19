@@ -33,11 +33,12 @@ export async function onRequest(context) {
   const slug = url.searchParams.get('slug');
   const page = parseInt(url.searchParams.get('page') || '1');
   const limit = parseInt(url.searchParams.get('limit') || '10');
+  const q = (url.searchParams.get('q') || '').trim();
 
   try {
     if (request.method === 'GET') {
       if (slug) return await getArticle(slug, env);
-      return await listArticles(page, limit, env);
+      return await listArticles(page, limit, q, env);
     }
 
     const adminKey = request.headers.get('x-admin-key') || '';
@@ -75,8 +76,15 @@ async function saveIndex(index, env) {
   });
 }
 
-async function listArticles(page, limit, env) {
-  const index = await getIndex(env);
+async function listArticles(page, limit, q, env) {
+  let index = await getIndex(env);
+  if (q) {
+    const kw = q.toLowerCase();
+    index = index.filter(a =>
+      (a.title && a.title.toLowerCase().includes(kw)) ||
+      (a.tags && a.tags.some(t => t.toLowerCase().includes(kw)))
+    );
+  }
   index.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   const total = index.length;
   const start = (page - 1) * limit;
