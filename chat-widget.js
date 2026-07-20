@@ -1,6 +1,13 @@
 (function() {
   'use strict';
 
+  // ===== 生成/恢复 sessionId =====
+  var sessionId = sessionStorage.getItem('qs_chat_session');
+  if (!sessionId) {
+    sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    sessionStorage.setItem('qs_chat_session', sessionId);
+  }
+
   // ===== 构建 DOM =====
   var chatBtn = document.createElement('button');
   chatBtn.className = 'qs-chat-btn';
@@ -91,7 +98,7 @@
     fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: messageHistory }),
+      body: JSON.stringify({ messages: messageHistory, sessionId: sessionId }),
     })
       .then(function(res) { return res.json(); })
       .then(function(data) {

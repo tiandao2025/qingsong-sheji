@@ -37,6 +37,28 @@ const KNOWLEDGE_BASE = [
 
 const FALLBACK_REPLY = "抱歉，我暂时无法回答这个问题，建议您拨打19907444111直接咨询杜青松老师，他会给您最专业的解答~";
 
+// ===== 对话记录到 R2 =====
+async function logConversation(env, sessionId, userText, reply) {
+  if (!env || !env.IMAGES || !sessionId || !userText) return;
+  try {
+    const dateKey = todayKey();
+    const logKey = `chat-logs/${dateKey}/${sessionId}.jsonl`;
+    const ts = new Date().toISOString();
+    const entry = JSON.stringify({timestamp: ts, role: 'user', content: userText}) + '\n' +
+                  JSON.stringify({timestamp: ts, role: 'assistant', content: reply}) + '\n';
+    let existing = '';
+    try {
+      const obj = await env.IMAGES.get(logKey);
+      if (obj) existing = await obj.text();
+    } catch(_) {}
+    await env.IMAGES.put(logKey, existing + entry, {
+      httpMetadata: { contentType: 'text/plain; charset=utf-8' },
+    });
+  } catch(e) {
+    console.log('Chat log error:', e.message);
+  }
+}
+
 function matchLocal(userMessage) {
   for (const item of KNOWLEDGE_BASE) {
     if (item.pattern.test(userMessage)) {
@@ -98,6 +120,7 @@ export async function onRequest(context) {
         });
         const reply = result.response || result;
         if (reply) {
+          await logConversation(env, body.sessionId, userText, reply);
           return new Response(JSON.stringify({ reply, _ver: 'v5', _source: 'ai_binding' }), { headers: corsHeaders() });
         }
       } catch (e) {
@@ -166,6 +189,7 @@ export async function onRequest(context) {
         }
 
         if (reply) {
+          await logConversation(env, body.sessionId, userText, reply);
           return new Response(JSON.stringify({ reply, _ver: 'v5', _source: 'ai' }), { headers: corsHeaders() });
         }
       }
@@ -174,10 +198,12 @@ export async function onRequest(context) {
     // ===== 方案 B：本地知识库关键词匹配 =====
     const localReply = matchLocal(userText);
     if (localReply) {
+      await logConversation(env, body.sessionId, userText, localReply);
       return new Response(JSON.stringify({ reply: localReply, _ver: 'v5', _source: 'local', _aiErr: aiError || '' }), { headers: corsHeaders() });
     }
 
     // ===== 最终兜底 =====
+    await logConversation(env, body.sessionId, userText, FALLBACK_REPLY);
     return new Response(JSON.stringify({ reply: FALLBACK_REPLY, _ver: 'v5', _debug: `ai=${!!(accountId && apiToken)} err=${aiError}`, userText: userText }), { headers: corsHeaders() });
 
   } catch (error) {
@@ -191,9 +217,11 @@ export async function onRequest(context) {
       if (last) {
         const localReply = matchLocal(last.content);
         if (localReply) {
+          await logConversation(env, body.sessionId, last.content, localReply);
           return new Response(JSON.stringify({ reply: localReply }), { headers: corsHeaders() });
         }
       }
+      await logConversation(env, body.sessionId, last ? last.content : '', FALLBACK_REPLY);
     } catch (_) { /* ignore */ }
 
     return new Response(JSON.stringify({ reply: FALLBACK_REPLY }), { headers: corsHeaders() });
@@ -207,4 +235,9 @@ function corsHeaders() {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
+}
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

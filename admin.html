@@ -487,6 +487,10 @@ tr:hover td { background: #FAFAFA; }
       <svg viewBox="0 0 24 24"><path d="M3 13h2v8H3zm5-4h2v12H8zm5-5h2v17h-2zm5 9h2v8h-2z"/></svg>
       访问统计
     </div>
+    <div class="nav-item" data-page="chatlogs">
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h10v2H7zm0-3h10v2H7zm0 6h7v2H7z"/></svg>
+      对话记录
+    </div>
   </nav>
   <div class="sidebar-footer">
     <a href="qing-song-design.html" target="_blank">→ 打开官网预览</a>
@@ -664,6 +668,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
     else if (page === 'data') renderDataPage();
     else if (page === 'blog') renderBlogPage();
     else if (page === 'analytics') renderAnalyticsPage();
+    else if (page === 'chatlogs') renderChatLogsPage();
   });
 });
 
@@ -2134,5 +2139,141 @@ function formatDuration(seconds) {
   if (seconds < 60) return Math.round(seconds) + ' 秒';
   if (seconds < 3600) return Math.floor(seconds / 60) + ' 分 ' + Math.round(seconds % 60) + ' 秒';
   return Math.floor(seconds / 3600) + ' 时 ' + Math.floor((seconds % 3600) / 60) + ' 分';
+}
+
+// ==================== CHAT LOGS PAGE ====================
+let chatLogsDate = '';
+let chatLogsData = { sessions: [] };
+let expandedSession = null;
+
+function getTodayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function changeChatLogsDate(delta) {
+  var d = new Date(chatLogsDate || getTodayStr());
+  d.setDate(d.getDate() + delta);
+  chatLogsDate = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  renderChatLogsPage();
+}
+
+async function renderChatLogsPage() {
+  if (!chatLogsDate) chatLogsDate = getTodayStr();
+  mainContent.innerHTML = '<div class="page-title">对话记录</div><div style="text-align:center;color:#86868B;padding:40px;">加载中...</div>';
+  expandedSession = null;
+  await loadChatLogs();
+}
+
+async function loadChatLogs() {
+  try {
+    var res = await fetch('/api/chat-logs?date=' + chatLogsDate, { headers: { 'x-admin-token': getAdminToken() } });
+    var data = await res.json();
+    if (!data.success) {
+      mainContent.innerHTML = '<div class="page-title">对话记录</div><div class="card"><p style="text-align:center;color:#cc4444;">错误: ' + (data.error || '未知') + '</p></div>';
+      return;
+    }
+    chatLogsData = data;
+    buildChatLogsUI();
+  } catch(e) {
+    mainContent.innerHTML = '<div class="page-title">对话记录</div><div class="card"><p style="text-align:center;color:#cc4444;">加载失败: ' + e.message + '</p></div>';
+  }
+}
+
+function buildChatLogsUI() {
+  var sessions = chatLogsData.sessions || [];
+
+  var html = '<div class="page-title">对话记录</div>';
+
+  // Date picker
+  html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">';
+  html += '<button class="btn btn-outline btn-sm" onclick="changeChatLogsDate(-1)">&larr; 前一天</button>';
+  html += '<span style="font-size:15px;font-weight:600;">' + chatLogsDate + '</span>';
+  html += '<button class="btn btn-outline btn-sm" onclick="changeChatLogsDate(1)">后一天 &rarr;</button>';
+  html += '<button class="btn btn-outline btn-sm" onclick="chatLogsDate=\'' + getTodayStr() + '\';renderChatLogsPage()">今天</button>';
+  html += '</div>';
+
+  if (sessions.length === 0) {
+    html += '<div class="card"><p style="text-align:center;color:#86868B;padding:30px;">' + chatLogsDate + ' 暂无对话记录</p></div>';
+  } else {
+    html += '<div class="msg-info msg-bar">共 ' + sessions.length + ' 个会话</div>';
+
+    sessions.forEach(function(s) {
+      var timeDisplay = s.time ? new Date(s.time).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}) : '--:--';
+      var isExpanded = expandedSession === s.sessionId;
+      html += '<div class="card" style="padding:16px 20px;">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleChatSession(\'' + s.sessionId + '\')">';
+      html += '<div style="flex:1;">';
+      html += '<div style="font-size:14px;font-weight:600;color:#1D1D1F;">' + timeDisplay + ' — ' + s.userMsgCount + ' 轮对话</div>';
+      html += '<div style="font-size:12px;color:#86868B;margin-top:4px;">' + (s.preview || '(无内容)') + '</div>';
+      html += '</div>';
+      html += '<span style="font-size:12px;color:#C9A96E;">' + (isExpanded ? '收起 ▲' : '展开 ▼') + '</span>';
+      html += '</div>';
+
+      if (isExpanded) {
+        html += '<div id="chat-detail-' + s.sessionId + '" style="margin-top:12px;padding-top:12px;border-top:1px solid #E8E8ED;"></div>';
+      }
+      html += '</div>';
+    });
+  }
+
+  mainContent.innerHTML = html;
+
+  // If there's an expanded session, load its content
+  if (expandedSession) {
+    loadSessionDetail(expandedSession);
+  }
+}
+
+async function toggleChatSession(sessionId) {
+  if (expandedSession === sessionId) {
+    expandedSession = null;
+    buildChatLogsUI();
+  } else {
+    expandedSession = sessionId;
+    buildChatLogsUI();
+  }
+}
+
+async function loadSessionDetail(sessionId) {
+  var container = document.getElementById('chat-detail-' + sessionId);
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center;color:#86868B;padding:20px;">加载对话内容...</div>';
+
+  try {
+    var res = await fetch('/api/chat-logs?date=' + chatLogsDate + '&session=' + encodeURIComponent(sessionId), {
+      headers: { 'x-admin-token': getAdminToken() }
+    });
+    var data = await res.json();
+    if (!data.success) {
+      container.innerHTML = '<div style="text-align:center;color:#cc4444;padding:10px;">加载失败</div>';
+      return;
+    }
+
+    var messages = data.messages || [];
+    var html = '';
+    messages.forEach(function(m) {
+      var isUser = m.role === 'user';
+      var timeStr = m.timestamp ? new Date(m.timestamp).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '';
+      html += '<div style="margin-bottom:12px;display:flex;flex-direction:' + (isUser ? 'row' : 'row-reverse') + ';align-items:flex-start;gap:8px;">';
+      html += '<div style="max-width:80%;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.6;' +
+        (isUser
+          ? 'background:#F0F0F2;color:#1D1D1F;border-bottom-left-radius:2px;'
+          : 'background:#C9A96E;color:#fff;border-bottom-right-radius:2px;') + '">';
+      html += '<div style="white-space:pre-wrap;word-break:break-word;">' + escapeHtml(m.content || '') + '</div>';
+      html += '<div style="font-size:10px;margin-top:4px;opacity:0.6;">' + timeStr + '</div>';
+      html += '</div>';
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<div style="text-align:center;color:#cc4444;padding:10px;">加载失败: ' + e.message + '</div>';
+  }
+}
+
+function escapeHtml(text) {
+  var div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 </script>
