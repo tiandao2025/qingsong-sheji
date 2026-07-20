@@ -1,3 +1,4 @@
+// v2.1 — fix sessionId log
 (function() {
   'use strict';
 
