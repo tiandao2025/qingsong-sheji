@@ -24,6 +24,7 @@
       page: location.pathname,
       referrer: document.referrer || '',
       sessionId: sessionId,
+      timestamp: Date.now(),
       ...data
     };
 

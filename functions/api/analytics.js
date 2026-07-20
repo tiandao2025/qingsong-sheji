@@ -80,14 +80,19 @@ async function handlePost(request, env) {
   }
 
   const country = (request.cf && request.cf.country) || 'Unknown';
+  const city = (request.cf && request.cf.city) || '';
+  const region = (request.cf && request.cf.region) || '';
 
   const entry = {
     country,
+    city,
+    region,
     page: body.page || '',
     referrer: body.referrer || '',
     sessionId: body.sessionId || '',
     time: new Date().toISOString(),
     isHeartbeat: !!body.heartbeat,
+    endTime: !!body.heartbeat ? new Date().toISOString() : '',
   };
 
   const key = `analytics/${todayKey()}.json`;
@@ -227,6 +232,63 @@ async function handleGet(request, env) {
     heightPercent: Math.round(count / maxHourly * 100),
   }));
 
+  // City distribution (city-level PV ranking)
+  const cityCount = {};
+  for (const r of pageViews) {
+    const cityKey = (r.city || '') + '|' + (r.region || '');
+    if (!cityCount[cityKey]) {
+      cityCount[cityKey] = { city: r.city || '未知', region: r.region || '未知', pv: 0 };
+    }
+    cityCount[cityKey].pv++;
+  }
+  const cityDistribution = Object.values(cityCount)
+    .sort((a, b) => b.pv - a.pv);
+
+  // Sessions: detailed info per session
+  const sessionMap = {};
+  for (const r of allRecords) {
+    const sid = r.sessionId;
+    if (!sessionMap[sid]) {
+      sessionMap[sid] = {
+        sessionId: sid,
+        startTime: r.time,
+        endTime: r.endTime || r.time,
+        pages: new Set(),
+        city: r.city || '',
+        region: r.region || '',
+        country: r.country || 'Unknown',
+        referrer: r.referrer || '',
+        pv: 0,
+      };
+    }
+    const s = sessionMap[sid];
+    if (r.time < s.startTime) s.startTime = r.time;
+    if ((r.endTime || r.time) > s.endTime) s.endTime = r.endTime || r.time;
+    if (r.page) s.pages.add(r.page);
+    if (!s.city && r.city) s.city = r.city;
+    if (!s.region && r.region) s.region = r.region;
+    if (!r.isHeartbeat) s.pv++;
+  }
+
+  const sessions = Object.values(sessionMap)
+    .map(s => {
+      const startMs = new Date(s.startTime).getTime();
+      const endMs = new Date(s.endTime).getTime();
+      return {
+        sessionId: s.sessionId,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        duration: Math.max(0, Math.round((endMs - startMs) / 1000)),
+        pages: [...s.pages],
+        city: s.city,
+        region: s.region,
+        country: s.country,
+        referrer: s.referrer,
+        pv: s.pv,
+      };
+    })
+    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
   return new Response(JSON.stringify({
     success: true,
     range,
@@ -235,6 +297,8 @@ async function handleGet(request, env) {
     avgDuration,
     pageRanking,
     countryDistribution,
+    cityDistribution,
     hourlyDistribution,
+    sessions,
   }), { headers: corsHeaders() });
 }

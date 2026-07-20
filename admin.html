@@ -2095,8 +2095,11 @@ function buildAnalyticsUI(d) {
   }
   html += '</div>';
 
+  // Country + City distribution side by side
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">';
+
   // Country distribution
-  html += '<div class="card"><div class="card-header"><h3>国家/地区分布</h3></div>';
+  html += '<div class="card"><div class="card-header"><h3>国家分布</h3></div>';
   if (d.countryDistribution && d.countryDistribution.length > 0) {
     html += '<div class="table-wrap"><table><thead><tr><th>国家</th><th>PV</th></tr></thead><tbody>';
     d.countryDistribution.forEach(function(c) {
@@ -2107,6 +2110,20 @@ function buildAnalyticsUI(d) {
     html += '<p style="text-align:center;color:#86868B;padding:20px;">暂无数据</p>';
   }
   html += '</div>';
+
+  // City distribution
+  html += '<div class="card"><div class="card-header"><h3>城市分布</h3></div>';
+  if (d.cityDistribution && d.cityDistribution.length > 0) {
+    html += '<div class="table-wrap"><table><thead><tr><th>城市</th><th>省份</th><th>PV</th></tr></thead><tbody>';
+    d.cityDistribution.forEach(function(c) {
+      html += '<tr><td>' + (c.city || '未知') + '</td><td>' + (c.region || '未知') + '</td><td>' + (c.pv || 0).toLocaleString() + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  } else {
+    html += '<p style="text-align:center;color:#86868B;padding:20px;">暂无数据</p>';
+  }
+  html += '</div>';
+  html += '</div>'; // end grid
 
   // Hourly heatmap
   html += '<div class="card"><div class="card-header"><h3>24小时访问分布</h3></div>';
@@ -2127,7 +2144,120 @@ function buildAnalyticsUI(d) {
   }
   html += '</div>';
 
+  // Session detail table
+  html += '<div class="card"><div class="card-header"><h3>访问明细</h3></div>';
+  if (d.sessions && d.sessions.length > 0) {
+    // Store sessions data for expand/load-more
+    window._analyticsSessions = d.sessions;
+    window._analyticsShowCount = Math.min(20, d.sessions.length);
+    html += buildSessionsTableHtml(window._analyticsSessions.slice(0, window._analyticsShowCount));
+    if (d.sessions.length > window._analyticsShowCount) {
+      html += '<div style="text-align:center;padding:12px;"><button class="btn btn-outline btn-sm" onclick="loadMoreSessions()">加载更多（剩余 ' + (d.sessions.length - window._analyticsShowCount) + ' 条）</button></div>';
+    }
+  } else {
+    html += '<p style="text-align:center;color:#86868B;padding:20px;">暂无数据</p>';
+  }
+  html += '</div>';
+
   mainContent.innerHTML = html;
+}
+
+function buildSessionsTableHtml(sessions) {
+  var h = '<div class="table-wrap"><table><thead><tr><th>时间</th><th>城市</th><th>省份</th><th>页面数</th><th>PV</th><th>时长</th><th>来源</th></tr></thead><tbody>';
+  sessions.forEach(function(s) {
+    var time = s.startTime ? new Date(s.startTime).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}) : '--:--';
+    var duration = formatDurationMMSS(s.duration || 0);
+    var ref = shortenReferrer(s.referrer || '');
+    var pagesCount = (s.pages || []).length;
+    var sessionId = s.sessionId || '';
+    h += '<tr style="cursor:pointer;" onclick="toggleSessionRow(\'' + sessionId + '\')">';
+    h += '<td>' + time + '</td>';
+    h += '<td>' + (s.city || '-') + '</td>';
+    h += '<td>' + (s.region || '-') + '</td>';
+    h += '<td>' + pagesCount + '</td>';
+    h += '<td>' + (s.pv || 0) + '</td>';
+    h += '<td>' + duration + '</td>';
+    h += '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (s.referrer || '') + '">' + ref + '</td>';
+    h += '</tr>';
+    h += '<tr id="session-row-' + sessionId + '" style="display:none;"><td colspan="7" style="background:#FAFAFA;padding:12px 20px;">';
+    h += '<div style="font-size:13px;color:#555;"><b>访问页面：</b></div>';
+    h += '<ul style="margin:6px 0 0 16px;font-size:12px;color:#86868B;list-style:disc;">';
+    (s.pages || []).forEach(function(p) {
+      h += '<li>' + p + '</li>';
+    });
+    h += '</ul>';
+    h += '<div style="font-size:12px;color:#999;margin-top:6px;">来源: ' + (s.referrer || '无') + ' | 会话ID: ' + sessionId + '</div>';
+    h += '</td></tr>';
+  });
+  h += '</tbody></table></div>';
+  return h;
+}
+
+function toggleSessionRow(sessionId) {
+  var row = document.getElementById('session-row-' + sessionId);
+  if (row) {
+    row.style.display = row.style.display === 'none' ? '' : 'none';
+  }
+}
+
+function loadMoreSessions() {
+  if (!window._analyticsSessions) return;
+  window._analyticsShowCount = Math.min(window._analyticsShowCount + 20, window._analyticsSessions.length);
+  var sessions = window._analyticsSessions.slice(0, window._analyticsShowCount);
+  // Find the card container
+  var cards = document.querySelectorAll('.card');
+  var targetCard = null;
+  for (var i = 0; i < cards.length; i++) {
+    if (cards[i].querySelector('.card-header h3') && cards[i].querySelector('.card-header h3').textContent === '访问明细') {
+      targetCard = cards[i];
+      break;
+    }
+  }
+  if (!targetCard) return;
+  // Replace table content while keeping the card header
+  var tableWrap = targetCard.querySelector('.table-wrap');
+  var loadMoreBtn = targetCard.querySelector('div[style*="text-align:center"]');
+  if (tableWrap) tableWrap.remove();
+  if (loadMoreBtn) loadMoreBtn.remove();
+
+  // Find the card header and insert after it
+  var header = targetCard.querySelector('.card-header');
+  var newHtml = buildSessionsTableHtml(sessions);
+  var temp = document.createElement('div');
+  temp.innerHTML = newHtml;
+  while (temp.firstChild) {
+    if (header && header.nextSibling) {
+      targetCard.insertBefore(temp.firstChild, header.nextSibling);
+    } else {
+      targetCard.appendChild(temp.firstChild);
+    }
+  }
+  if (window._analyticsSessions.length > window._analyticsShowCount) {
+    var btnDiv = document.createElement('div');
+    btnDiv.style.cssText = 'text-align:center;padding:12px;';
+    btnDiv.innerHTML = '<button class="btn btn-outline btn-sm" onclick="loadMoreSessions()">加载更多（剩余 ' + (window._analyticsSessions.length - window._analyticsShowCount) + ' 条）</button>';
+    targetCard.appendChild(btnDiv);
+  }
+}
+
+function formatDurationMMSS(seconds) {
+  if (seconds <= 0) return '0:00';
+  var m = Math.floor(seconds / 60);
+  var s = Math.round(seconds % 60);
+  return m + ':' + (s < 10 ? '0' + s : s);
+}
+
+function shortenReferrer(ref) {
+  if (!ref) return '直接访问';
+  if (ref === 'direct') return '直接访问';
+  // Extract domain for shorter display
+  try {
+    // Handle cases like "https://www.baidu.com/s?wd=xxx"
+    var m = ref.match(/https?:\/\/([^\/]+)/);
+    if (m) return m[1];
+  } catch(e) {}
+  if (ref.length > 28) return ref.substring(0, 26) + '..';
+  return ref;
 }
 
 function metricCard(label, value) {
