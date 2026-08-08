@@ -1,0 +1,2482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>案例管理 - 青松设计 CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ========================================
+   青松设计 · CMS 案例管理
+   Tool UI + Case Preview Styles
+   ======================================== */
+
+/* ===== CSS Variables ===== */
+:root {
+  --tool-bg: #F5F4F1;
+  --tool-surface: #FFFFFF;
+  --tool-border: #E5E2DC;
+  --tool-text: #1A1A1A;
+  --tool-text-2: #6B6B6B;
+  --tool-text-3: #999999;
+  --tool-accent: #B8916A;
+  --tool-accent-bg: rgba(184, 145, 106, 0.08);
+  --tool-radius: 8px;
+  --tool-font: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Preview variables (case.html style) */
+  --color-bg: #FAFAF8;
+  --color-bg-alt: #F2F0EC;
+  --color-text: #1A1A1A;
+  --color-text-secondary: #6B6B6B;
+  --color-text-light: #999999;
+  --color-accent: #B8916A;
+  --color-accent-light: #D4B896;
+  --color-line: #E5E2DC;
+  --color-white: #FFFFFF;
+  --font-serif: 'Noto Serif SC', 'Songti SC', serif;
+  --font-sans: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --max-width: 1400px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--tool-font);
+  background: var(--tool-bg);
+  color: var(--tool-text);
+  height: 100vh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Header ===== */
+.tool-header {
+  height: 56px;
+  background: var(--tool-surface);
+  border-bottom: 1px solid var(--tool-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.tool-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+.tool-brand-name { color: var(--tool-text); }
+.tool-brand-name span { color: var(--tool-accent); }
+
+.tool-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ===== Buttons ===== */
+.btn {
+  padding: 8px 18px;
+  border: 1px solid var(--tool-border);
+  border-radius: var(--tool-radius);
+  font-size: 0.8125rem;
+  font-family: var(--tool-font);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--tool-surface);
+  color: var(--tool-text-2);
+  letter-spacing: 0.03em;
+}
+
+.btn:hover {
+  border-color: var(--tool-accent);
+  color: var(--tool-text);
+}
+
+.btn-primary {
+  background: var(--tool-text);
+  color: #fff;
+  border-color: var(--tool-text);
+}
+
+.btn-primary:hover {
+  background: var(--tool-accent);
+  border-color: var(--tool-accent);
+  color: #fff;
+}
+
+.btn-danger {
+  color: #c0392b;
+  border-color: transparent;
+  background: transparent;
+}
+
+.btn-danger:hover {
+  background: rgba(192, 57, 43, 0.06);
+  border-color: rgba(192, 57, 43, 0.2);
+  color: #c0392b;
+}
+
+.btn-logout {
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  color: var(--tool-text-3);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--tool-radius);
+  font-family: var(--tool-font);
+  transition: all 0.2s ease;
+}
+
+.btn-logout:hover {
+  color: #c0392b;
+  border-color: rgba(192, 57, 43, 0.2);
+}
+
+/* ===== Layout ===== */
+.tool-body {
+  display: flex;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
+.tool-form-panel {
+  width: 440px;
+  flex-shrink: 0;
+  background: var(--tool-surface);
+  border-right: 1px solid var(--tool-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tool-preview-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--tool-bg);
+}
+
+/* ===== Form Panel Scrollable ===== */
+.form-panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.form-panel-scroll::-webkit-scrollbar { width: 5px; }
+.form-panel-scroll::-webkit-scrollbar-thumb { background: var(--tool-border); border-radius: 3px; }
+
+/* ===== Case Selector ===== */
+.case-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.case-select {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--tool-border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: var(--tool-font);
+  color: var(--tool-text);
+  background: var(--tool-bg);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.case-select:focus {
+  border-color: var(--tool-accent);
+  background-color: var(--tool-surface);
+  box-shadow: 0 0 0 3px var(--tool-accent-bg);
+}
+
+.btn-new-case {
+  padding: 8px 14px;
+  border: 1px dashed var(--tool-border);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-family: var(--tool-font);
+  cursor: pointer;
+  background: none;
+  color: var(--tool-text-3);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-new-case:hover {
+  border-color: var(--tool-accent);
+  color: var(--tool-accent);
+  background: var(--tool-accent-bg);
+}
+
+/* ===== Tab Navigation ===== */
+.tool-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--tool-border);
+  margin-bottom: 18px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.tool-tabs::-webkit-scrollbar { height: 2px; }
+.tool-tabs::-webkit-scrollbar-thumb { background: var(--tool-border); }
+
+.tool-tab {
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  font-family: var(--tool-font);
+  color: var(--tool-text-3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+
+.tool-tab:hover { color: var(--tool-text-2); }
+
+.tool-tab.active {
+  color: var(--tool-text);
+  border-bottom-color: var(--tool-accent);
+  font-weight: 500;
+}
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ===== Form Fields ===== */
+.section-title-tool {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--tool-text);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--tool-border);
+  letter-spacing: 0.05em;
+}
+
+.field-group { margin-bottom: 16px; }
+
+.field-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--tool-text-2);
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.field-input,
+.field-textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--tool-border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: var(--tool-font);
+  color: var(--tool-text);
+  background: var(--tool-bg);
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.field-input:focus,
+.field-textarea:focus {
+  border-color: var(--tool-accent);
+  background: var(--tool-surface);
+  box-shadow: 0 0 0 3px var(--tool-accent-bg);
+}
+
+.field-textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field-hint {
+  font-size: 0.7rem;
+  color: var(--tool-text-3);
+  margin-top: 4px;
+}
+
+/* ===== Image Upload ===== */
+.image-upload {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  border: 2px dashed var(--tool-border);
+  border-radius: var(--tool-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--tool-bg);
+  overflow: hidden;
+}
+
+.image-upload:hover {
+  border-color: var(--tool-accent);
+  background: var(--tool-accent-bg);
+}
+
+.image-upload img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-upload-text {
+  font-size: 0.8125rem;
+  color: var(--tool-text-3);
+  z-index: 1;
+}
+
+.image-upload-icon {
+  font-size: 1.5rem;
+  z-index: 1;
+}
+
+.image-upload input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.image-upload.has-image .image-upload-text,
+.image-upload.has-image .image-upload-icon {
+  display: none;
+}
+
+/* ===== Dynamic Form Items ===== */
+.dynamic-item {
+  border: 1px solid var(--tool-border);
+  border-radius: var(--tool-radius);
+  padding: 14px;
+  margin-bottom: 12px;
+  background: var(--tool-bg);
+  position: relative;
+}
+
+.dynamic-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.dynamic-item-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--tool-text);
+  letter-spacing: 0.03em;
+}
+
+.dynamic-item-remove {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--tool-border);
+  border-radius: 50%;
+  background: none;
+  color: var(--tool-text-3);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dynamic-item-remove:hover {
+  color: #c0392b;
+  border-color: rgba(192, 57, 43, 0.3);
+  background: rgba(192, 57, 43, 0.05);
+}
+
+.dynamic-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dynamic-item-body .field-group { margin-bottom: 0; }
+
+/* ===== Color Preview ===== */
+.color-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--tool-border);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.color-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ===== Add Button ===== */
+.add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px;
+  border: 1px dashed var(--tool-border);
+  border-radius: 6px;
+  background: none;
+  color: var(--tool-text-3);
+  font-size: 0.8125rem;
+  font-family: var(--tool-font);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.03em;
+}
+
+.add-btn:hover {
+  border-color: var(--tool-accent);
+  color: var(--tool-accent);
+  background: var(--tool-accent-bg);
+}
+
+/* ===== Save Bar ===== */
+.save-bar {
+  padding: 14px 20px;
+  border-top: 1px solid var(--tool-border);
+  background: var(--tool-surface);
+  flex-shrink: 0;
+}
+
+/* ===== Preview Panel ===== */
+.preview-bar {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: var(--tool-surface);
+  border-bottom: 1px solid var(--tool-border);
+  flex-shrink: 0;
+}
+
+.preview-label {
+  font-size: 0.75rem;
+  color: var(--tool-text-3);
+  letter-spacing: 0.1em;
+}
+
+.preview-devices {
+  display: flex;
+  gap: 4px;
+}
+
+.device-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--tool-border);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-family: var(--tool-font);
+  transition: all 0.2s ease;
+  color: var(--tool-text-2);
+}
+
+.device-btn.active {
+  background: var(--tool-text);
+  color: #fff;
+  border-color: var(--tool-text);
+}
+
+.preview-frame-wrap {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: auto;
+  padding: 20px;
+  background: var(--tool-bg);
+}
+
+.preview-frame-wrap::-webkit-scrollbar { width: 5px; }
+.preview-frame-wrap::-webkit-scrollbar-thumb { background: var(--tool-border); border-radius: 3px; }
+
+#preview-container {
+  border: none;
+  border-radius: 4px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  background: var(--color-bg);
+  transition: width 0.3s ease;
+  overflow: hidden;
+  min-height: 600px;
+}
+
+#preview-container.device-desktop { width: 100%; }
+
+#preview-container.device-mobile { width: 390px; }
+
+/* ===== Preview Content Styles (case.html) ===== */
+#preview-content {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+#preview-content * { margin: 0; padding: 0; box-sizing: border-box; }
+#preview-content img { display: block; max-width: 100%; height: auto; }
+
+.preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: var(--tool-text-3);
+  font-size: 0.9375rem;
+  letter-spacing: 0.05em;
+}
+
+/* Preview: Hero */
+.preview-hero {
+  position: relative;
+  height: 420px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+
+.preview-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.preview-hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.55) 100%);
+}
+
+.preview-hero-content {
+  position: relative;
+  z-index: 2;
+  padding: 0 36px 48px;
+  width: 100%;
+}
+
+.preview-hero-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  color: rgba(255,255,255,0.8);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.preview-hero-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.8rem, 4vw, 3.5rem);
+  font-weight: 400;
+  color: #FFFFFF;
+  line-height: 1.1;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.preview-hero-subtitle {
+  font-size: 0.875rem;
+  color: rgba(255,255,255,0.85);
+  letter-spacing: 0.08em;
+}
+
+/* Preview: Tags / Overview */
+.preview-overview {
+  background: var(--color-white);
+  border-top: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+  padding: 28px 36px;
+}
+
+.preview-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.preview-tag {
+  padding: 5px 14px;
+  border: 1px solid var(--color-line);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  transition: all 0.3s ease;
+}
+.preview-tag:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: rgba(184,145,106,0.05);
+}
+
+.preview-video-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+.preview-video-icon {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+}
+.preview-video-icon svg { width: 16px; height: 16px; margin-left: 2px; }
+
+/* Preview: Project Info Grid */
+.preview-project-info {
+  background: var(--color-white);
+  border-top: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+  display: grid;
+  gap: 0;
+}
+
+.preview-project-item {
+  padding: 36px 28px;
+  text-align: center;
+  border-right: 1px solid var(--color-line);
+}
+.preview-project-item:last-child { border-right: none; }
+
+.preview-project-value {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  font-weight: 400;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+.preview-project-unit {
+  font-size: 0.75rem;
+  color: var(--color-text-light);
+  margin-left: 4px;
+}
+.preview-project-label {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.12em;
+}
+
+/* Preview: Content / Section */
+.preview-section {
+  padding: 64px 36px;
+}
+
+.preview-section-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.preview-section-label::before {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: var(--color-accent);
+}
+
+.preview-section-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.03em;
+  margin-bottom: 20px;
+  color: var(--color-text);
+}
+
+.preview-content-text p {
+  font-size: 0.9375rem;
+  line-height: 1.9;
+  color: var(--color-text-secondary);
+  margin-bottom: 16px;
+}
+.preview-content-text p:first-of-type::first-letter {
+  font-family: var(--font-serif);
+  font-size: 2.5rem;
+  float: left;
+  line-height: 1;
+  margin: 4px 10px 0 0;
+  color: var(--color-accent);
+}
+.preview-content-text h2 {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  font-weight: 400;
+  color: var(--color-text);
+  margin-top: 28px;
+  margin-bottom: 12px;
+}
+.preview-content-text h3 {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--color-text);
+  margin-top: 22px;
+  margin-bottom: 10px;
+}
+.preview-content-text h4 {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--color-text);
+  margin-top: 18px;
+  margin-bottom: 8px;
+}
+.preview-content-text strong {
+  color: var(--color-text);
+  font-weight: 500;
+}
+.preview-content-text ul, .preview-content-text ol {
+  padding-left: 20px;
+  margin-bottom: 16px;
+  color: var(--color-text-secondary);
+}
+.preview-content-text li {
+  margin-bottom: 6px;
+  font-size: 0.9375rem;
+  line-height: 1.8;
+}
+.preview-content-text img {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 16px 0;
+}
+
+/* Preview: Design Concept */
+.preview-concept {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+
+.preview-concept-text p {
+  font-size: 1rem;
+  line-height: 1.9;
+  color: var(--color-text-secondary);
+  margin-bottom: 16px;
+}
+.preview-concept-text p:first-of-type::first-letter {
+  font-family: var(--font-serif);
+  font-size: 2.8rem;
+  float: left;
+  line-height: 1;
+  margin: 4px 10px 0 0;
+  color: var(--color-accent);
+}
+
+.preview-concept-quote {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  color: var(--color-text);
+  line-height: 1.6;
+  padding: 28px 0 28px 28px;
+  border-left: 2px solid var(--color-accent);
+  margin-top: 28px;
+}
+
+.preview-concept-image {
+  position: relative;
+  height: 500px;
+  overflow: hidden;
+  border-radius: 2px;
+}
+.preview-concept-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Preview: Floorplan */
+.preview-floorplan {
+  background: var(--color-bg-alt);
+  padding: 80px 36px;
+}
+
+.preview-floorplan-inner {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.preview-floorplan-image {
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+}
+.preview-floorplan-image img { width: 100%; }
+
+.preview-floorplan-info h3 {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  margin-bottom: 16px;
+}
+.preview-floorplan-info p {
+  color: var(--color-text-secondary);
+  line-height: 1.8;
+  margin-bottom: 20px;
+}
+
+.preview-floorplan-areas {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.preview-floorplan-area {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  background: var(--color-white);
+  border-radius: 4px;
+  font-size: 0.8125rem;
+}
+.preview-area-name { font-weight: 500; }
+.preview-area-size { color: var(--color-text-light); font-size: 0.75rem; }
+
+/* Preview: Rooms / Spaces */
+.preview-room-section {
+  border-top: 2px solid #D5D0C8;
+}
+
+.preview-room-image-full {
+  position: relative;
+  width: 100%;
+  height: 420px;
+  overflow: hidden;
+}
+.preview-room-image-full img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.preview-room-floating-label {
+  position: absolute;
+  bottom: 40px;
+  left: 36px;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  text-shadow: 0 2px 30px rgba(0,0,0,0.7);
+}
+.preview-room-floating-num {
+  font-family: var(--font-serif);
+  font-size: 2.5rem;
+  font-weight: 400;
+  color: rgba(255,255,255,0.6);
+  line-height: 1;
+}
+.preview-room-floating-name {
+  color: rgba(255,255,255,0.95);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.preview-room-info {
+  padding: 56px 36px;
+  background: var(--color-bg);
+}
+.preview-room-number {
+  font-family: var(--font-serif);
+  font-size: 4rem;
+  font-weight: 400;
+  color: var(--color-line);
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.preview-room-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.preview-room-title {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  font-weight: 400;
+  margin-bottom: 6px;
+  letter-spacing: 0.03em;
+  color: var(--color-text);
+}
+.preview-room-title-en {
+  font-size: 0.8rem;
+  color: var(--color-text-light);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+.preview-room-desc {
+  font-size: 0.9375rem;
+  line-height: 1.8;
+  color: var(--color-text-secondary);
+  margin-bottom: 24px;
+}
+.preview-room-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.preview-room-tag {
+  padding: 5px 14px;
+  border: 1px solid var(--color-line);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+/* Preview: Materials */
+.preview-materials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 36px;
+}
+
+.preview-material-card {
+  text-align: center;
+}
+
+.preview-material-swatch {
+  width: 100%;
+  height: 180px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.preview-material-name {
+  font-size: 0.875rem;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+.preview-material-code {
+  font-size: 0.7rem;
+  color: var(--color-text-light);
+  letter-spacing: 0.1em;
+  font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+/* Preview: Gallery */
+.preview-gallery-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 380px;
+  overflow: hidden;
+}
+.preview-gallery-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.preview-gallery-label {
+  position: absolute;
+  bottom: 32px;
+  left: 36px;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  text-shadow: 0 2px 30px rgba(0,0,0,0.7);
+}
+.preview-gallery-num {
+  font-family: var(--font-serif);
+  font-size: 2.5rem;
+  font-weight: 400;
+  color: rgba(255,255,255,0.6);
+  line-height: 1;
+}
+.preview-gallery-name {
+  color: rgba(255,255,255,0.95);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* Preview: CTA Download */
+.preview-cta {
+  text-align: center;
+  padding: 48px 36px;
+  background: var(--color-white);
+  border-top: 1px solid var(--color-line);
+}
+.preview-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 32px;
+  border: 1px solid var(--color-accent);
+  border-radius: 2px;
+  font-size: 0.875rem;
+  color: var(--color-accent);
+  letter-spacing: 0.08em;
+}
+.preview-cta-btn svg { width: 16px; height: 16px; }
+
+/* ===== Toast ===== */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--tool-text);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: var(--tool-radius);
+  font-size: 0.8125rem;
+  z-index: 9999;
+  transition: transform 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  pointer-events: none;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+  .tool-form-panel { width: 380px; }
+  .preview-concept { grid-template-columns: 1fr; gap: 40px; }
+  .preview-concept-image { height: 350px; }
+  .preview-floorplan-inner { grid-template-columns: 1fr; gap: 40px; }
+  .preview-materials-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .tool-body { flex-direction: column; }
+  .tool-form-panel { width: 100%; height: 55%; }
+  .tool-preview-panel { height: 45%; }
+  .preview-project-info { grid-template-columns: 1fr; }
+  .preview-project-item { border-right: none; border-bottom: 1px solid var(--color-line); }
+  .preview-project-item:last-child { border-bottom: none; }
+  .preview-materials-grid { grid-template-columns: 1fr; }
+  .preview-floorplan-areas { grid-template-columns: 1fr; }
+}
+.ai-btn { font-size:0.7rem; padding:2px 10px; border-radius:4px; background:transparent; color:#6366f1; border:1px solid #6366f1; cursor:pointer; margin-top:4px; width:fit-content; transition:all 0.2s; }
+.ai-btn:hover { background:#6366f1; color:#fff; }
+.ai-btn:disabled { opacity:0.5; cursor:not-allowed; }
+.ai-btn.loading { background:#6366f1; color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<header class="tool-header">
+  <div class="tool-brand">
+    <span class="tool-brand-name">青松设计 · <span>CMS</span></span>
+    <nav style="margin-left:32px;display:flex;gap:4px;">
+      <a href="/admin/cases.html" style="color:var(--tool-accent);text-decoration:none;font-size:0.8125rem;padding:4px 12px;border-radius:4px;background:var(--tool-accent-bg);">案例管理</a>
+      <a href="/admin/chat-logs.html" style="color:var(--tool-text-2);text-decoration:none;font-size:0.8125rem;padding:4px 12px;border-radius:4px;transition:all 0.2s;">聊天记录</a>
+    </nav>
+  </div>
+  <div class="tool-actions">
+    <button class="btn btn-danger" id="btn-delete" style="display:none" onclick="deleteCurrentCase()">删除</button>
+    <button class="btn btn-primary" id="btn-save" onclick="saveCase()">保存</button>
+    <button class="btn-logout" onclick="logout()">退出</button>
+  </div>
+</header>
+
+<!-- ===== Body ===== -->
+<div class="tool-body">
+
+  <!-- ===== Left Form Panel ===== -->
+  <aside class="tool-form-panel">
+    <div class="form-panel-scroll" id="formScroll">
+      <!-- Case Selector -->
+      <div class="case-selector">
+        <select class="case-select" id="caseSelect" onchange="onCaseSelect(this.value)">
+          <option value="">-- 选择已有案例 --</option>
+        </select>
+        <button class="btn-new-case" onclick="newCase()">+ 新建</button>
+      </div>
+
+      <!-- Tab Navigation -->
+      <nav class="tool-tabs" id="tabNav">
+        <button class="tool-tab active" data-tab="basic" onclick="switchTab('basic', this)">基本信息</button>
+        <button class="tool-tab" data-tab="concept" onclick="switchTab('concept', this)">设计理念</button>
+        <button class="tool-tab" data-tab="floorplan" onclick="switchTab('floorplan', this)">户型布局</button>
+        <button class="tool-tab" data-tab="spaces" onclick="switchTab('spaces', this)">空间展示</button>
+        <button class="tool-tab" data-tab="materials" onclick="switchTab('materials', this)">材质色彩</button>
+      </nav>
+
+      <!-- Tab Content -->
+      <div class="tool-tab-content">
+
+        <!-- ===== Tab: 基本信息 ===== -->
+        <div class="tab-pane active" data-pane="basic">
+          <div class="section-title-tool">案例信息</div>
+
+          <div class="field-group">
+            <label class="field-label">标题 *</label>
+            <input class="field-input" id="caseTitle" placeholder="案例标题" oninput="updatePreview()">
+            <button class="ai-btn" onclick="aiPolish('caseTitle','案例标题')">AI润色</button>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">简要描述</label>
+            <textarea class="field-textarea" id="caseDesc" rows="2" placeholder="一句话描述这个案例" oninput="updatePreview()"></textarea>
+            <button class="ai-btn" onclick="aiPolish('caseDesc','案例描述')">AI润色</button>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">封面图片</label>
+            <div class="image-upload" id="coverUpload" onclick="document.getElementById('coverInput').click()">
+              <span class="image-upload-icon">&#128247;</span>
+              <span class="image-upload-text">点击上传封面图</span>
+              <input type="file" id="coverInput" accept="image/*" onchange="previewCover(this)">
+            </div>
+            <input type="hidden" id="caseCover">
+            <div class="field-hint">建议尺寸 1200x800，支持 JPG/PNG/WebP</div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">B站视频链接</label>
+            <input class="field-input" id="caseVideo" placeholder="https://www.bilibili.com/video/BV..." oninput="updatePreview()">
+            <div class="field-hint">粘贴B站视频链接，前台会嵌入播放器</div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">详细内容（Markdown）</label>
+            <textarea class="field-textarea" id="caseContent" rows="8" placeholder="输入案例详细内容（支持 Markdown 格式）" oninput="updatePreview()"></textarea>
+            <button class="ai-btn" onclick="aiPolish('caseContent','详细内容')">AI润色</button>
+          </div>
+
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label">附件上传</label>
+              <input type="file" id="fileInput" onchange="handleFileSelect(this)" style="display:block;width:100%;font-size:0.8rem;">
+              <input type="hidden" id="caseFileUrl">
+              <input type="hidden" id="caseFileName">
+              <div class="field-hint" id="fileHint">支持 PDF/DOCX/PPT 等文档格式</div>
+            </div>
+            <div class="field-group">
+              <label class="field-label">标签</label>
+              <input class="field-input" id="caseTags" placeholder="用逗号分隔，如：住宅,现代" oninput="updatePreview()">
+              <div class="field-hint">多个标签用英文逗号分隔</div>
+            </div>
+          </div>
+
+          <div class="section-title-tool" style="margin-top:6px">项目信息</div>
+
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label">客户名称</label>
+              <input class="field-input" id="piClient" placeholder="业主称呼" oninput="updatePreview()">
+              <button class="ai-btn" onclick="aiPolish('piClient','客户名称')">AI润色</button>
+            </div>
+            <div class="field-group">
+              <label class="field-label">建筑面积</label>
+              <input class="field-input" id="piArea" placeholder="如 120m²" oninput="updatePreview()">
+              <button class="ai-btn" onclick="aiPolish('piArea','建筑面积')">AI润色</button>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label">户型格局</label>
+              <input class="field-input" id="piLayout" placeholder="如 三室两厅" oninput="updatePreview()">
+              <button class="ai-btn" onclick="aiPolish('piLayout','户型格局')">AI润色</button>
+            </div>
+            <div class="field-group">
+              <label class="field-label">设计空间数</label>
+              <input class="field-input" id="piRooms" placeholder="如 5" oninput="updatePreview()">
+              <button class="ai-btn" onclick="aiPolish('piRooms','设计空间数')">AI润色</button>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label">设计年份</label>
+              <input class="field-input" id="piYear" placeholder="如 2024" oninput="updatePreview()">
+              <button class="ai-btn" onclick="aiPolish('piYear','设计年份')">AI润色</button>
+            </div>
+            <div class="field-group">
+              <label class="field-label">设计风格</label>
+              <input class="field-input" id="piStyle" placeholder="如 现代简约" oninput="updatePreview()">
+              <button class="ai-btn" onclick="aiPolish('piStyle','设计风格')">AI润色</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Tab: 设计理念 ===== -->
+        <div class="tab-pane" data-pane="concept">
+          <div class="section-title-tool">设计理念</div>
+
+          <div class="field-group">
+            <label class="field-label">理念标题</label>
+            <textarea class="field-textarea" id="dcTitle" rows="2" placeholder="理念标题（换行用回车）" oninput="updatePreview()"></textarea>
+            <button class="ai-btn" onclick="aiPolish('dcTitle','理念标题')">AI润色</button>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">理念正文</label>
+            <textarea class="field-textarea" id="dcText" rows="6" placeholder="段落间用空行分隔" oninput="updatePreview()"></textarea>
+            <button class="ai-btn" onclick="aiPolish('dcText','理念正文')">AI润色</button>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">金句</label>
+            <textarea class="field-textarea" id="dcQuote" rows="3" placeholder="一句点睛之语" oninput="updatePreview()"></textarea>
+            <button class="ai-btn" onclick="aiPolish('dcQuote','金句')">AI润色</button>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">理念配图</label>
+            <div class="image-upload" id="dcImageUpload">
+              <span class="image-upload-icon">&#128247;</span>
+              <span class="image-upload-text">点击上传理念配图</span>
+              <input type="file" id="dcImageInput" accept="image/*" onchange="handleTabImage('dcImageInput','dcImage','dcImageUpload')">
+            </div>
+            <input type="hidden" id="dcImage">
+          </div>
+        </div>
+
+        <!-- ===== Tab: 户型布局 ===== -->
+        <div class="tab-pane" data-pane="floorplan">
+          <div class="section-title-tool">户型布局</div>
+
+          <div class="field-group">
+            <label class="field-label">标题</label>
+            <input class="field-input" id="fpTitle" placeholder="户型标题" oninput="updatePreview()">
+            <button class="ai-btn" onclick="aiPolish('fpTitle','户型标题')">AI润色</button>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">副标题</label>
+            <input class="field-input" id="fpSubtitle" placeholder="副标题" oninput="updatePreview()">
+            <button class="ai-btn" onclick="aiPolish('fpSubtitle','户型副标题')">AI润色</button>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">户型描述</label>
+            <textarea class="field-textarea" id="fpDesc" rows="4" placeholder="描述户型特点与空间关系" oninput="updatePreview()"></textarea>
+            <button class="ai-btn" onclick="aiPolish('fpDesc','户型描述')">AI润色</button>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">户型图</label>
+            <div class="image-upload" id="fpImageUpload">
+              <span class="image-upload-icon">&#128247;</span>
+              <span class="image-upload-text">点击上传户型图</span>
+              <input type="file" id="fpImageInput" accept="image/*" onchange="handleTabImage('fpImageInput','fpImage','fpImageUpload')">
+            </div>
+            <input type="hidden" id="fpImage">
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">各区域面积</label>
+            <div id="fpAreasList"></div>
+            <button class="add-btn" onclick="addFloorArea()">+ 添加区域</button>
+          </div>
+        </div>
+
+        <!-- ===== Tab: 空间展示 ===== -->
+        <div class="tab-pane" data-pane="spaces">
+          <div class="section-title-tool">空间展示</div>
+          <div id="spacesList"></div>
+          <button class="add-btn" onclick="addSpace()">+ 添加空间</button>
+        </div>
+
+        <!-- ===== Tab: 材质色彩 ===== -->
+        <div class="tab-pane" data-pane="materials">
+          <div class="section-title-tool">材质与色彩</div>
+          <div id="materialsList"></div>
+          <button class="add-btn" onclick="addMaterial()">+ 添加材质</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Save Bar -->
+    <div class="save-bar">
+      <button class="btn btn-primary" style="width:100%" id="btn-save-bottom" onclick="saveCase()">保存案例</button>
+    </div>
+  </aside>
+
+  <!-- ===== Right Preview Panel ===== -->
+  <main class="tool-preview-panel">
+    <div class="preview-bar">
+      <span class="preview-label">实时预览</span>
+      <div class="preview-devices">
+        <button class="device-btn active" data-device="desktop" onclick="setDevice('desktop', this)">桌面</button>
+        <button class="device-btn" data-device="mobile" onclick="setDevice('mobile', this)">手机</button>
+      </div>
+    </div>
+    <div class="preview-frame-wrap">
+      <div id="preview-container" class="device-desktop">
+        <div id="preview-content">
+          <div class="preview-empty">选择案例或填写表单后，右侧实时预览</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==========================================
+   Data & Auth Layer
+   ========================================== */
+const token = localStorage.getItem('qs_token');
+if (!token) { window.location.href = '/admin/login.html'; }
+
+let currentCases = [];
+let currentCaseId = null;
+let toastTimer = null;
+
+async function authFetch(url, options) {
+  if (!options) options = {};
+  var headers = options.headers || {};
+  headers['Authorization'] = 'Bearer ' + token;
+  var opts = {};
+  for (var k in options) opts[k] = options[k];
+  opts.headers = headers;
+  var res = await fetch(url, opts);
+  if (res.status === 401) { logout(); return null; }
+  return res;
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = '/admin/login.html';
+}
+
+function showToast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { el.classList.remove('show'); }, 2500);
+}
+
+/* ==========================================
+   Tab Switching
+   ========================================== */
+function switchTab(tabName, btn) {
+  document.querySelectorAll('.tool-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.tab-pane').forEach(function(p) { p.classList.remove('active'); });
+  btn.classList.add('active');
+  var pane = document.querySelector('[data-pane="' + tabName + '"]');
+  if (pane) pane.classList.add('active');
+}
+
+/* ==========================================
+   Case List -> Select Dropdown
+   ========================================== */
+async function loadCases() {
+  try {
+    var res = await authFetch('/api/cases?limit=100');
+    if (!res) return;
+    currentCases = await res.json();
+    if (!Array.isArray(currentCases)) currentCases = [];
+    populateSelect();
+  } catch (e) {
+    showToast('加载案例列表失败');
+  }
+}
+
+function populateSelect() {
+  var sel = document.getElementById('caseSelect');
+  var html = '<option value="">-- 选择已有案例 --</option>';
+  currentCases.forEach(function(c) {
+    html += '<option value="' + c.id + '">' + (c.title || '') + '</option>';
+  });
+  sel.innerHTML = html;
+}
+
+function onCaseSelect(val) {
+  if (!val) { newCase(); return; }
+  var c = currentCases.find(function(x) { return x.id == val; });
+  if (!c) return;
+  currentCaseId = c.id;
+
+  // 基本信息
+  document.getElementById('caseTitle').value = c.title || '';
+  document.getElementById('caseDesc').value = c.description || '';
+  document.getElementById('caseContent').value = c.content || '';
+  document.getElementById('caseVideo').value = c.video_url || '';
+  document.getElementById('caseTags').value = c.tags || '';
+  document.getElementById('caseCover').value = c.cover_image || '';
+  document.getElementById('caseFileUrl').value = c.file_url || '';
+  document.getElementById('caseFileName').value = c.file_name || '';
+
+  var hint = document.getElementById('fileHint');
+  if (c.file_name) {
+    hint.textContent = '已有附件: ' + c.file_name;
+  } else {
+    hint.textContent = '支持 PDF/DOCX/PPT 等文档格式';
+  }
+
+  // 封面预览
+  rebuildCoverUpload(c.cover_image);
+
+  // 项目信息
+  var pi = safeParseJSON(c.project_info, {});
+  document.getElementById('piClient').value = pi.client_name || '';
+  document.getElementById('piArea').value = pi.area || '';
+  document.getElementById('piLayout').value = pi.layout_type || '';
+  document.getElementById('piRooms').value = pi.room_count || '';
+  document.getElementById('piYear').value = pi.year || '';
+  document.getElementById('piStyle').value = pi.style || '';
+
+  // 设计理念
+  var dc = safeParseJSON(c.design_concept, {});
+  document.getElementById('dcTitle').value = dc.title || '';
+  document.getElementById('dcText').value = dc.text || '';
+  document.getElementById('dcQuote').value = dc.quote || '';
+  document.getElementById('dcImage').value = dc.image || '';
+  rebuildTabImageUpload('dcImageUpload', dc.image, 'dcImageInput', 'handleTabImage(\'dcImageInput\',\'dcImage\',\'dcImageUpload\')');
+
+  // 户型布局
+  var fp = safeParseJSON(c.floor_plan, {});
+  document.getElementById('fpTitle').value = fp.title || '';
+  document.getElementById('fpSubtitle').value = fp.subtitle || '';
+  document.getElementById('fpDesc').value = fp.desc || '';
+  document.getElementById('fpImage').value = fp.image || '';
+  rebuildTabImageUpload('fpImageUpload', fp.image, 'fpImageInput', 'handleTabImage(\'fpImageInput\',\'fpImage\',\'fpImageUpload\')');
+  loadFloorAreas(fp.areas || []);
+
+  // 空间展示
+  loadSpaces(safeParseJSON(c.spaces, []));
+
+  // 材质色彩
+  loadMaterials(safeParseJSON(c.materials, []));
+
+  document.getElementById('btn-delete').style.display = 'inline-flex';
+  switchTab('basic', document.querySelector('[data-tab="basic"]'));
+  updatePreview();
+}
+
+function newCase() {
+  currentCaseId = null;
+  document.getElementById('caseSelect').value = '';
+
+  // 基本信息
+  document.getElementById('caseTitle').value = '';
+  document.getElementById('caseDesc').value = '';
+  document.getElementById('caseContent').value = '';
+  document.getElementById('caseVideo').value = '';
+  document.getElementById('caseTags').value = '';
+  document.getElementById('caseCover').value = '';
+  document.getElementById('caseFileUrl').value = '';
+  document.getElementById('caseFileName').value = '';
+  document.getElementById('fileHint').textContent = '支持 PDF/DOCX/PPT 等文档格式';
+
+  rebuildCoverUpload('');
+
+  // 项目信息
+  document.getElementById('piClient').value = '';
+  document.getElementById('piArea').value = '';
+  document.getElementById('piLayout').value = '';
+  document.getElementById('piRooms').value = '';
+  document.getElementById('piYear').value = '';
+  document.getElementById('piStyle').value = '';
+
+  // 设计理念
+  document.getElementById('dcTitle').value = '';
+  document.getElementById('dcText').value = '';
+  document.getElementById('dcQuote').value = '';
+  document.getElementById('dcImage').value = '';
+  rebuildTabImageUpload('dcImageUpload', '', 'dcImageInput', 'handleTabImage(\'dcImageInput\',\'dcImage\',\'dcImageUpload\')');
+
+  // 户型布局
+  document.getElementById('fpTitle').value = '';
+  document.getElementById('fpSubtitle').value = '';
+  document.getElementById('fpDesc').value = '';
+  document.getElementById('fpImage').value = '';
+  rebuildTabImageUpload('fpImageUpload', '', 'fpImageInput', 'handleTabImage(\'fpImageInput\',\'fpImage\',\'fpImageUpload\')');
+  loadFloorAreas([]);
+
+  // 空间展示
+  loadSpaces([]);
+
+  // 材质色彩
+  loadMaterials([]);
+
+  document.getElementById('btn-delete').style.display = 'none';
+  switchTab('basic', document.querySelector('[data-tab="basic"]'));
+  updatePreview();
+}
+
+/* ==========================================
+   Helper: safe JSON parse
+   ========================================== */
+function safeParseJSON(val, fallback) {
+  if (!val) return fallback;
+  if (typeof val === 'object') return val;
+  try { return JSON.parse(val); } catch (e) { return fallback; }
+}
+
+/* ==========================================
+   Cover Upload
+   ========================================== */
+function rebuildCoverUpload(url) {
+  var upload = document.getElementById('coverUpload');
+  if (url) {
+    upload.classList.add('has-image');
+    upload.innerHTML = '<img src="' + url + '" alt="封面">' +
+      '<input type="file" id="coverInput" accept="image/*" onchange="previewCover(this)">';
+  } else {
+    upload.classList.remove('has-image');
+    upload.innerHTML = '<span class="image-upload-icon">&#128247;</span>' +
+      '<span class="image-upload-text">点击上传封面图</span>' +
+      '<input type="file" id="coverInput" accept="image/*" onchange="previewCover(this)">';
+  }
+}
+
+function rebuildTabImageUpload(uploadId, url, inputId, onChangeStr) {
+  var upload = document.getElementById(uploadId);
+  if (url) {
+    upload.classList.add('has-image');
+    upload.innerHTML = '<img src="' + url + '" alt="图片">' +
+      '<input type="file" id="' + inputId + '" accept="image/*" onchange="' + onChangeStr + '">';
+  } else {
+    upload.classList.remove('has-image');
+    upload.innerHTML = '<span class="image-upload-icon">&#128247;</span>' +
+      '<span class="image-upload-text">点击上传图片</span>' +
+      '<input type="file" id="' + inputId + '" accept="image/*" onchange="' + onChangeStr + '">';
+  }
+}
+
+async function previewCover(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var upload = document.getElementById('coverUpload');
+  upload.classList.add('has-image');
+  upload.innerHTML = '<span style="color:var(--tool-text-3);position:relative;z-index:1">上传中...</span>' +
+    '<input type="file" id="coverInput" accept="image/*" onchange="previewCover(this)">';
+
+  var formData = new FormData();
+  formData.append('file', file);
+  try {
+    var res = await authFetch('/api/upload', { method: 'POST', body: formData });
+    if (!res) { rebuildCoverUpload(''); return; }
+    var data = await res.json();
+    if (data.success) {
+      document.getElementById('caseCover').value = data.url;
+      rebuildCoverUpload(data.url);
+      updatePreview();
+    } else {
+      rebuildCoverUpload('');
+      showToast('封面上传失败');
+    }
+  } catch (e) {
+    rebuildCoverUpload('');
+    showToast('封面上传失败');
+  }
+}
+
+async function handleFileSelect(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var hint = document.getElementById('fileHint');
+  hint.textContent = '上传中...';
+  var formData = new FormData();
+  formData.append('file', file);
+  try {
+    var res = await authFetch('/api/upload', { method: 'POST', body: formData });
+    if (!res) { hint.textContent = '上传失败'; return; }
+    var data = await res.json();
+    if (data.success) {
+      document.getElementById('caseFileUrl').value = data.url;
+      document.getElementById('caseFileName').value = data.name;
+      hint.textContent = '已选择: ' + data.name + ' (' + (data.size / 1024).toFixed(1) + ' KB)';
+      updatePreview();
+    } else {
+      hint.textContent = '上传失败';
+    }
+  } catch (e) {
+    hint.textContent = '上传失败';
+  }
+}
+
+async function handleTabImage(inputId, hiddenId, uploadId) {
+  var file = document.getElementById(inputId).files[0];
+  if (!file) return;
+  var upload = document.getElementById(uploadId);
+  upload.classList.add('has-image');
+  upload.innerHTML = '<span style="color:var(--tool-text-3);position:relative;z-index:1">上传中...</span>' +
+    '<input type="file" id="' + inputId + '" accept="image/*" onchange="handleTabImage(\'' + inputId + '\',\'' + hiddenId + '\',\'' + uploadId + '\')">';
+
+  var formData = new FormData();
+  formData.append('file', file);
+  try {
+    var res = await authFetch('/api/upload', { method: 'POST', body: formData });
+    if (!res) { rebuildTabImageUpload(uploadId, '', inputId, 'handleTabImage(\'' + inputId + '\',\'' + hiddenId + '\',\'' + uploadId + '\')'); return; }
+    var data = await res.json();
+    if (data.success) {
+      document.getElementById(hiddenId).value = data.url;
+      rebuildTabImageUpload(uploadId, data.url, inputId, 'handleTabImage(\'' + inputId + '\',\'' + hiddenId + '\',\'' + uploadId + '\')');
+      updatePreview();
+    } else {
+      rebuildTabImageUpload(uploadId, '', inputId, 'handleTabImage(\'' + inputId + '\',\'' + hiddenId + '\',\'' + uploadId + '\')');
+      showToast('图片上传失败');
+    }
+  } catch (e) {
+    rebuildTabImageUpload(uploadId, '', inputId, 'handleTabImage(\'' + inputId + '\',\'' + hiddenId + '\',\'' + uploadId + '\')');
+    showToast('图片上传失败');
+  }
+}
+
+/* ==========================================
+   Dynamic Forms: Floor Areas
+   ========================================== */
+var floorAreaCounter = 0;
+
+function initFloorAreaCounters() {
+  floorAreaCounter = 0;
+}
+
+function addFloorArea(name, size) {
+  name = name || '';
+  size = size || '';
+  floorAreaCounter++;
+  var id = 'fa_' + floorAreaCounter;
+  var html = '<div class="dynamic-item" id="' + id + '">' +
+    '<div class="dynamic-item-header">' +
+    '<span class="dynamic-item-title">区域 #' + floorAreaCounter + '</span>' +
+    '<button class="dynamic-item-remove" onclick="removeFloorArea(\'' + id + '\')">&times;</button>' +
+    '</div>' +
+    '<div class="dynamic-item-body">' +
+    '<div class="field-row">' +
+    '<div class="field-group"><label class="field-label">名称</label>' +
+    '<input class="field-input" value="' + escapeHtml(name) + '" oninput="updatePreview()" placeholder="如 客厅"></div>' +
+    '<div class="field-group"><label class="field-label">面积</label>' +
+    '<input class="field-input" value="' + escapeHtml(size) + '" oninput="updatePreview()" placeholder="如 28m²"></div>' +
+    '</div></div></div>';
+  document.getElementById('fpAreasList').insertAdjacentHTML('beforeend', html);
+  updatePreview();
+}
+
+function removeFloorArea(id) {
+  var el = document.getElementById(id);
+  if (el) el.remove();
+  updatePreview();
+}
+
+function loadFloorAreas(areas) {
+  initFloorAreaCounters();
+  document.getElementById('fpAreasList').innerHTML = '';
+  if (!areas || !areas.length) return;
+  areas.forEach(function(a) {
+    addFloorArea(a.name, a.size);
+  });
+}
+
+function collectFloorAreas() {
+  var items = document.querySelectorAll('#fpAreasList .dynamic-item');
+  var areas = [];
+  items.forEach(function(item) {
+    var inputs = item.querySelectorAll('input');
+    if (inputs.length >= 2) {
+      var n = inputs[0].value.trim();
+      var s = inputs[1].value.trim();
+      if (n || s) areas.push({ name: n, size: s });
+    }
+  });
+  return areas;
+}
+
+/* ==========================================
+   Dynamic Forms: Spaces
+   ========================================== */
+var spaceCounter = 0;
+
+function initSpaceCounters() { spaceCounter = 0; }
+
+function addSpace(data) {
+  data = data || {};
+  spaceCounter++;
+  var id = 'sp_' + spaceCounter;
+  var html = '<div class="dynamic-item" id="' + id + '">' +
+    '<div class="dynamic-item-header" onclick="toggleSpaceBody(\'' + id + '\')">' +
+    '<span class="dynamic-item-title">' + (data.name_zh || '空间 #' + spaceCounter) + '</span>' +
+    '<button class="dynamic-item-remove" onclick="event.stopPropagation();removeSpace(\'' + id + '\')">&times;</button>' +
+    '</div>' +
+    '<div class="dynamic-item-body" id="' + id + '_body">' +
+    '<div class="field-row">' +
+    '<div class="field-group"><label class="field-label">中文名</label>' +
+    '<input class="field-input sp-name-zh" id="' + id + '_namezh" value="' + escapeHtml(data.name_zh || '') + '" oninput="updateSpaceTitle(\'' + id + '\');updatePreview()" placeholder="如 客厅">' +
+    '<button class="ai-btn" onclick="aiPolish(\'' + id + '_namezh\',\'空间中文名\')">AI润色</button></div>' +
+    '<div class="field-group"><label class="field-label">英文名</label>' +
+    '<input class="field-input" value="' + escapeHtml(data.name_en || '') + '" oninput="updatePreview()" placeholder="如 Living Room"></div>' +
+    '</div>' +
+    '<div class="field-group"><label class="field-label">英文副标题</label>' +
+    '<input class="field-input" value="' + escapeHtml(data.subtitle_en || '') + '" oninput="updatePreview()" placeholder="如 Where life unfolds"></div>' +
+    '<div class="field-group"><label class="field-label">描述</label>' +
+    '<textarea class="field-textarea" id="' + id + '_desc" rows="3" oninput="updatePreview()" placeholder="空间描述">' + escapeHtml(data.desc || '') + '</textarea>' +
+    '<button class="ai-btn" onclick="aiPolish(\'' + id + '_desc\',\'空间描述\')">AI润色</button></div>' +
+    '<div class="field-group"><label class="field-label">标签（逗号分隔）</label>' +
+    '<input class="field-input" id="' + id + '_tags" value="' + escapeHtml((data.tags || []).join(',')) + '" oninput="updatePreview()" placeholder="如 开放式,极简">' +
+    '<button class="ai-btn" onclick="aiPolish(\'' + id + '_tags\',\'空间标签\')">AI润色</button></div>' +
+    '<div class="field-group"><label class="field-label">空间图片</label>' +
+    '<div class="image-upload" id="' + id + '_imgUpload">' + buildTabImgInner(data.images && data.images[0] ? data.images[0] : '', id) + '</div>' +
+    '<input type="hidden" id="' + id + '_img" value="' + escapeHtml(data.images && data.images[0] ? data.images[0] : '') + '"></div>' +
+    '</div></div>';
+  document.getElementById('spacesList').insertAdjacentHTML('beforeend', html);
+  updatePreview();
+}
+
+function buildTabImgInner(url, spaceId) {
+  if (url) {
+    return '<img src="' + url + '" alt="空间图"><input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
+  }
+  return '<span class="image-upload-icon">&#128247;</span><span class="image-upload-text">点击上传空间图</span><input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
+}
+
+async function handleSpaceImage(input, spaceId) {
+  var file = input.files[0];
+  if (!file) return;
+  var upload = document.getElementById(spaceId + '_imgUpload');
+  upload.classList.add('has-image');
+  upload.innerHTML = '<span style="color:var(--tool-text-3);position:relative;z-index:1">上传中...</span>' +
+    '<input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
+
+  var formData = new FormData();
+  formData.append('file', file);
+  try {
+    var res = await authFetch('/api/upload', { method: 'POST', body: formData });
+    if (!res) {
+      upload.classList.remove('has-image');
+      upload.innerHTML = '<span class="image-upload-icon">&#128247;</span><span class="image-upload-text">点击上传空间图</span><input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
+      return;
+    }
+    var data = await res.json();
+    if (data.success) {
+      document.getElementById(spaceId + '_img').value = data.url;
+      upload.classList.add('has-image');
+      upload.innerHTML = '<img src="' + data.url + '" alt="空间图"><input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
+      updatePreview();
+    } else {
+      upload.classList.remove('has-image');
+      upload.innerHTML = '<span class="image-upload-icon">&#128247;</span><span class="image-upload-text">点击上传空间图</span><input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
+      showToast('图片上传失败');
+    }
+  } catch (e) {
+    upload.classList.remove('has-image');
+    upload.innerHTML = '<span class="image-upload-icon">&#128247;</span><span class="image-upload-text">点击上传空间图</span><input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
+    showToast('图片上传失败');
+  }
+}
+
+function updateSpaceTitle(id) {
+  var item = document.getElementById(id);
+  if (!item) return;
+  var input = item.querySelector('.sp-name-zh');
+  var titleEl = item.querySelector('.dynamic-item-title');
+  if (input && titleEl) {
+    titleEl.textContent = input.value.trim() || ('空间 #' + id.replace('sp_', ''));
+  }
+}
+
+function removeSpace(id) {
+  var el = document.getElementById(id);
+  if (el) el.remove();
+  updatePreview();
+}
+
+function toggleSpaceBody(id) {
+  var body = document.getElementById(id + '_body');
+  if (body) {
+    body.style.display = body.style.display === 'none' ? '' : 'none';
+  }
+}
+
+function loadSpaces(spaces) {
+  initSpaceCounters();
+  document.getElementById('spacesList').innerHTML = '';
+  if (!spaces || !spaces.length) return;
+  spaces.forEach(function(s) { addSpace(s); });
+}
+
+function collectSpaces() {
+  var items = document.querySelectorAll('#spacesList .dynamic-item');
+  var spaces = [];
+  items.forEach(function(item) {
+    var inputs = item.querySelectorAll('input');
+    var textareas = item.querySelectorAll('textarea');
+    var id = item.id;
+    var nameZh = inputs.length > 0 ? inputs[0].value.trim() : '';
+    var nameEn = inputs.length > 1 ? inputs[1].value.trim() : '';
+    var subtitleEn = inputs.length > 2 ? inputs[2].value.trim() : '';
+    var tagsStr = inputs.length > 3 ? inputs[3].value.trim() : '';
+    var desc = textareas.length > 0 ? textareas[0].value.trim() : '';
+    var img = document.getElementById(id + '_img');
+    var imgUrl = img ? img.value : '';
+    var tags = tagsStr ? tagsStr.split(',').map(function(t) { return t.trim(); }).filter(Boolean) : [];
+    spaces.push({
+      name_zh: nameZh,
+      name_en: nameEn,
+      subtitle_en: subtitleEn,
+      desc: desc,
+      tags: tags,
+      images: imgUrl ? [imgUrl] : []
+    });
+  });
+  return spaces;
+}
+
+/* ==========================================
+   Dynamic Forms: Materials
+   ========================================== */
+var materialCounter = 0;
+
+function initMaterialCounters() { materialCounter = 0; }
+
+function addMaterial(data) {
+  data = data || {};
+  materialCounter++;
+  var id = 'mt_' + materialCounter;
+  var color = data.color_code || '';
+  var image = data.image || '';
+  var previewStyle = color ? 'background:' + color : 'background:#e0e0e0';
+  var html = '<div class="dynamic-item" id="' + id + '">' +
+    '<div class="dynamic-item-header">' +
+    '<span class="dynamic-item-title">材质 #' + materialCounter + '</span>' +
+    '<button class="dynamic-item-remove" onclick="removeMaterial(\'' + id + '\')">&times;</button>' +
+    '</div>' +
+    '<div class="dynamic-item-body">' +
+    '<div class="field-group"><label class="field-label">材质名称</label>' +
+    '<input class="field-input" id="' + id + '_name" value="' + escapeHtml(data.name || '') + '" oninput="updatePreview()" placeholder="如 橡木地板">' +
+    '<button class="ai-btn" onclick="aiPolish(\'' + id + '_name\',\'材质名称\')">AI润色</button></div>' +
+    '<div class="field-group"><label class="field-label">材质图片</label>' +
+    '<div class="image-upload" id="' + id + '_imgUpload">' + buildMatImgInner(image, id) + '</div>' +
+    '<input type="hidden" id="' + id + '_img" value="' + escapeHtml(image) + '"></div>' +
+    '<div class="field-group"><label class="field-label">颜色代码</label>' +
+    '<div class="color-preview-row">' +
+    '<div class="color-swatch" id="' + id + '_swatch" style="' + previewStyle + '"></div>' +
+    '<div class="color-input-wrap">' +
+    '<input class="field-input" id="' + id + '_color" value="' + escapeHtml(color) + '" oninput="updateMaterialColor(\'' + id + '\');updatePreview()" placeholder="#B8916A">' +
+    '</div></div></div>' +
+    '</div></div>';
+  document.getElementById('materialsList').insertAdjacentHTML('beforeend', html);
+  updatePreview();
+}
+
+function buildMatImgInner(url, matId) {
+  if (url) {
+    return '<img src="' + url + '" alt="材质图"><input type="file" accept="image/*" onchange="handleMaterialImage(this,\'' + matId + '\')">';
+  }
+  return '<span class="image-upload-icon">&#128247;</span><span class="image-upload-text">点击上传材质图</span><input type="file" accept="image/*" onchange="handleMaterialImage(this,\'' + matId + '\')">';
+}
+
+async function handleMaterialImage(input, matId) {
+  var file = input.files[0];
+  if (!file) return;
+  var upload = document.getElementById(matId + '_imgUpload');
+  upload.classList.add('has-image');
+  upload.innerHTML = '<span style="color:var(--tool-text-3);position:relative;z-index:1">上传中...</span>' +
+    '<input type="file" accept="image/*" onchange="handleMaterialImage(this,\'' + matId + '\')">';
+
+  var formData = new FormData();
+  formData.append('file', file);
+  try {
+    var res = await authFetch('/api/upload', { method: 'POST', body: formData });
+    if (!res) {
+      upload.classList.remove('has-image');
+      upload.innerHTML = '<span class="image-upload-icon">&#128247;</span><span class="image-upload-text">点击上传材质图</span><input type="file" accept="image/*" onchange="handleMaterialImage(this,\'' + matId + '\')">';
+      return;
+    }
+    var data = await res.json();
+    if (data.success) {
+      document.getElementById(matId + '_img').value = data.url;
+      upload.classList.add('has-image');
+      upload.innerHTML = '<img src="' + data.url + '" alt="材质图"><input type="file" accept="image/*" onchange="handleMaterialImage(this,\'' + matId + '\')">';
+      updatePreview();
+    } else {
+      upload.classList.remove('has-image');
+      upload.innerHTML = '<span class="image-upload-icon">&#128247;</span><span class="image-upload-text">点击上传材质图</span><input type="file" accept="image/*" onchange="handleMaterialImage(this,\'' + matId + '\')">';
+      showToast('图片上传失败');
+    }
+  } catch (e) {
+    upload.classList.remove('has-image');
+    upload.innerHTML = '<span class="image-upload-icon">&#128247;</span><span class="image-upload-text">点击上传材质图</span><input type="file" accept="image/*" onchange="handleMaterialImage(this,\'' + matId + '\')">';
+    showToast('图片上传失败');
+  }
+}
+
+function updateMaterialColor(id) {
+  var input = document.getElementById(id + '_color');
+  var swatch = document.getElementById(id + '_swatch');
+  if (input && swatch) {
+    var val = input.value.trim() || '#e0e0e0';
+    swatch.style.background = val;
+  }
+}
+
+function removeMaterial(id) {
+  var el = document.getElementById(id);
+  if (el) el.remove();
+  updatePreview();
+}
+
+function loadMaterials(materials) {
+  initMaterialCounters();
+  document.getElementById('materialsList').innerHTML = '';
+  if (!materials || !materials.length) return;
+  materials.forEach(function(m) { addMaterial(m); });
+}
+
+function collectMaterials() {
+  var items = document.querySelectorAll('#materialsList .dynamic-item');
+  var materials = [];
+  items.forEach(function(item) {
+    var id = item.id;
+    var nameEl = document.getElementById(id + '_name');
+    var colorEl = document.getElementById(id + '_color');
+    var imgEl = document.getElementById(id + '_img');
+    var name = nameEl ? nameEl.value.trim() : '';
+    var color = colorEl ? colorEl.value.trim() : '';
+    var image = imgEl ? imgEl.value : '';
+    if (name || color || image) materials.push({ name: name, color_code: color, image: image });
+  });
+  return materials;
+}
+
+/* ==========================================
+   Escape HTML
+   ========================================== */
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ==========================================
+   Save & Delete
+   ========================================== */
+async function saveCase() {
+  var title = document.getElementById('caseTitle').value.trim();
+  if (!title) {
+    showToast('请输入案例标题');
+    return;
+  }
+
+  var btn1 = document.getElementById('btn-save');
+  var btn2 = document.getElementById('btn-save-bottom');
+  btn1.disabled = true; btn2.disabled = true;
+  btn1.textContent = '保存中...'; btn2.textContent = '保存中...';
+
+  var projectInfo = {
+    client_name: document.getElementById('piClient').value.trim(),
+    area: document.getElementById('piArea').value.trim(),
+    layout_type: document.getElementById('piLayout').value.trim(),
+    room_count: document.getElementById('piRooms').value.trim(),
+    year: document.getElementById('piYear').value.trim(),
+    style: document.getElementById('piStyle').value.trim()
+  };
+
+  var designConcept = {
+    title: document.getElementById('dcTitle').value,
+    text: document.getElementById('dcText').value,
+    quote: document.getElementById('dcQuote').value,
+    image: document.getElementById('dcImage').value
+  };
+
+  var floorPlan = {
+    title: document.getElementById('fpTitle').value.trim(),
+    subtitle: document.getElementById('fpSubtitle').value.trim(),
+    desc: document.getElementById('fpDesc').value,
+    image: document.getElementById('fpImage').value,
+    areas: collectFloorAreas()
+  };
+
+  var data = {
+    title: title,
+    description: document.getElementById('caseDesc').value,
+    content: document.getElementById('caseContent').value,
+    cover_image: document.getElementById('caseCover').value,
+    video_url: document.getElementById('caseVideo').value,
+    file_url: document.getElementById('caseFileUrl').value,
+    file_name: document.getElementById('caseFileName').value,
+    tags: document.getElementById('caseTags').value,
+    project_info: projectInfo,
+    design_concept: designConcept,
+    floor_plan: floorPlan,
+    spaces: collectSpaces(),
+    materials: collectMaterials()
+  };
+
+  try {
+    var url = currentCaseId ? '/api/cases/' + currentCaseId : '/api/cases';
+    var method = currentCaseId ? 'PUT' : 'POST';
+    var res = await authFetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res) return;
+    if (res.ok) {
+      var saved = await res.json();
+      showToast(currentCaseId ? '案例已更新' : '案例已创建');
+      await loadCases();
+      var newId = saved.id || (saved.data && saved.data.id);
+      if (newId) {
+        document.getElementById('caseSelect').value = newId;
+        currentCaseId = newId;
+        document.getElementById('btn-delete').style.display = 'inline-flex';
+      } else if (!currentCaseId) {
+        var found = currentCases.find(function(c) { return c.title === title; });
+        if (found) {
+          document.getElementById('caseSelect').value = found.id;
+          currentCaseId = found.id;
+          document.getElementById('btn-delete').style.display = 'inline-flex';
+        }
+      }
+    } else {
+      var err = await res.json();
+      showToast(err.error || '操作失败');
+    }
+  } catch (err) {
+    showToast('网络错误');
+  }
+  btn1.disabled = false; btn2.disabled = false;
+  btn1.textContent = '保存'; btn2.textContent = '保存案例';
+}
+
+async function deleteCurrentCase() {
+  if (!currentCaseId) return;
+  if (!confirm('确定删除这个案例吗？此操作不可恢复。')) return;
+  var res = await authFetch('/api/cases/' + currentCaseId, { method: 'DELETE' });
+  if (res && res.ok) {
+    showToast('案例已删除');
+    await loadCases();
+    newCase();
+  } else {
+    showToast('删除失败');
+  }
+}
+
+/* ==========================================
+   Preview Render
+   ========================================== */
+function parseBilibiliUrl(url) {
+  if (!url) return null;
+  var match = url.match(/BV[a-zA-Z0-9]+/);
+  if (match) return 'https://player.bilibili.com/player.html?bvid=' + match[0] + '&page=1&high_quality=1&autoplay=0';
+  match = url.match(/av(\d+)/);
+  if (match) return 'https://player.bilibili.com/player.html?aid=' + match[1] + '&page=1&high_quality=1&autoplay=0';
+  return null;
+}
+
+function formatContent(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(.+)$/gm, function(m) { return m.startsWith('<') ? m : '<p>' + m + '</p>'; });
+}
+
+function extractContentImages(content) {
+  if (!content) return [];
+  var imgs = [];
+  var re = /!\[[^\]]*\]\(([^)]+)\)/g;
+  var m;
+  while ((m = re.exec(content)) !== null) {
+    imgs.push(m[1]);
+  }
+  return imgs;
+}
+
+function updatePreview() {
+  var container = document.getElementById('preview-content');
+  var title = document.getElementById('caseTitle').value.trim();
+  var desc = document.getElementById('caseDesc').value.trim();
+  var cover = document.getElementById('caseCover').value;
+  var video = document.getElementById('caseVideo').value.trim();
+  var content = document.getElementById('caseContent').value.trim();
+  var tags = document.getElementById('caseTags').value.trim();
+  var fileUrl = document.getElementById('caseFileUrl').value;
+  var fileName = document.getElementById('caseFileName').value;
+
+  var bilibiliUrl = parseBilibiliUrl(video);
+  var tagsArr = tags ? tags.split(',').filter(function(t) { return t.trim(); }) : [];
+  var contentImages = extractContentImages(content);
+
+  // Project info
+  var piClient = document.getElementById('piClient').value.trim();
+  var piArea = document.getElementById('piArea').value.trim();
+  var piLayout = document.getElementById('piLayout').value.trim();
+  var piRooms = document.getElementById('piRooms').value.trim();
+  var piYear = document.getElementById('piYear').value.trim();
+  var piStyle = document.getElementById('piStyle').value.trim();
+
+  // Design concept
+  var dcTitle = document.getElementById('dcTitle').value;
+  var dcText = document.getElementById('dcText').value;
+  var dcQuote = document.getElementById('dcQuote').value;
+  var dcImage = document.getElementById('dcImage').value;
+
+  // Floor plan
+  var fpTitle = document.getElementById('fpTitle').value.trim();
+  var fpSubtitle = document.getElementById('fpSubtitle').value.trim();
+  var fpDesc = document.getElementById('fpDesc').value;
+  var fpImage = document.getElementById('fpImage').value;
+  var fpAreas = collectFloorAreas();
+
+  // Spaces
+  var spaces = collectSpaces();
+
+  // Materials
+  var materials = collectMaterials();
+
+  var hasHero = !!(cover || title);
+  var hasOverview = !!(tagsArr.length > 0 || bilibiliUrl);
+  var hasProjectInfo = !!(piClient || piArea || piLayout || piRooms || piYear || piStyle);
+  var hasContent = !!content;
+  var hasGallery = contentImages.length > 0;
+  var hasFile = !!(fileUrl);
+  var hasConcept = !!(dcTitle || dcText || dcQuote || dcImage);
+  var hasFP = !!(fpTitle || fpSubtitle || fpDesc || fpImage || fpAreas.length > 0);
+  var hasSpaces = spaces.length > 0 && spaces.some(function(s) { return s.name_zh || s.desc || (s.images && s.images.length); });
+  var hasMaterials = materials.length > 0;
+
+  var anything = hasHero || hasOverview || hasProjectInfo || hasContent || hasGallery || hasFile || hasConcept || hasFP || hasSpaces || hasMaterials;
+
+  if (!anything) {
+    container.innerHTML = '<div class="preview-empty">选择案例或填写表单后，右侧实时预览</div>';
+    return;
+  }
+
+  var html = '';
+
+  // Hero
+  if (hasHero) {
+    html += '<div class="preview-hero">';
+    if (cover) {
+      html += '<img class="preview-hero-img" src="' + cover + '" alt="' + title + '">';
+    } else {
+      html += '<div class="preview-hero-img" style="background:linear-gradient(135deg,#2c2c2c 0%,#4a4a4a 100%)"></div>';
+    }
+    html += '<div class="preview-hero-overlay"></div>';
+    html += '<div class="preview-hero-content">';
+    html += '<span class="preview-hero-tag">Case Study</span>';
+    html += '<h1 class="preview-hero-title">' + (title || '未命名案例') + '</h1>';
+    if (desc) html += '<p class="preview-hero-subtitle">' + desc + '</p>';
+    html += '</div></div>';
+  }
+
+  // Project Info Grid (case.html overview style)
+  if (hasProjectInfo) {
+    var piItems = [];
+    if (piClient) piItems.push({ label: '客户', value: piClient });
+    if (piArea) piItems.push({ label: '面积', value: piArea });
+    if (piLayout) piItems.push({ label: '户型', value: piLayout });
+    if (piRooms) piItems.push({ label: '空间', value: piRooms });
+    if (piYear) piItems.push({ label: '年份', value: piYear });
+    if (piStyle) piItems.push({ label: '风格', value: piStyle });
+    var cols = Math.min(piItems.length, 3);
+    html += '<div class="preview-project-info" style="grid-template-columns:repeat(' + cols + ',1fr)">';
+    piItems.forEach(function(item) {
+      html += '<div class="preview-project-item">';
+      html += '<div class="preview-project-value">' + item.value + '</div>';
+      html += '<div class="preview-project-label">' + item.label + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Overview / Tags
+  if (hasOverview) {
+    html += '<div class="preview-overview"><div class="preview-tags">';
+    tagsArr.forEach(function(t) {
+      html += '<span class="preview-tag">' + t.trim() + '</span>';
+    });
+    if (bilibiliUrl) {
+      html += '<span class="preview-video-btn"><span class="preview-video-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>含视频</span>';
+    }
+    html += '</div></div>';
+  }
+
+  // Content
+  if (hasContent) {
+    html += '<div class="preview-section">';
+    html += '<div class="preview-section-label">Design Details</div>';
+    html += '<h2 class="preview-section-title">设计详情</h2>';
+    html += '<div class="preview-content-text">' + formatContent(content) + '</div>';
+    html += '</div>';
+  }
+
+  // Gallery
+  if (hasGallery) {
+    contentImages.forEach(function(url, i) {
+      var num = (i + 1 < 10 ? '0' : '') + (i + 1);
+      var total = (contentImages.length < 10 ? '0' : '') + contentImages.length;
+      html += '<div class="preview-gallery-img-wrap">';
+      html += '<img src="' + url.trim() + '" alt="图片 ' + (i + 1) + '" loading="lazy">';
+      html += '<div class="preview-gallery-label">';
+      html += '<span class="preview-gallery-num">' + num + '</span>';
+      html += '<span class="preview-gallery-name">IMAGE ' + num + ' / ' + total + '</span>';
+      html += '</div></div>';
+    });
+  }
+
+  // Design Concept
+  if (hasConcept) {
+    html += '<div class="preview-section" style="background:var(--color-white);border-top:1px solid var(--color-line)">';
+    html += '<div class="preview-section-label">Design Concept</div>';
+    html += '<h2 class="preview-section-title">' + (dcTitle || '设计理念') + '</h2>';
+    html += '<div class="preview-concept" style="' + (dcImage ? '' : 'grid-template-columns:1fr') + '">';
+    html += '<div class="preview-concept-text">';
+    if (dcText) {
+      var dcParagraphs = dcText.split('\n\n').filter(function(p) { return p.trim(); });
+      dcParagraphs.forEach(function(p) { html += '<p>' + p.trim().replace(/\n/g, '<br>') + '</p>'; });
+    }
+    if (dcQuote) {
+      html += '<div class="preview-concept-quote">' + dcQuote + '</div>';
+    }
+    html += '</div>';
+    if (dcImage) {
+      html += '<div class="preview-concept-image"><img src="' + dcImage + '" alt="理念配图"></div>';
+    }
+    html += '</div></div>';
+  }
+
+  // Floor Plan
+  if (hasFP) {
+    html += '<div class="preview-floorplan">';
+    html += '<div class="preview-section-label">Floor Plan</div>';
+    html += '<div class="preview-floorplan-inner">';
+    if (fpImage) {
+      html += '<div class="preview-floorplan-image"><img src="' + fpImage + '" alt="户型图"></div>';
+    }
+    html += '<div class="preview-floorplan-info">';
+    html += '<h3>' + (fpTitle || '户型布局') + '</h3>';
+    if (fpSubtitle) html += '<p style="color:var(--color-text-light);margin-top:-12px;margin-bottom:16px">' + fpSubtitle + '</p>';
+    if (fpDesc) html += '<p>' + fpDesc + '</p>';
+    if (fpAreas.length > 0) {
+      html += '<div class="preview-floorplan-areas">';
+      fpAreas.forEach(function(a) {
+        html += '<div class="preview-floorplan-area"><span class="preview-area-name">' + (a.name || '') + '</span><span class="preview-area-size">' + (a.size || '') + '</span></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div></div></div>';
+  }
+
+  // Spaces
+  spaces.forEach(function(s, i) {
+    if (!s.name_zh && !s.desc && (!s.images || !s.images.length)) return;
+    var num = (i + 1 < 10 ? '0' : '') + (i + 1);
+    html += '<div class="preview-room-section">';
+    if (s.images && s.images[0]) {
+      html += '<div class="preview-room-image-full">';
+      html += '<img src="' + s.images[0] + '" alt="' + (s.name_zh || '') + '">';
+      html += '<div class="preview-room-floating-label">';
+      html += '<span class="preview-room-floating-num">' + num + '</span>';
+      html += '<span class="preview-room-floating-name">' + (s.name_en || '') + '</span>';
+      html += '</div></div>';
+    }
+    html += '<div class="preview-room-info">';
+    html += '<div class="preview-room-number">' + num + '</div>';
+    html += '<div class="preview-room-label">Space</div>';
+    html += '<h3 class="preview-room-title">' + (s.name_zh || '') + '</h3>';
+    if (s.subtitle_en) html += '<div class="preview-room-title-en">' + s.subtitle_en + '</div>';
+    if (s.desc) html += '<div class="preview-room-desc">' + s.desc + '</div>';
+    if (s.tags && s.tags.length) {
+      html += '<div class="preview-room-tags">';
+      s.tags.forEach(function(t) { html += '<span class="preview-room-tag">' + t + '</span>'; });
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+
+  // Materials
+  if (hasMaterials) {
+    html += '<div class="preview-section" style="background:var(--color-white);border-top:1px solid var(--color-line)">';
+    html += '<div class="preview-section-label">Materials & Colors</div>';
+    html += '<h2 class="preview-section-title">材质色彩</h2>';
+    html += '<div class="preview-materials-grid">';
+    materials.forEach(function(m) {
+      var swatchBg = m.color_code || '#e0e0e0';
+      html += '<div class="preview-material-card">';
+      if (m.image) {
+        html += '<div class="preview-material-swatch" style="background-image:url(' + m.image + ');background-size:cover;background-position:center"></div>';
+      } else {
+        html += '<div class="preview-material-swatch" style="background:' + swatchBg + '"></div>';
+      }
+      html += '<div class="preview-material-name">' + (m.name || '') + '</div>';
+      if (m.color_code) html += '<div class="preview-material-code">' + m.color_code + '</div>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+  }
+
+  // CTA Download
+  if (hasFile) {
+    html += '<div class="preview-cta">';
+    html += '<span class="preview-cta-btn">';
+    html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">';
+    html += '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>';
+    html += '<polyline points="7 10 12 15 17 10"/>';
+    html += '<line x1="12" y1="15" x2="12" y2="3"/>';
+    html += '</svg>';
+    html += '下载：' + (fileName || '附件');
+    html += '</span></div>';
+  }
+
+  container.innerHTML = html;
+}
+
+/* ==========================================
+   Device Toggle
+   ========================================== */
+function setDevice(device, btn) {
+  var container = document.getElementById('preview-container');
+  container.className = 'device-' + device;
+  document.querySelectorAll('.device-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+
+/* ==========================================
+   Init
+   ========================================== */
+loadCases();
+
+/* ==========================================
+   AI Polish
+   ========================================== */
+async function aiPolish(fieldId, fieldLabel) {
+  var el = document.getElementById(fieldId);
+  if (!el) return;
+  var currentText = el.value || '';
+
+  // 寻找最近的 .ai-btn
+  var btn = el.parentElement.querySelector('.ai-btn');
+  if (!btn) {
+    // 对于 field-row 内的字段，按钮在父级 .field-group 内
+    var fg = el.closest('.field-group');
+    if (fg) btn = fg.querySelector('.ai-btn');
+  }
+  if (!btn) return;
+
+  var coverUrl = document.getElementById('caseCover').value || '';
+
+  // Loading 态
+  var origText = btn.textContent;
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.textContent = '润色中...';
+
+  try {
+    var res = await fetch('/api/ai-polish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: currentText,
+        coverImage: coverUrl || undefined,
+        fieldLabel: fieldLabel
+      })
+    });
+    var data = await res.json();
+    if (data.success && data.text) {
+      el.value = data.text;
+      if (typeof updatePreview === 'function') updatePreview();
+      // 如果是动态空间的中文名，更新标题
+      if (fieldId.indexOf('_namezh') !== -1) {
+        var spaceId = fieldId.replace('_namezh', '');
+        if (typeof updateSpaceTitle === 'function') updateSpaceTitle(spaceId);
+      }
+      showToast(fieldLabel + ' 润色完成');
+    } else {
+      showToast('AI润色失败: ' + (data.error || '未知错误'));
+    }
+  } catch (e) {
+    showToast('AI润色请求失败: ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.classList.remove('loading');
+  btn.textContent = origText;
+}
+</script>
+</body>
+</html>

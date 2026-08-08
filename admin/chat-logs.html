@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>聊天记录管理 - 青松设计 CMS</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #1D1D1F;
+  --surface: #2C2C2E;
+  --surface-hover: #3A3A3C;
+  --border: #3A3A3C;
+  --text: #E5E5E7;
+  --text-2: #A1A1A6;
+  --text-3: #636366;
+  --accent: #C9A96E;
+  --accent-dim: rgba(201, 169, 110, 0.12);
+  --red: #FF453A;
+  --orange: #FF9F0A;
+  --green: #30D158;
+  --gray: #636366;
+  --radius: 10px;
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: 260px; background: #1D1D1F; color: #fff;
+  padding: 24px 0; z-index: 100;
+}
+.sidebar-header {
+  padding: 0 24px 24px; border-bottom: 1px solid #333;
+}
+.sidebar-header h2 { font-size: 18px; color: #C9A96E; }
+.sidebar-header p { font-size: 12px; color: #888; margin-top: 4px; }
+.sidebar-nav { padding: 16px 0; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 24px; color: #ccc; text-decoration: none;
+  font-size: 14px; transition: all 0.2s;
+}
+.sidebar-nav a:hover, .sidebar-nav a.active {
+  background: #2C2C2E; color: #C9A96E;
+}
+.sidebar-nav a .icon { font-size: 18px; width: 22px; text-align: center; }
+.logout-btn {
+  position: absolute; bottom: 24px; left: 24px; right: 24px;
+  padding: 10px; text-align: center;
+  background: #2C2C2E; color: #999; border: 1px solid #444;
+  border-radius: 8px; cursor: pointer; font-size: 13px;
+  transition: all 0.2s;
+}
+.logout-btn:hover { color: #ff4d4d; border-color: #ff4d4d; }
+
+/* Main */
+.main {
+  margin-left: 260px; padding: 32px 24px;
+}
+
+/* Container */
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.page-sub {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-bottom: 28px;
+}
+
+/* Stats */
+.stats-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+}
+
+.stat-value { font-size: 28px; font-weight: 600; color: var(--accent); }
+.stat-label { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+
+/* List */
+.log-list {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.log-item {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+  cursor: pointer;
+}
+
+.log-item:last-child { border-bottom: none; }
+.log-item:hover { background: var(--surface-hover); }
+
+.log-item-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  gap: 16px;
+}
+
+.log-index {
+  font-size: 12px;
+  color: var(--text-3);
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.log-location {
+  font-size: 13px;
+  color: var(--text-2);
+  width: 160px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-summary {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.badge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.badge-high { background: rgba(255,69,58,0.15); color: var(--red); }
+.badge-mid { background: rgba(255,159,10,0.15); color: var(--orange); }
+.badge-low { background: rgba(99,99,102,0.2); color: var(--gray); }
+
+.log-time {
+  font-size: 12px;
+  color: var(--text-3);
+  width: 140px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.log-arrow {
+  font-size: 14px;
+  color: var(--text-3);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.log-item.expanded .log-arrow { transform: rotate(180deg); }
+
+/* Detail Panel */
+.log-detail {
+  display: none;
+  padding: 0 20px 20px 68px;
+  border-top: 1px solid var(--border);
+}
+
+.log-item.expanded .log-detail { display: block; }
+
+.detail-section { margin-bottom: 20px; }
+
+.detail-section h4 {
+  font-size: 12px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.info-item {
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+
+.info-label { font-size: 11px; color: var(--text-3); margin-bottom: 3px; }
+.info-value { font-size: 13px; color: var(--text); }
+
+.chat-transcript {
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 16px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.chat-msg {
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.chat-msg .role-label {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.chat-msg.user .role-label { color: #5E9EFF; }
+.chat-msg.assistant .role-label { color: var(--accent); }
+
+.chat-msg .msg-content {
+  font-size: 13px;
+  color: var(--text-2);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-top: 24px;
+}
+
+.pagination button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+.pagination .page-info { font-size: 13px; color: var(--text-3); padding: 0 12px; }
+
+/* Empty */
+.empty {
+  text-align: center;
+  padding: 64px 20px;
+  color: var(--text-3);
+}
+.empty .icon { font-size: 48px; margin-bottom: 12px; }
+.empty p { font-size: 14px; }
+
+/* Loading */
+.loading-spin {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 100;
+  transition: transform 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+.toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h2>青松设计</h2>
+    <p>CMS 管理后台</p>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="dashboard.html"><span class="icon">📊</span> 仪表盘</a>
+    <a href="cases.html"><span class="icon">🎨</span> 案例管理</a>
+    <a href="blog.html"><span class="icon">📝</span> 博客管理</a>
+    <a href="chat-logs.html" class="active"><span class="icon">💬</span> 聊天记录</a>
+    <a href="/" target="_blank"><span class="icon">🌐</span> 访问网站</a>
+  </nav>
+  <button class="logout-btn" onclick="logout()">退出登录</button>
+</div>
+<div class="main">
+<div class="container">
+  <h1 class="page-title">聊天记录管理</h1>
+  <p class="page-sub">查看访客聊天记录、AI 智能总结与地理位置</p>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card"><div class="stat-value" id="statTotal">-</div><div class="stat-label">总记录数</div></div>
+    <div class="stat-card"><div class="stat-value" id="statToday">-</div><div class="stat-label">今日新增</div></div>
+    <div class="stat-card"><div class="stat-value" id="statHigh">-</div><div class="stat-label">高意向客户</div></div>
+  </div>
+
+  <div class="log-list" id="logList">
+    <div class="loading-spin">加载中...</div>
+  </div>
+
+  <div class="pagination" id="pagination" style="display:none;"></div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const token = localStorage.getItem('qs_token');
+if (!token) { window.location.href = '/admin/login.html'; }
+
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let totalRecords = 0;
+let toastTimer = null;
+
+function showToast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { el.classList.remove('show'); }, 2500);
+}
+
+async function authFetch(url) {
+  var res = await fetch(url, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  if (res.status === 401) { logout(); return null; }
+  return res;
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = '/admin/login.html';
+}
+
+function formatTime(iso) {
+  if (!iso) return '-';
+  var d = new Date(iso);
+  var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+function getIntentBadge(level) {
+  if (!level || level === '未知') return '<span class="badge badge-low">未识别</span>';
+  if (level === '高') return '<span class="badge badge-high">高意向</span>';
+  if (level === '中') return '<span class="badge badge-mid">中意向</span>';
+  return '<span class="badge badge-low">低意向</span>';
+}
+
+async function loadList(page) {
+  var listEl = document.getElementById('logList');
+  listEl.innerHTML = '<div class="loading-spin">加载中...</div>';
+
+  var offset = (page - 1) * PAGE_SIZE;
+  var res = await authFetch('/api/chat/logs?limit=' + PAGE_SIZE + '&offset=' + offset);
+  if (!res) return;
+
+  var data = await res.json();
+  if (data.error) { listEl.innerHTML = '<div class="empty"><p>' + data.error + '</p></div>'; return; }
+
+  totalRecords = data.total;
+  var logs = data.logs || [];
+
+  // Stats
+  document.getElementById('statTotal').textContent = totalRecords;
+  var today = new Date().toISOString().slice(0,10);
+  var todayCount = logs.filter(function(l) { return l.created_at && l.created_at.startsWith(today); }).length;
+  document.getElementById('statToday').textContent = todayCount;
+
+  var allLogs = logs;
+  // For high intent count, we need all data. Let's do a quick query
+  authFetch('/api/chat/logs?limit=200&offset=0').then(function(r) {
+    if (!r) return;
+    return r.json();
+  }).then(function(d) {
+    if (!d || !d.logs) return;
+    var highCount = 0;
+    d.logs.forEach(function(l) {
+      if (l.valuable_info && l.valuable_info.intent_level === '高') highCount++;
+    });
+    document.getElementById('statHigh').textContent = highCount;
+  });
+
+  if (logs.length === 0) {
+    listEl.innerHTML = '<div class="empty"><div class="icon">💬</div><p>暂无聊天记录</p></div>';
+    document.getElementById('pagination').style.display = 'none';
+    return;
+  }
+
+  var html = '';
+  logs.forEach(function(log, idx) {
+    var vi = log.valuable_info || {};
+    var location = log.visitor_location || '未知';
+    var summary = log.summary || '暂无总结';
+    var intent = vi.intent_level || '未知';
+
+    html += '<div class="log-item" data-id="' + log.id + '" onclick="toggleDetail(this, ' + log.id + ')">';
+    html += '<div class="log-item-header">';
+    html += '<div class="log-index">#' + (offset + idx + 1) + '</div>';
+    html += '<div class="log-location" title="' + location + '">' + location + '</div>';
+    html += '<div class="log-summary" title="' + summary + '">' + summary + '</div>';
+    html += '<div class="log-meta">' + getIntentBadge(intent) + '</div>';
+    html += '<div class="log-time">' + formatTime(log.created_at) + '</div>';
+    html += '<div class="log-arrow">▼</div>';
+    html += '</div>';
+    html += '<div class="log-detail" id="detail-' + log.id + '"><div class="loading-spin">加载详情...</div></div>';
+    html += '</div>';
+  });
+
+  listEl.innerHTML = html;
+  renderPagination(page);
+}
+
+async function toggleDetail(el, id) {
+  var detailEl = document.getElementById('detail-' + id);
+
+  if (el.classList.contains('expanded')) {
+    el.classList.remove('expanded');
+    return;
+  }
+
+  // 关闭其他展开项
+  document.querySelectorAll('.log-item.expanded').forEach(function(item) {
+    item.classList.remove('expanded');
+  });
+
+  el.classList.add('expanded');
+
+  // 如果已加载过详情，不再重复请求
+  if (detailEl.dataset.loaded === '1') return;
+
+  var res = await authFetch('/api/chat/logs?id=' + id);
+  if (!res) return;
+  var data = await res.json();
+
+  var vi = data.valuable_info || {};
+  var messages = data.messages || [];
+
+  var html = '';
+
+  // 有价值信息
+  html += '<div class="detail-section"><h4>AI 分析摘要</h4>';
+  html += '<div class="info-grid">';
+  html += '<div class="info-item"><div class="info-label">意向程度</div><div class="info-value">' + getIntentBadge(vi.intent_level) + '</div></div>';
+  html += '<div class="info-item"><div class="info-label">关注类型</div><div class="info-value">' + (vi.focus || '-') + '</div></div>';
+  html += '<div class="info-item"><div class="info-label">偏好风格</div><div class="info-value">' + (vi.style_preference || '-') + '</div></div>';
+  html += '<div class="info-item"><div class="info-label">预算信息</div><div class="info-value">' + (vi.budget || '-') + '</div></div>';
+  html += '<div class="info-item"><div class="info-label">联系方式</div><div class="info-value">' + (vi.contact || '-') + '</div></div>';
+  html += '<div class="info-item"><div class="info-label">其他信息</div><div class="info-value">' + (vi.key_points || '-') + '</div></div>';
+  html += '</div></div>';
+
+  if (data.summary) {
+    html += '<div class="detail-section"><h4>对话总结</h4>';
+    html += '<div style="font-size:13px;color:var(--text-2);line-height:1.6;">' + data.summary + '</div>';
+    html += '</div>';
+  }
+
+  // 聊天记录
+  html += '<div class="detail-section"><h4>完整对话 (' + messages.length + ' 条消息)</h4>';
+  html += '<div class="chat-transcript">';
+  messages.forEach(function(msg) {
+    if (msg.role === 'system') return;
+    var roleClass = msg.role === 'user' ? 'user' : 'assistant';
+    var roleName = msg.role === 'user' ? '客户' : '赛赛';
+    html += '<div class="chat-msg ' + roleClass + '">';
+    html += '<div class="role-label">' + roleName + '</div>';
+    html += '<div class="msg-content">' + (msg.content || '') + '</div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  // 元信息
+  html += '<div class="detail-section" style="font-size:12px;color:var(--text-3);">';
+  html += '会话ID: ' + data.session_id + ' &nbsp;|&nbsp; ';
+  html += '访客IP: ' + (data.visitor_ip || '-') + ' &nbsp;|&nbsp; ';
+  html += '时间: ' + formatTime(data.created_at);
+  html += '</div>';
+
+  detailEl.innerHTML = html;
+  detailEl.dataset.loaded = '1';
+}
+
+function renderPagination(page) {
+  var totalPages = Math.ceil(totalRecords / PAGE_SIZE);
+  if (totalPages <= 1) { document.getElementById('pagination').style.display = 'none'; return; }
+
+  var pagEl = document.getElementById('pagination');
+  pagEl.style.display = 'flex';
+
+  var html = '';
+  html += '<button ' + (page <= 1 ? 'disabled' : '') + ' onclick="goPage(' + (page-1) + ')">上一页</button>';
+  html += '<span class="page-info">第 ' + page + ' / ' + totalPages + ' 页（共 ' + totalRecords + ' 条）</span>';
+  html += '<button ' + (page >= totalPages ? 'disabled' : '') + ' onclick="goPage(' + (page+1) + ')">下一页</button>';
+  pagEl.innerHTML = html;
+}
+
+function goPage(p) {
+  currentPage = p;
+  loadList(p);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+loadList(1);
+</script>
+</body>
+</html>

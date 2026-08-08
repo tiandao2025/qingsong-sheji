@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>案例详情 - 青松设计</title>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ========================================
+   青松设计 · 案例详情页
+   Modern Minimalist Case Detail
+   ======================================== */
+
+/* ===== CSS Variables ===== */
+:root {
+  --color-bg: #FAFAF8;
+  --color-bg-alt: #F2F0EC;
+  --color-text: #1A1A1A;
+  --color-text-secondary: #6B6B6B;
+  --color-text-light: #999999;
+  --color-accent: #B8916A;
+  --color-accent-light: #D4B896;
+  --color-line: #E5E2DC;
+  --color-white: #FFFFFF;
+
+  --font-serif: 'Noto Serif SC', 'Songti SC', serif;
+  --font-sans: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --max-width: 1400px;
+}
+
+/* ===== Reset ===== */
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; font-size:16px; }
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+img { display:block; max-width:100%; height:auto; }
+a { color:inherit; text-decoration:none; }
+
+/* ===== Loading Screen ===== */
+#loader {
+  position:fixed; inset:0; background:var(--color-bg); z-index:9999;
+  display:flex; align-items:center; justify-content:center; flex-direction:column; gap:24px;
+  transition: opacity 0.8s var(--ease-out), visibility 0.8s var(--ease-out);
+}
+#loader.hidden { opacity:0; visibility:hidden; }
+.loader-text {
+  font-family:var(--font-serif); font-size:1.5rem; letter-spacing:0.3em;
+  color:var(--color-text); opacity:0;
+  animation: fadeInUp 1s var(--ease-out) 0.2s forwards;
+}
+.loader-bar {
+  width:120px; height:1px; background:var(--color-line); position:relative; overflow:hidden;
+}
+.loader-bar::after {
+  content:''; position:absolute; left:0; top:0; height:100%; width:100%;
+  background:var(--color-accent); transform:translateX(-100%);
+  animation: loaderSlide 1.5s var(--ease-in-out) infinite;
+}
+@keyframes loaderSlide {
+  0% { transform:translateX(-100%); }
+  100% { transform:translateX(100%); }
+}
+@keyframes fadeInUp {
+  from { opacity:0; transform:translateY(20px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+/* ===== Navigation ===== */
+.nav {
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  padding:20px 48px; display:flex; align-items:center; justify-content:space-between;
+  transition: all 0.4s var(--ease-out);
+  background: rgba(250,250,248,0);
+  backdrop-filter: blur(0px);
+}
+.nav.scrolled {
+  padding:14px 48px;
+  background: rgba(250,250,248,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--color-line);
+}
+.nav-inner {
+  width:100%; max-width:var(--max-width); margin:0 auto;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.nav-logo {
+  display:flex; align-items:center; gap:10px;
+  font-family:var(--font-serif); font-size:1.25rem; font-weight:500;
+  letter-spacing:0.1em; color:var(--color-text); transition:color 0.3s ease;
+}
+.nav-logo img { width:32px; height:32px; border-radius:50%; border:2px solid var(--color-accent); object-fit:cover; }
+.nav-logo span { color:var(--color-accent); }
+.nav-links { display:flex; gap:36px; list-style:none; align-items:center; }
+.nav-links a {
+  font-size:0.875rem; color:var(--color-text-secondary); letter-spacing:0.05em;
+  position:relative; transition:color 0.3s ease; padding-bottom:4px;
+}
+.nav-links a::after {
+  content:''; position:absolute; bottom:0; left:0; width:0; height:1px;
+  background:var(--color-accent); transition:width 0.3s var(--ease-out);
+}
+.nav-links a:hover, .nav-links a.active { color:var(--color-text); }
+.nav-links a:hover::after, .nav-links a.active::after { width:100%; }
+
+/* ===== Mobile Nav Toggle ===== */
+.nav-toggle { display:none; flex-direction:column; gap:5px; cursor:pointer; z-index:101; }
+.nav-toggle span { width:24px; height:1.5px; background:var(--color-text); transition:all 0.3s ease; }
+
+/* ===== Hero Section ===== */
+.hero {
+  position:relative; height:100vh; min-height:640px; overflow:hidden;
+  display:flex; align-items:flex-end;
+}
+.hero-image {
+  position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;
+  transform:scale(1.05); animation: heroZoom 8s var(--ease-out) forwards;
+}
+@keyframes heroZoom { to { transform:scale(1); } }
+.hero-overlay {
+  position:absolute; inset:0; z-index:1;
+  background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.55) 100%);
+}
+.hero-content {
+  position:relative; z-index:2; padding:0 48px 80px;
+  max-width:var(--max-width); width:100%; margin:0 auto;
+}
+.hero-tag {
+  display:inline-block; font-size:0.75rem; letter-spacing:0.3em;
+  color:rgba(255,255,255,0.8); text-transform:uppercase; margin-bottom:16px;
+  opacity:0; animation: fadeInUp 1s var(--ease-out) 0.5s forwards;
+}
+.hero-title {
+  font-family:var(--font-serif); font-size:clamp(2.5rem, 6vw, 5rem); font-weight:400;
+  color:#FFFFFF; line-height:1.1; letter-spacing:0.05em; margin-bottom:20px;
+  opacity:0; animation: fadeInUp 1.2s var(--ease-out) 0.7s forwards;
+}
+.hero-subtitle {
+  font-size:1rem; color:rgba(255,255,255,0.85); letter-spacing:0.1em;
+  opacity:0; animation: fadeInUp 1s var(--ease-out) 1s forwards;
+}
+.hero-scroll {
+  position:absolute; bottom:32px; left:50%; transform:translateX(-50%); z-index:2;
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  opacity:0; animation: fadeInUp 1s var(--ease-out) 1.5s forwards;
+}
+.hero-scroll span {
+  font-size:0.7rem; letter-spacing:0.2em;
+  color:rgba(255,255,255,0.6); text-transform:uppercase;
+}
+.hero-scroll-line {
+  width:1px; height:40px; background:rgba(255,255,255,0.3); position:relative; overflow:hidden;
+}
+.hero-scroll-line::after {
+  content:''; position:absolute; top:0; left:0; width:100%; height:50%;
+  background:rgba(255,255,255,0.8);
+  animation: scrollLine 2s var(--ease-in-out) infinite;
+}
+@keyframes scrollLine {
+  0% { transform:translateY(-100%); }
+  100% { transform:translateY(200%); }
+}
+
+/* ===== Section Base ===== */
+.section { padding:120px 48px; max-width:var(--max-width); margin:0 auto; }
+.section-label {
+  display:flex; align-items:center; gap:12px;
+  font-size:0.75rem; letter-spacing:0.25em; color:var(--color-accent);
+  text-transform:uppercase; margin-bottom:24px;
+}
+.section-label::before {
+  content:''; width:32px; height:1px; background:var(--color-accent);
+}
+.section-title {
+  font-family:var(--font-serif); font-size:clamp(1.8rem, 4vw, 2.8rem); font-weight:400;
+  line-height:1.2; letter-spacing:0.03em; margin-bottom:24px; color:var(--color-text);
+}
+
+/* ===== Overview Stats ===== */
+.overview {
+  background:var(--color-white);
+  border-top:1px solid var(--color-line); border-bottom:1px solid var(--color-line);
+}
+.overview-grid {
+  display:flex; flex-wrap:wrap; justify-content:center; gap:10px;
+  padding:40px 24px; max-width:var(--max-width); margin:0 auto;
+}
+.overview-item {
+  padding:10px 20px;
+}
+.overview-item-video {
+  cursor:pointer; transition:all 0.4s var(--ease-out);
+  display:flex; align-items:center; justify-content:center; gap:10px;
+}
+.overview-item-video:hover .overview-video-icon {
+  transform:scale(1.1); background:var(--color-accent); color:var(--color-white);
+  border-color:var(--color-accent);
+}
+.overview-video-icon {
+  width:48px; height:48px; border-radius:50%;
+  border:1px solid var(--color-line);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--color-text-secondary); transition:all 0.4s var(--ease-out);
+}
+.overview-video-icon svg { width:20px; height:20px; margin-left:2px; }
+.overview-label-video {
+  font-size:0.8rem; color:var(--color-text-secondary); letter-spacing:0.15em;
+}
+
+/* ===== Tags (room-tag style) ===== */
+.room-tag {
+  padding:6px 16px; border:1px solid var(--color-line); border-radius:20px;
+  font-size:0.8125rem; color:var(--color-text-secondary);
+  transition:all 0.3s ease; display:inline-block;
+}
+.room-tag:hover {
+  border-color:var(--color-accent); color:var(--color-accent);
+  background:rgba(184,145,106,0.05);
+}
+
+/* ===== Video Modal ===== */
+.video-modal {
+  position:fixed; inset:0; z-index:1000;
+  background:rgba(0,0,0,0.92);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; visibility:hidden;
+  transition:opacity 0.4s ease, visibility 0.4s ease; padding:40px;
+}
+.video-modal.active { opacity:1; visibility:visible; }
+.video-modal-inner {
+  position:relative; width:100%; max-width:1200px; background:#000;
+  border-radius:4px; overflow:hidden;
+  box-shadow:0 40px 100px rgba(0,0,0,0.5);
+  transform:scale(0.96); transition:transform 0.4s var(--ease-out);
+}
+.video-modal.active .video-modal-inner { transform:scale(1); }
+.video-modal-iframe-wrapper {
+  position:relative; padding-bottom:56.25%; height:0;
+}
+.video-modal-iframe-wrapper iframe {
+  position:absolute; top:0; left:0; width:100%; height:100%; border:none;
+}
+.video-modal-close {
+  position:absolute; top:16px; right:16px; width:44px; height:44px;
+  border:none; border-radius:50%; background:rgba(255,255,255,0.15);
+  color:var(--color-white); font-size:1.75rem; line-height:1; cursor:pointer;
+  z-index:10; transition:background 0.3s ease;
+  display:flex; align-items:center; justify-content:center;
+}
+.video-modal-close:hover { background:rgba(255,255,255,0.3); }
+.video-modal-caption {
+  padding:16px 24px; text-align:center;
+  color:rgba(255,255,255,0.7); font-size:0.875rem; letter-spacing:0.1em;
+  background:#000;
+}
+
+/* ===== Design Concept (Content Area) ===== */
+.concept { max-width:800px; margin:0 auto; }
+.concept-text p {
+  font-size:1.0625rem; line-height:1.9; color:var(--color-text-secondary); margin-bottom:20px;
+}
+.concept-text p:first-of-type::first-letter {
+  font-family:var(--font-serif); font-size:3rem; float:left; line-height:1;
+  margin:4px 12px 0 0; color:var(--color-accent);
+}
+.concept-text h2 {
+  font-family:var(--font-serif); font-size:1.5rem; font-weight:400; color:var(--color-text);
+  margin-top:36px; margin-bottom:16px; letter-spacing:0.03em;
+}
+.concept-text h3 {
+  font-family:var(--font-serif); font-size:1.2rem; font-weight:400; color:var(--color-text);
+  margin-top:28px; margin-bottom:12px;
+}
+.concept-text h4 {
+  font-family:var(--font-serif); font-size:1.05rem; font-weight:400; color:var(--color-text);
+  margin-top:22px; margin-bottom:10px;
+}
+.concept-text strong { color:var(--color-text); font-weight:500; }
+.concept-text a { color:var(--color-accent); border-bottom:1px solid transparent; transition:border-color 0.3s ease; }
+.concept-text a:hover { border-color:var(--color-accent); }
+.concept-text ul, .concept-text ol { padding-left:24px; margin-bottom:20px; color:var(--color-text-secondary); }
+.concept-text li { margin-bottom:8px; font-size:1.0625rem; line-height:1.8; }
+.concept-text img { max-width:100%; border-radius:4px; margin:20px 0; }
+
+/* ===== Room Image Full (Gallery) ===== */
+.room-image-full {
+  position:relative; width:100%; height:100vh; overflow:hidden;
+}
+.room-image-full img {
+  width:100%; height:100%; object-fit:cover;
+  transition:transform 1.5s var(--ease-out);
+}
+.room-image-full:hover img { transform:scale(1.06); }
+.room-floating-label {
+  position:absolute; bottom:48px; left:48px; z-index:2;
+  display:flex; align-items:baseline; gap:20px;
+  text-shadow:0 2px 30px rgba(0,0,0,0.7);
+}
+.room-floating-num {
+  font-family:var(--font-serif); font-size:3rem; font-weight:400;
+  color:rgba(255,255,255,0.6); line-height:1;
+}
+.room-floating-name {
+  color:rgba(255,255,255,0.95); font-size:0.875rem;
+  letter-spacing:0.25em; text-transform:uppercase;
+}
+
+/* ===== CTA Download Button ===== */
+.cta-section {
+  text-align:center; padding:80px 48px; background:var(--color-white);
+  border-top:1px solid var(--color-line);
+}
+.cta-button {
+  display:inline-flex; align-items:center; gap:12px;
+  padding:16px 40px; border:1px solid var(--color-accent);
+  border-radius:2px; font-size:0.9375rem; color:var(--color-accent);
+  letter-spacing:0.1em; transition:all 0.4s var(--ease-out); cursor:pointer;
+}
+.cta-button:hover {
+  background:var(--color-accent); color:var(--color-white);
+}
+.cta-button svg { width:18px; height:18px; }
+
+
+
+/* ===== Back Link ===== */
+.back-link {
+  position:fixed; top:100px; left:48px; z-index:99;
+  display:none;
+}
+.back-link a {
+  font-size:0.8rem; letter-spacing:0.2em; color:rgba(255,255,255,0.6);
+  text-transform:uppercase; transition:color 0.3s ease;
+}
+.back-link a:hover { color:rgba(255,255,255,0.95); }
+.nav.scrolled ~ .back-link { display:block; }
+.nav.scrolled ~ .back-link a { color:var(--color-text-secondary); }
+.nav.scrolled ~ .back-link a:hover { color:var(--color-accent); }
+
+/* ===== Scroll Animations ===== */
+.reveal {
+  opacity:0; transform:translateY(40px);
+  transition:opacity 1s var(--ease-out), transform 1s var(--ease-out);
+}
+.reveal.visible { opacity:1; transform:translateY(0); }
+.reveal-delay-1 { transition-delay:0.1s; }
+.reveal-delay-2 { transition-delay:0.2s; }
+.reveal-delay-3 { transition-delay:0.3s; }
+.reveal-delay-4 { transition-delay:0.4s; }
+
+/* ===== Error States ===== */
+.error-state { text-align:center; padding:120px 24px; color:var(--color-text-secondary); }
+.error-state p { font-size:1rem; margin-bottom:20px; }
+.loading-state { text-align:center; padding:120px 24px; color:var(--color-text-light); }
+.loading-state .loader-bar { margin:20px auto 0; }
+
+/* ===== Project Info Cards ===== */
+.project-info-section { padding-top:80px; }
+.project-info-grid {
+  display:grid; grid-template-columns:repeat(3, 1fr); gap:1px;
+  background:var(--color-line); border:1px solid var(--color-line); border-radius:2px;
+  overflow:hidden;
+}
+.project-info-card {
+  background:var(--color-white); padding:36px 32px; text-align:center;
+}
+.project-info-card-label {
+  font-size:0.75rem; letter-spacing:0.2em; color:var(--color-text-light);
+  text-transform:uppercase; margin-bottom:8px;
+}
+.project-info-card-value {
+  font-family:var(--font-serif); font-size:1.5rem; color:var(--color-text);
+}
+
+/* ===== Design Concept ===== */
+.design-concept-section { max-width:800px; margin-left:auto; margin-right:auto; }
+.design-concept-title {
+  font-family:var(--font-serif); font-size:clamp(1.6rem, 4vw, 2.2rem); font-weight:400;
+  line-height:1.3; margin-bottom:24px; color:var(--color-text); letter-spacing:0.03em;
+}
+.design-concept-body {
+  font-size:1.0625rem; line-height:1.9; color:var(--color-text-secondary); margin-bottom:32px;
+}
+.design-concept-quote {
+  font-family:var(--font-serif); font-style:italic; font-size:1.125rem;
+  color:var(--color-accent); line-height:1.8; padding-left:32px;
+  border-left:2px solid var(--color-accent); margin-bottom:32px;
+}
+.design-concept-image { width:100%; max-width:100%; border-radius:4px; margin-top:24px; }
+
+/* ===== Floor Plan ===== */
+.floor-plan-section { max-width:800px; margin-left:auto; margin-right:auto; }
+.floor-plan-header { margin-bottom:40px; }
+.floor-plan-desc { font-size:1.0625rem; color:var(--color-text-secondary); line-height:1.8; margin-bottom:24px; }
+.floor-plan-image { width:100%; max-width:100%; border-radius:4px; margin-bottom:40px; }
+.floor-plan-areas { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; }
+.floor-plan-area-item {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:16px 20px; background:var(--color-white); border:1px solid var(--color-line); border-radius:2px;
+}
+.floor-plan-area-name { font-size:0.9375rem; color:var(--color-text); }
+.floor-plan-area-size { font-family:var(--font-serif); font-size:1rem; color:var(--color-accent); }
+
+/* ===== Spaces ===== */
+.spaces-section { max-width:800px; margin-left:auto; margin-right:auto; }
+.space-item { margin-bottom:64px; }
+.space-item:last-child { margin-bottom:0; }
+.space-item-name {
+  font-family:var(--font-serif); font-size:1.5rem; font-weight:400;
+  color:var(--color-text); margin-bottom:12px;
+}
+.space-item-desc { font-size:1.0625rem; color:var(--color-text-secondary); line-height:1.8; margin-bottom:20px; }
+.space-item-image { width:100%; max-width:100%; border-radius:4px; }
+
+/* ===== Materials ===== */
+.materials-section { max-width:800px; margin-left:auto; margin-right:auto; }
+.materials-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:24px; }
+.material-item {
+  display:flex; align-items:flex-start; gap:20px; padding:24px;
+  background:var(--color-white); border:1px solid var(--color-line); border-radius:2px;
+}
+.material-swatch {
+  width:60px; height:60px; border-radius:6px; flex-shrink:0;
+  border:1px solid var(--color-line);
+}
+.material-info { flex:1; min-width:0; }
+.material-name {
+  font-size:1rem; font-weight:500; color:var(--color-text); margin-bottom:6px;
+}
+.material-desc { font-size:0.875rem; color:var(--color-text-secondary); line-height:1.6; margin-bottom:8px; }
+.material-image { width:100%; max-width:100%; border-radius:3px; margin-top:8px; }
+
+/* ===== Footer ===== */
+.footer {
+  background: var(--color-bg-alt);
+  padding: 80px 48px 40px;
+}
+.footer-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 60px;
+  margin-bottom: 48px;
+}
+.footer-brand h3 {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin-bottom: 16px;
+  letter-spacing: 0.05em;
+}
+.footer-brand p {
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  line-height: 1.8;
+}
+.footer-col h4 {
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  margin-bottom: 16px;
+  letter-spacing: 0.05em;
+}
+.footer-col p {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 2;
+}
+.footer-bottom {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding-top: 32px;
+  border-top: 1px solid var(--color-line);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.footer-bottom p {
+  font-size: 0.8125rem;
+  color: var(--color-text-light);
+}
+
+/* ===== Responsive ===== */
+@media (max-width:1024px) {
+  .footer { padding: 64px 32px 32px; }
+  .footer-inner { grid-template-columns:1fr 1fr; gap:40px; }
+}
+
+@media (max-width:768px) {
+  .nav { padding:16px 24px; }
+  .nav.scrolled { padding:12px 24px; }
+  .nav-links {
+    position:fixed; top:0; right:0; width:100%; height:100vh;
+    background:var(--color-bg); flex-direction:column;
+    justify-content:center; align-items:center; gap:32px;
+    transform:translateX(100%); transition:transform 0.5s var(--ease-out);
+  }
+  .nav-links.open { transform:translateX(0); }
+  .nav-links a { font-size:1.25rem; }
+  .nav-toggle { display:flex; }
+  .nav-toggle.active span:nth-child(1) { transform:rotate(45deg) translate(5px,5px); }
+  .nav-toggle.active span:nth-child(2) { opacity:0; }
+  .nav-toggle.active span:nth-child(3) { transform:rotate(-45deg) translate(5px,-5px); }
+
+  .hero-content { padding:0 24px 60px; }
+  .hero-scroll { bottom:24px; }
+  .section { padding:80px 24px; }
+  .room-image-full { height:70vh; }
+  .room-floating-label { bottom:32px; left:24px; }
+  .room-floating-num { font-size:2rem; }
+  .overview-grid { gap:6px; padding:32px 16px; }
+  .video-modal { padding:24px; }
+  .video-modal-inner { border-radius:2px; }
+  .cta-section { padding:60px 24px; }
+  .back-link { left:24px; }
+  .footer-inner { grid-template-columns:1fr; gap:32px; }
+  .footer-bottom { flex-direction:column; text-align:center; gap:4px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== Loading Screen ===== -->
+<div id="loader">
+  <div class="loader-text">青松设计</div>
+  <div class="loader-bar"></div>
+</div>
+
+<!-- ===== Navigation ===== -->
+<nav class="nav">
+  <div class="nav-inner">
+    <ul class="nav-links">
+      <li><a href="/#services">服务项目</a></li>
+      <li><a href="/#process">设计流程</a></li>
+      <li><a href="cases.html" class="active">设计案例</a></li>
+      <li><a href="blog.html">最新博客</a></li>
+      <li><a href="/#about">关于我们</a></li>
+      <li><a href="/#contact">预约咨询</a></li>
+    </ul>
+    <div class="nav-toggle">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</nav>
+
+<!-- ===== Back Link (visible when nav scrolled) ===== -->
+<div class="back-link">
+  <a href="cases.html">&larr; 返回案例列表</a>
+</div>
+
+<!-- ===== Hero Section (dynamic) ===== -->
+<section class="hero" id="hero"></section>
+
+<!-- ===== Overview / Tags Section (dynamic) ===== -->
+<section class="overview" id="overview"></section>
+
+<!-- ===== Project Info Section (dynamic) ===== -->
+<section class="section project-info-section" id="projectInfoSection"></section>
+
+<!-- ===== Design Concept Section (dynamic) ===== -->
+<section class="section design-concept-section" id="designConceptSection"></section>
+
+<!-- ===== Floor Plan Section (dynamic) ===== -->
+<section class="section floor-plan-section" id="floorPlanSection"></section>
+
+<!-- ===== Spaces Section (dynamic) ===== -->
+<section class="section spaces-section" id="spacesSection"></section>
+
+<!-- ===== Materials Section (dynamic) ===== -->
+<section class="section materials-section" id="materialsSection"></section>
+
+<!-- ===== Video Modal ===== -->
+<div class="video-modal" id="videoModal">
+  <div class="video-modal-inner">
+    <button class="video-modal-close" id="videoModalClose">&times;</button>
+    <div class="video-modal-iframe-wrapper" id="videoModalFrame"></div>
+    <div class="video-modal-caption">案例视频 · 效果预览</div>
+  </div>
+</div>
+
+<!-- ===== Content Section (dynamic) ===== -->
+<section class="section" id="contentSection"></section>
+
+<!-- ===== Gallery Section (dynamic) ===== -->
+<section id="gallerySection"></section>
+
+<!-- ===== CTA Download Section (dynamic) ===== -->
+<section class="cta-section" id="ctaSection"></section>
+
+<!-- ===== Footer ===== -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <h3>青松设计</h3>
+      <p>专注于高品质室内设计，以极简美学诠释生活的本质。每一个项目都是一次对空间可能性的探索，为居住者创造既实用又诗意的栖居之所。</p>
+    </div>
+    <div class="footer-col">
+      <h4>案例信息</h4>
+      <p id="footerCaseInfo">加载中...</p>
+    </div>
+    <div class="footer-col">
+      <h4>联系方式</h4>
+      <p>微信：china-qssj<br>邮箱：duqingsong1988@163.com<br>地址：中国 · 上海</p>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2026 青松设计工作室. All Rights Reserved.</p>
+    <p>Designed with AI · Powered by WorkBuddy</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ==========================================
+     Data Layer — preserved from original
+     ========================================== */
+  var caseData = null;
+  var bilibiliEmbedUrl = null;
+  var tagsArray = [];
+  var imageList = [];
+
+  var id = new URLSearchParams(window.location.search).get('id');
+  if (!id) {
+    document.getElementById('hero').innerHTML = '<div class="error-state"><p>缺少案例 ID</p><a href="cases.html" style="color:var(--color-accent);">&larr; 返回案例列表</a></div>';
+  } else {
+    loadCase(id);
+  }
+
+  function parseBilibiliUrl(url) {
+    if (!url) return null;
+    var match = url.match(/BV[a-zA-Z0-9]+/);
+    if (match) return 'https://player.bilibili.com/player.html?bvid=' + match[0] + '&page=1&high_quality=1&autoplay=0';
+    match = url.match(/av(\\d+)/);
+    if (match) return 'https://player.bilibili.com/player.html?aid=' + match[1] + '&page=1&high_quality=1&autoplay=0';
+    return null;
+  }
+
+  function formatContent(text) {
+    if (!text) return '';
+    return text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+      .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/^(.+)$/gm, function(m) { return m.startsWith('<') ? m : '<p>' + m + '</p>'; });
+  }
+
+  async function loadCase(caseId) {
+    try {
+      var res = await fetch('/api/cases/' + caseId);
+      if (!res.ok) throw new Error('加载失败');
+      caseData = await res.json();
+
+      // Parse CMS JSON fields safely
+      ['project_info','design_concept','floor_plan','spaces','materials'].forEach(function(field) {
+        if (caseData[field] && typeof caseData[field] === 'string') {
+          try { caseData[field] = JSON.parse(caseData[field]); } catch(e) {}
+        }
+      });
+
+      document.title = caseData.title + ' - 青松设计';
+
+      bilibiliEmbedUrl = parseBilibiliUrl(caseData.video_url);
+      tagsArray = caseData.tags ? caseData.tags.split(',').filter(function(t) { return t.trim(); }) : [];
+      if (caseData.images && typeof caseData.images === 'string') {
+        imageList = caseData.images.split(',').filter(function(u) { return u.trim(); });
+      }
+
+      renderHero();
+      renderProjectInfo();
+      renderDesignConcept();
+      renderFloorPlan();
+      renderSpaces();
+      renderMaterials();
+      renderOverview();
+      renderContent();
+      renderGallery();
+      renderCTA();
+      updateFooter();
+      initAnimations();
+      hideLoader();
+    } catch (e) {
+      document.getElementById('hero').innerHTML = '<div class="error-state"><p>加载失败，请返回列表重试</p><a href="cases.html" style="color:var(--color-accent);">&larr; 返回案例列表</a></div>';
+      hideLoader();
+    }
+  }
+
+  function hideLoader() {
+    var loader = document.getElementById('loader');
+    if (loader) {
+      setTimeout(function () { loader.classList.add('hidden'); }, 600);
+    }
+  }
+
+  /* ==========================================
+     Render: Hero
+     ========================================== */
+  function renderHero() {
+    var hero = document.getElementById('hero');
+    if (!caseData.cover_image) {
+      hero.innerHTML = '<div style="height:60px;"></div>';
+      return;
+    }
+    hero.innerHTML =
+      '<img class="hero-image" src="' + caseData.cover_image + '" alt="' + caseData.title + '" onerror="this.style.display=\'none\'">' +
+      '<div class="hero-overlay"></div>' +
+      '<div class="hero-content">' +
+        '<span class="hero-tag">Case Study</span>' +
+        '<h1 class="hero-title">' + caseData.title + '</h1>' +
+        (caseData.description ? '<p class="hero-subtitle">' + caseData.description + '</p>' : '') +
+      '</div>' +
+      '<div class="hero-scroll">' +
+        '<span>SCROLL</span>' +
+        '<div class="hero-scroll-line"></div>' +
+      '</div>';
+  }
+
+  /* ==========================================
+     Render: Project Info
+     ========================================== */
+  function renderProjectInfo() {
+    var section = document.getElementById('projectInfoSection');
+    var info = caseData.project_info;
+    if (!info || typeof info !== 'object') { section.style.display = 'none'; return; }
+
+    var items = [];
+    if (info.client_name)  items.push({label:'客户', value: info.client_name});
+    if (info.area)         items.push({label:'面积', value: info.area + ' ㎡'});
+    if (info.year)         items.push({label:'年份', value: info.year});
+    if (info.style)        items.push({label:'风格', value: info.style});
+    if (info.layout)       items.push({label:'户型', value: info.layout});
+    if (info.rooms)        items.push({label:'房间数', value: info.rooms});
+
+    if (items.length === 0) { section.style.display = 'none'; return; }
+
+    var html = '<div class="project-info-grid">';
+    items.forEach(function(item) {
+      html += '<div class="project-info-card reveal">' +
+        '<div class="project-info-card-label">' + item.label + '</div>' +
+        '<div class="project-info-card-value">' + item.value + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+    section.innerHTML = html;
+  }
+
+  /* ==========================================
+     Render: Design Concept
+     ========================================== */
+  function renderDesignConcept() {
+    var section = document.getElementById('designConceptSection');
+    var concept = caseData.design_concept;
+    if (!concept || typeof concept !== 'object') { section.style.display = 'none'; return; }
+    if (!concept.title && !concept.body && !concept.quote && !concept.image) {
+      section.style.display = 'none'; return;
+    }
+
+    var html = '';
+    if (concept.title) {
+      html += '<h2 class="design-concept-title reveal">' + concept.title + '</h2>';
+    }
+    if (concept.body) {
+      html += '<p class="design-concept-body reveal reveal-delay-1">' + concept.body + '</p>';
+    }
+    if (concept.quote) {
+      html += '<blockquote class="design-concept-quote reveal reveal-delay-2">' + concept.quote + '</blockquote>';
+    }
+    if (concept.image) {
+      html += '<img class="design-concept-image reveal reveal-delay-3" src="' + concept.image + '" alt="设计理念配图" loading="lazy" onerror="this.style.display=\'none\'">';
+    }
+    section.innerHTML = html;
+  }
+
+  /* ==========================================
+     Render: Floor Plan
+     ========================================== */
+  function renderFloorPlan() {
+    var section = document.getElementById('floorPlanSection');
+    var plan = caseData.floor_plan;
+    if (!plan || typeof plan !== 'object') { section.style.display = 'none'; return; }
+    if (!plan.title && !plan.subtitle && !plan.description && !plan.image && (!plan.areas || !plan.areas.length)) {
+      section.style.display = 'none'; return;
+    }
+
+    var html = '<div class="floor-plan-header reveal">';
+    if (plan.title) {
+      html += '<h2 class="section-title">' + plan.title + '</h2>';
+    }
+    if (plan.subtitle) {
+      html += '<p style="font-size:0.875rem;color:var(--color-accent);letter-spacing:0.15em;margin-bottom:16px;">' + plan.subtitle + '</p>';
+    }
+    if (plan.description) {
+      html += '<p class="floor-plan-desc">' + plan.description + '</p>';
+    }
+    html += '</div>';
+
+    if (plan.image) {
+      html += '<img class="floor-plan-image reveal reveal-delay-1" src="' + plan.image + '" alt="户型图" loading="lazy" onerror="this.style.display=\'none\'">';
+    }
+
+    if (plan.areas && plan.areas.length > 0) {
+      html += '<div class="floor-plan-areas reveal reveal-delay-2">';
+      plan.areas.forEach(function(area) {
+        html += '<div class="floor-plan-area-item">' +
+          '<span class="floor-plan-area-name">' + (area.name || '') + '</span>' +
+          '<span class="floor-plan-area-size">' + (area.size || '') + '</span>' +
+        '</div>';
+      });
+      html += '</div>';
+    }
+
+    section.innerHTML = html;
+  }
+
+  /* ==========================================
+     Render: Spaces
+     ========================================== */
+  function renderSpaces() {
+    var section = document.getElementById('spacesSection');
+    var spaces = caseData.spaces;
+    if (!Array.isArray(spaces) || spaces.length === 0) { section.style.display = 'none'; return; }
+
+    var html = '';
+    spaces.forEach(function(space, i) {
+      if (!space.name && !space.description && !space.image) return;
+      var cls = 'space-item reveal';
+      if (i > 0) cls += ' reveal-delay-' + Math.min(i, 4);
+      html += '<div class="' + cls + '">';
+      if (space.name) {
+        html += '<h3 class="space-item-name">' + space.name + '</h3>';
+      }
+      if (space.description) {
+        html += '<p class="space-item-desc">' + space.description + '</p>';
+      }
+      if (space.image) {
+        html += '<img class="space-item-image" src="' + space.image + '" alt="' + (space.name || '空间') + '" loading="lazy" onerror="this.style.display=\'none\'">';
+      }
+      html += '</div>';
+    });
+
+    if (!html) { section.style.display = 'none'; return; }
+    section.innerHTML = html;
+  }
+
+  /* ==========================================
+     Render: Materials
+     ========================================== */
+  function renderMaterials() {
+    var section = document.getElementById('materialsSection');
+    var materials = caseData.materials;
+    if (!Array.isArray(materials) || materials.length === 0) { section.style.display = 'none'; return; }
+
+    var html = '<div class="section-label reveal">Color &amp; Material</div>' +
+      '<h2 class="section-title reveal reveal-delay-1">材质与色彩</h2>' +
+      '<div class="materials-grid reveal reveal-delay-2">';
+
+    materials.forEach(function(mat) {
+      html += '<div class="material-item">';
+      if (mat.color_code) {
+        html += '<div class="material-swatch" style="background-color:' + mat.color_code + ';"></div>';
+      } else {
+        html += '<div class="material-swatch" style="background:var(--color-bg-alt);"></div>';
+      }
+      html += '<div class="material-info">';
+      if (mat.name) {
+        html += '<div class="material-name">' + mat.name + '</div>';
+      }
+      if (mat.description) {
+        html += '<div class="material-desc">' + mat.description + '</div>';
+      }
+      if (mat.image) {
+        html += '<img class="material-image" src="' + mat.image + '" alt="' + (mat.name || '材质纹理') + '" loading="lazy" onerror="this.style.display=\'none\'">';
+      }
+      html += '</div></div>';
+    });
+
+    html += '</div>';
+    section.innerHTML = html;
+  }
+
+  /* ==========================================
+     Render: Overview (Tags)
+     ========================================== */
+  function renderOverview() {
+    var overview = document.getElementById('overview');
+    var html = '<div class="overview-grid">';
+
+    // Tags as room-tag pills
+    if (tagsArray.length > 0) {
+      tagsArray.forEach(function(tag) {
+        html += '<div class="overview-item"><span class="room-tag">' + tag.trim() + '</span></div>';
+      });
+    }
+
+    // Video button if B站 URL exists
+    if (bilibiliEmbedUrl) {
+      html += '<div class="overview-item overview-item-video" id="overviewVideoBtn">' +
+        '<div class="overview-video-icon">' +
+          '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
+        '</div>' +
+        '<span class="overview-label-video">观看视频</span>' +
+      '</div>';
+    }
+
+    html += '</div>';
+
+    if (tagsArray.length > 0 || bilibiliEmbedUrl) {
+      overview.innerHTML = html;
+
+      // Bind video button
+      var videoBtn = document.getElementById('overviewVideoBtn');
+      if (videoBtn) {
+        videoBtn.addEventListener('click', openVideoModal);
+      }
+    } else {
+      overview.style.display = 'none';
+    }
+  }
+
+  /* ==========================================
+     Render: Content Area
+     ========================================== */
+  function renderContent() {
+    var section = document.getElementById('contentSection');
+    if (!caseData.content) { section.style.display = 'none'; return; }
+
+    section.innerHTML =
+      '<div class="concept">' +
+        '<div class="concept-text reveal">' +
+          '<div class="section-label">Design Details</div>' +
+          '<h2 class="section-title">设计详情</h2>' +
+          formatContent(caseData.content) +
+        '</div>' +
+      '</div>';
+  }
+
+  /* ==========================================
+     Render: Gallery
+     ========================================== */
+  function renderGallery() {
+    var section = document.getElementById('gallerySection');
+
+    // Collect images from both imageList and spaces array (with name_zh labels)
+    var allImages = imageList.slice();
+    var allLabels = imageList.map(function() { return ''; });
+    var spaces = caseData.spaces;
+    if (Array.isArray(spaces)) {
+      spaces.forEach(function(space) {
+        if (Array.isArray(space.images)) {
+          space.images.forEach(function(imgUrl) {
+            if (imgUrl && allImages.indexOf(imgUrl) === -1) {
+              allImages.push(imgUrl);
+              allLabels.push(space.name_zh || space.name || '');
+            }
+          });
+        }
+      });
+    }
+
+    if (allImages.length === 0) { section.style.display = 'none'; return; }
+
+    var html = '';
+    allImages.forEach(function(url, i) {
+      var num = (i + 1 < 10 ? '0' : '') + (i + 1);
+      var total = (allImages.length < 10 ? '0' : '') + allImages.length;
+      var label = allLabels[i] || ('IMAGE ' + num + ' / ' + total);
+      html +=
+        '<div class="room-image-full reveal">' +
+          '<img src="' + url.trim() + '" alt="' + (allLabels[i] || '案例图片 ' + (i + 1)) + '" loading="lazy" onerror="this.parentElement.style.display=\'none\'">' +
+          '<div class="room-floating-label">' +
+            '<span class="room-floating-num">' + num + '</span>' +
+            '<span class="room-floating-name">' + label + '</span>' +
+          '</div>' +
+        '</div>';
+    });
+
+    section.innerHTML = html;
+  }
+
+  /* ==========================================
+     Render: CTA Download
+     ========================================== */
+  function renderCTA() {
+    var section = document.getElementById('ctaSection');
+    if (!caseData.file_url) { section.style.display = 'none'; return; }
+
+    var fileName = caseData.file_name || '下载附件';
+    section.innerHTML =
+      '<a class="cta-button" href="' + caseData.file_url + '" target="_blank" download>' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+          '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>' +
+          '<polyline points="7 10 12 15 17 10"/>' +
+          '<line x1="12" y1="15" x2="12" y2="3"/>' +
+        '</svg>' +
+        '下载：' + fileName +
+      '</a>';
+  }
+
+  function updateFooter() {
+    var info = document.getElementById('footerCaseInfo');
+    if (info && caseData) {
+      info.innerHTML =
+        '项目：' + (caseData.title || '—') + '<br>' +
+        '标签：' + (tagsArray.length > 0 ? tagsArray.join(' / ') : '—') + '<br>' +
+        (caseData.description ? '简介：' + caseData.description + '<br>' : '');
+    }
+  }
+
+  /* ==========================================
+     Video Modal
+     ========================================== */
+  var videoModal = document.getElementById('videoModal');
+  var videoModalFrame = document.getElementById('videoModalFrame');
+  var videoModalClose = document.getElementById('videoModalClose');
+
+  function openVideoModal() {
+    if (!videoModal || !bilibiliEmbedUrl) return;
+    videoModalFrame.innerHTML = '<iframe src="' + bilibiliEmbedUrl + '" allowfullscreen allow="autoplay"></iframe>';
+    videoModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeVideoModal(e) {
+    if (e) e.stopPropagation();
+    if (!videoModal) return;
+    videoModal.classList.remove('active');
+    document.body.style.overflow = '';
+    // Clear iframe on close to stop playback
+    setTimeout(function() { videoModalFrame.innerHTML = ''; }, 400);
+  }
+
+  if (videoModalClose) {
+    videoModalClose.addEventListener('click', closeVideoModal);
+  }
+
+  if (videoModal) {
+    videoModal.addEventListener('click', function(e) {
+      if (e.target === videoModal) closeVideoModal(e);
+    });
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && videoModal && videoModal.classList.contains('active')) {
+      closeVideoModal();
+    }
+  });
+
+  /* ==========================================
+     Init: All Interactive Behaviors
+     ========================================== */
+  function initAnimations() {
+    /* Navigation scroll effect */
+    var nav = document.querySelector('.nav');
+    window.addEventListener('scroll', function () {
+      if (window.pageYOffset > 60) {
+        nav.classList.add('scrolled');
+      } else {
+        nav.classList.remove('scrolled');
+      }
+    }, { passive: true });
+
+    /* Mobile menu toggle */
+    var navToggle = document.querySelector('.nav-toggle');
+    var navLinks = document.querySelector('.nav-links');
+    if (navToggle && navLinks) {
+      navToggle.addEventListener('click', function () {
+        navToggle.classList.toggle('active');
+        navLinks.classList.toggle('open');
+      });
+      navLinks.querySelectorAll('a').forEach(function (link) {
+        link.addEventListener('click', function () {
+          navToggle.classList.remove('active');
+          navLinks.classList.remove('open');
+        });
+      });
+    }
+
+    /* Scroll Reveal */
+    var revealEls = document.querySelectorAll('.reveal');
+    if ('IntersectionObserver' in window) {
+      var revealObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+      revealEls.forEach(function (el) { revealObserver.observe(el); });
+    } else {
+      revealEls.forEach(function (el) { el.classList.add('visible'); });
+    }
+
+    /* Hero parallax */
+    var heroImage = document.querySelector('.hero-image');
+    if (heroImage) {
+      window.addEventListener('scroll', function () {
+        var scrolled = window.pageYOffset;
+        if (scrolled < window.innerHeight) {
+          heroImage.style.transform = 'scale(1) translateY(' + (scrolled * 0.3) + 'px)';
+        }
+      }, { passive: true });
+    }
+
+    /* Gallery image parallax */
+    var roomImages = document.querySelectorAll('.room-image-full img');
+    if (roomImages.length > 0 && window.innerWidth > 768) {
+      var roomObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            var img = entry.target;
+            var wrap = img.parentElement;
+            var handler = function () {
+              var rect = wrap.getBoundingClientRect();
+              var wh = window.innerHeight;
+              if (rect.top < wh && rect.bottom > 0) {
+                var pct = (wh - rect.top) / (wh + rect.height);
+                var ty = (pct - 0.5) * 40;
+                img.style.transform = 'scale(1.08) translateY(' + ty + 'px)';
+              }
+            };
+            window.addEventListener('scroll', handler, { passive: true });
+            handler();
+          }
+        });
+      }, { threshold: 0.1 });
+      roomImages.forEach(function (img) { roomObserver.observe(img); });
+    }
+
+    /* Image lazy fade-in */
+    var allImgs = document.querySelectorAll('img');
+    allImgs.forEach(function (img) {
+      img.style.opacity = '0';
+      img.style.transition = 'opacity 0.8s ease';
+      if (img.complete) { img.style.opacity = '1'; }
+      else { img.addEventListener('load', function () { img.style.opacity = '1'; }); }
+    });
+
+    /* Smooth scroll for anchors */
+    document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        var targetId = this.getAttribute('href');
+        if (targetId === '#') return;
+        var target = document.querySelector(targetId);
+        if (target) {
+          e.preventDefault();
+          window.scrollTo({ top: target.offsetTop - 70, behavior: 'smooth' });
+        }
+      });
+    });
+  }
+
+})();
+</script>
+</body>
+</html>

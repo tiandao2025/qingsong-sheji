@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>初始化管理员 - 青松设计 CMS</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #1D1D1F; display:flex; justify-content:center; align-items:center;
+  min-height:100vh; color:#fff;
+}
+.box { background:#2C2C2E; border-radius:16px; padding:48px 40px; width:100%; max-width:400px; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+.box h1 { text-align:center; font-size:24px; font-weight:600; margin-bottom:8px; color:#C9A96E; }
+.box p { text-align:center; font-size:13px; color:#888; margin-bottom:32px; }
+.form-group { margin-bottom:20px; }
+.form-group label { display:block; font-size:13px; color:#aaa; margin-bottom:6px; font-weight:500; }
+.form-group input {
+  width:100%; padding:12px 16px; border:1px solid #444; border-radius:8px;
+  background:#1C1C1E; color:#fff; font-size:15px; outline:none;
+}
+.form-group input:focus { border-color:#C9A96E; }
+.btn { width:100%; padding:12px; background:#C9A96E; color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; }
+.btn:hover { background:#B8995E; }
+.btn:disabled { opacity:0.6; }
+.msg { text-align:center; font-size:13px; margin-top:16px; min-height:20px; }
+.msg.success { color:#4caf50; }
+.msg.error { color:#ff4d4d; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>青松设计 CMS</h1>
+  <p>首次使用 · 创建管理员账号</p>
+  <form id="initForm">
+    <div class="form-group">
+      <label>用户名</label>
+      <input type="text" id="username" placeholder="设置管理员用户名" required autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>密码</label>
+      <input type="password" id="password" placeholder="设置密码（至少6位）" required minlength="6" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label>确认密码</label>
+      <input type="password" id="password2" placeholder="再次输入密码" required minlength="6" autocomplete="new-password">
+    </div>
+    <button type="submit" class="btn" id="submitBtn">创建管理员</button>
+  </form>
+  <div class="msg" id="msg"></div>
+</div>
+
+<script>
+document.getElementById('initForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const msgEl = document.getElementById('msg');
+  const pw = document.getElementById('password').value;
+  const pw2 = document.getElementById('password2').value;
+
+  if (pw !== pw2) { msgEl.className = 'msg error'; msgEl.textContent = '两次密码不一致'; return; }
+  if (pw.length < 6) { msgEl.className = 'msg error'; msgEl.textContent = '密码至少6位'; return; }
+
+  btn.disabled = true; btn.textContent = '创建中...'; msgEl.textContent = '';
+
+  try {
+    const res = await fetch('/api/auth/init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: document.getElementById('username').value, password: pw })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      msgEl.className = 'msg success';
+      msgEl.textContent = '管理员创建成功！3秒后跳转到登录页...';
+      setTimeout(() => { window.location.href = '/admin/login.html'; }, 3000);
+    } else {
+      msgEl.className = 'msg error';
+      msgEl.textContent = data.error || '创建失败';
+    }
+  } catch (err) {
+    msgEl.className = 'msg error'; msgEl.textContent = '网络错误';
+  }
+  btn.disabled = false; btn.textContent = '创建管理员';
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文章 - 青松设计</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color:#1D1D1F; background:#FBFBFB; line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+.nav { position:fixed; top:0; left:0; right:0; z-index:1000; padding:0 40px; height:52px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.72); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:1px solid rgba(0,0,0,0.08); }
+.nav-inner { width:100%; max-width:1100px; display:flex; align-items:center; justify-content:space-between; }
+.nav-logo { display:flex; align-items:center; gap:10px; text-decoration:none; }
+.nav-logo img { width:32px; height:32px; border-radius:50%; border:2px solid #C9A96E; object-fit:cover; }
+.nav-logo-text { font-size:18px; font-weight:600; color:#1D1D1F; letter-spacing:1px; }
+.nav-links { display:flex; gap:28px; list-style:none; align-items:center; }
+.nav-links a { text-decoration:none; color:#1D1D1F; font-size:14px; font-weight:400; transition:color 0.25s; }
+.nav-links a:hover, .nav-links a.active { color:#C9A96E; }
+
+.back-link { padding:100px 20px 0; text-align:center; }
+.back-link a { color:#999; font-size:13px; text-decoration:none; }
+.back-link a:hover { color:#C9A96E; }
+
+.article-container { max-width:800px; margin:0 auto; padding:20px 20px 60px; }
+.loading { text-align:center; padding:60px; color:#999; }
+.error { text-align:center; padding:60px; color:#e74c3c; }
+
+.cover-image { width:100%; max-height:400px; object-fit:cover; border-radius:8px; margin-bottom:32px; }
+.article-title { font-size:28px; font-weight:700; margin-bottom:12px; line-height:1.4; }
+.article-meta { color:#999; font-size:13px; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid #eee; }
+.article-content { font-size:15px; line-height:1.9; color:#333; }
+.article-content p { margin-bottom:14px; }
+.article-content img { max-width:100%; border-radius:8px; margin:12px 0; }
+.article-content h2 { font-size:20px; margin-top:24px; margin-bottom:12px; }
+.article-content h3 { font-size:17px; margin-top:20px; margin-bottom:10px; }
+.article-content iframe { max-width:100%; border-radius:8px; margin:12px 0; }
+.article-content a { color:#C9A96E; }
+.article-content ul, .article-content ol { padding-left:24px; margin-bottom:14px; }
+.article-content li { margin-bottom:6px; }
+.article-content blockquote { border-left:3px solid #C9A96E; padding-left:16px; color:#666; margin:16px 0; }
+.article-content pre { background:#f4f4f4; padding:16px; border-radius:8px; overflow-x:auto; margin:14px 0; }
+.article-content code { font-size:13px; }
+
+@media (max-width:768px) {
+  .article-title { font-size:22px; }
+  .article-container { padding:12px 16px 40px; }
+  .nav { padding:0 16px; }
+}
+
+/* 赛赛 AI 客服聊天组件 */
+.chat-widget-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #C9A96E, #A68A4C);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  z-index: 9999;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.chat-widget-btn:hover { transform: scale(1.06); box-shadow: 0 6px 24px rgba(0,0,0,0.25); }
+.chat-widget-btn svg { width: 26px; height: 26px; fill: #fff; }
+
+.chat-widget-panel {
+  position: fixed;
+  bottom: 92px;
+  right: 24px;
+  width: 360px;
+  height: 500px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.16);
+  z-index: 9999;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chat-widget-panel.open { display: flex; }
+
+.chat-widget-header {
+  background: linear-gradient(135deg, #1D1D1F, #2D2D2F);
+  color: #fff;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chat-widget-header .avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: #C9A96E;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 600;
+}
+.chat-widget-header .info { flex: 1; }
+.chat-widget-header .name { font-size: 15px; font-weight: 600; }
+.chat-widget-header .sub { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+.chat-widget-close {
+  background: none; border: none; color: #fff; font-size: 20px;
+  cursor: pointer; padding: 4px 8px; line-height: 1;
+}
+
+.chat-widget-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  background: #F8F8F8;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chat-widget-body .msg {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+.chat-widget-body .msg.user {
+  align-self: flex-end;
+  background: #C9A96E;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.chat-widget-body .msg.assistant {
+  align-self: flex-start;
+  background: #fff;
+  color: #1D1D1F;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.chat-widget-body .typing {
+  align-self: flex-start;
+  color: #999;
+  font-size: 13px;
+  padding: 8px 14px;
+}
+
+.chat-widget-input-area {
+  display: flex;
+  padding: 10px 14px;
+  border-top: 1px solid #eee;
+  gap: 8px;
+  background: #fff;
+}
+.chat-widget-input-area input {
+  flex: 1;
+  border: 1px solid #E0E0E0;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.chat-widget-input-area input:focus { border-color: #C9A96E; }
+.chat-widget-input-area button {
+  background: #C9A96E;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 36px; height: 36px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.chat-widget-input-area button:hover { background: #A68A4C; }
+.chat-widget-input-area button svg { width: 17px; height: 17px; fill: #fff; }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo"><img src="/cdn/logo.jpg" alt="青松设计"><span class="nav-logo-text">青松设计</span></a>
+    <ul class="nav-links">
+      <li><a href="/#services">服务项目</a></li>
+      <li><a href="/#process">设计流程</a></li>
+      <li><a href="cases.html">设计案例</a></li>
+      <li><a href="blog.html" class="active">最新博客</a></li>
+      <li><a href="/#about">关于我们</a></li>
+      <li><a href="/#contact">预约咨询</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="back-link">
+  <a href="blog.html">&larr; 返回博客列表</a>
+</div>
+
+<div class="article-container" id="articleContainer">
+  <div class="loading">加载中...</div>
+</div>
+
+<script>
+const id = new URLSearchParams(window.location.search).get('id');
+if (!id) {
+  document.getElementById('articleContainer').innerHTML = '<div class="error">缺少文章 ID</div>';
+} else {
+  loadArticle(id);
+}
+
+async function loadArticle(id) {
+  const container = document.getElementById('articleContainer');
+  try {
+    const res = await fetch(`/api/blog/${id}`);
+    if (!res.ok) throw new Error('加载失败');
+    const p = await res.json();
+    document.title = p.title + ' - 青松设计';
+    container.innerHTML = `
+      ${p.cover_image ? `<img class="cover-image" src="${p.cover_image}" alt="${p.title}" onerror="this.style.display='none'">` : ''}
+      <h1 class="article-title">${p.title}</h1>
+      <div class="article-meta">
+        📅 ${new Date(p.created_at).toLocaleDateString('zh-CN')}
+        ${p.category ? ` · 📂 ${p.category}` : ''}
+      </div>
+      <div class="article-content">${formatContent(p.content)}</div>
+    `;
+  } catch (e) {
+    container.innerHTML = '<div class="error">加载失败，请返回列表重试</div>';
+  }
+}
+
+function formatContent(html) {
+  if (!html) return '';
+  html = html.replace(/\/api\/image\?key=([^"&\s]+)/g, function(_, key) {
+    return '/cdn/' + decodeURIComponent(key);
+  });
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/\s+on\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\s+on\w+\s*=\s*'[^']*'/gi, '')
+    .replace(/href\s*=\s*"javascript:[^"]*"/gi, 'href="#"');
+}
+</script>
+
+<!-- 赛赛 AI 客服聊天组件 -->
+<div class="chat-widget-btn" id="chatBtn" title="在线咨询">
+  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/></svg>
+</div>
+
+<div class="chat-widget-panel" id="chatPanel">
+  <div class="chat-widget-header">
+    <div class="avatar"><img src="/cdn/logo.jpg" alt="赛赛" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"></div>
+    <div class="info">
+      <div class="name">赛赛 · 在线客服</div>
+      <div class="sub">青松空间设计</div>
+    </div>
+    <button class="chat-widget-close" id="chatClose">&times;</button>
+  </div>
+  <div class="chat-widget-body" id="chatBody">
+    <div class="msg assistant">您好!我是青松设计的赛赛~ 请问有什么可以帮您的?</div>
+  </div>
+  <div class="chat-widget-input-area">
+    <input type="text" id="chatInput" placeholder="输入您的问题..." />
+    <button id="chatSend">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var sessionId = 'web-' + Date.now();
+  var messages = [];
+  var btn = document.getElementById('chatBtn');
+  var panel = document.getElementById('chatPanel');
+  var close = document.getElementById('chatClose');
+  var body = document.getElementById('chatBody');
+  var input = document.getElementById('chatInput');
+  var sendBtn = document.getElementById('chatSend');
+
+  function togglePanel() {
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) input.focus();
+  }
+  btn.addEventListener('click', togglePanel);
+  close.addEventListener('click', function(){
+    panel.classList.remove('open');
+    sendChatLog();
+  });
+
+  function addMsg(role, text) {
+    var div = document.createElement('div');
+    div.className = 'msg ' + role;
+    div.textContent = text;
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function showTyping() {
+    var div = document.createElement('div');
+    div.className = 'typing';
+    div.id = 'typing-indicator';
+    div.textContent = '赛赛正在输入...';
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function hideTyping() {
+    var el = document.getElementById('typing-indicator');
+    if (el) el.remove();
+  }
+
+  async function sendMsg() {
+    var text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    addMsg('user', text);
+    messages.push({ role: 'user', content: text });
+    showTyping();
+
+    try {
+      var resp = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: messages, sessionId: sessionId, blogId: id })
+      });
+      var data = await resp.json();
+      hideTyping();
+      var reply = data.reply || '抱歉,暂时无法回复,请拨打19907444111咨询~';
+      addMsg('assistant', reply);
+      messages.push({ role: 'assistant', content: reply });
+    } catch(e) {
+      hideTyping();
+      addMsg('assistant', '网络出小差了,请稍后再试或拨打19907444111直接咨询~');
+    }
+  }
+
+  sendBtn.addEventListener('click', sendMsg);
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') sendMsg();
+  });
+
+  var logSent = false;
+  async function sendChatLog() {
+    if (logSent || messages.length === 0) return;
+    logSent = true;
+    try {
+      await fetch('/api/chat/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: sessionId, messages: messages })
+      });
+    } catch(e) {}
+  }
+
+  window.addEventListener('beforeunload', function() {
+    if (!logSent && messages.length > 0) {
+      try {
+        navigator.sendBeacon('/api/chat/log', JSON.stringify({ sessionId: sessionId, messages: messages }));
+      } catch(e) {}
+    }
+  });
+
+})();
+</script>
+
+</body>
+</html>

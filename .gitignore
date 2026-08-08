@@ -1,0 +1,9 @@
+node_modules/
+.wrangler/
+temp/
+output/
+.env
+*.log
+dist/
+.DS_Store
+Thumbs.db

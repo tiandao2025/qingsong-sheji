@@ -1,0 +1,21 @@
+name = "qingsong-sheji"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "qingsong-images"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "qingsong-db"
+database_id = "c9ec4a29-4619-4359-b610-08a4f9401027"
+
+[site]
+bucket = "./"
+
+[vars]
+JWT_SECRET = "qs-cms-secret-2026"
+ADMIN_PASSWORD = "qingsong2026"
+SITE_URL = "https://qingsong.ggff.net"
+ZHIPU_API_KEY = "de905fb991ce4344877e5d4400a17ad1.NAN6MxvJYl5jMzsO"
