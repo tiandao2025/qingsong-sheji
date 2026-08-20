@@ -693,6 +693,7 @@ async function loadCases() {
       return;
     }
     var cases = res.data || [];
+    window._casesList = cases;
     document.getElementById('caseCount').textContent = '（共 ' + cases.length + ' 个）';
     if (cases.length === 0) {
       document.getElementById('caseTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">暂无案例</td></tr>';
@@ -740,6 +741,17 @@ function showCaseModal(item) {
   var areas = fp.areas || [];
   var images = (isEdit && item.images && item.images.length) ? item.images : [];
   if (!images.length && isEdit && item.cover_image) images = [item.cover_image];
+
+  // 新增时自动计算最大排序号+1
+  var defaultOrder = 0;
+  if (!isEdit) {
+    var list = window._casesList || [];
+    for (var i = 0; i < list.length; i++) {
+      var v = list[i].sort_order || list[i].order || 0;
+      if (v > defaultOrder) defaultOrder = v;
+    }
+    defaultOrder += 1;
+  }
 
   var html = '<h3>' + (isEdit ? '编辑案例' : '新建案例') + '</h3>';
 
@@ -792,7 +804,7 @@ function showCaseModal(item) {
 
   // ===== 展示设置 =====
   html += '<div class="case-section-title">展示设置</div>';
-  html += '<div class="form-row"><div class="form-group"><label class="form-label">排序号（数字越小越靠前）</label><input class="form-input" type="number" id="caseOrder" value="' + (isEdit ? (item.sort_order || item.order || 0) : 0) + '"></div>';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">排序号（数字越小越靠前，新增自动为当前最大+1）</label><input class="form-input" type="number" id="caseOrder" value="' + (isEdit ? (item.sort_order || item.order || 0) : defaultOrder) + '"></div>';
   html += '<div class="form-group"><label class="form-check"><input type="checkbox" id="caseFeatured" ' + (isEdit && item.featured ? 'checked' : '') + '> <span>首页展示</span></label></div></div>';
 
   html += '<div class="btn-group">';

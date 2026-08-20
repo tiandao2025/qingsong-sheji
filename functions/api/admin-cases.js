@@ -157,9 +157,16 @@ export async function onRequest(context) {
       const slug = generateSlug(title);
       const images = parseImages(body);
       const coverImage = pickStr(body, ['cover_image'], '') || (images.length ? images[0] : '');
-      const sortOrder = typeof body.sort_order === 'number'
-        ? body.sort_order
-        : (typeof body.order === 'number' ? body.order : 0);
+      let sortOrder;
+      if (typeof body.sort_order === 'number') {
+        sortOrder = body.sort_order;
+      } else if (typeof body.order === 'number') {
+        sortOrder = body.order;
+      } else {
+        // 排序号未提供时：取当前最大 sort_order + 1（与 /api/cases 行为一致）
+        const maxRow = await env.DB.prepare('SELECT MAX(sort_order) AS mx FROM cases').first();
+        sortOrder = (maxRow && maxRow.mx ? maxRow.mx : 0) + 1;
+      }
 
       const insertResult = await env.DB.prepare(
         `INSERT INTO cases (title, slug, description, content, cover_image, video_url, file_url, file_name, tags, project_info, design_concept, floor_plan, spaces, materials, images, type, location, sort_order, featured)
