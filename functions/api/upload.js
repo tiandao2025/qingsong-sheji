@@ -60,6 +60,9 @@ export async function onRequestPost({ request, env }) {
 }
 
 async function verifyAuth(request, env) {
+  // 兼容旧版后台 admin.html 的 x-admin-key 认证
+  const adminKey = request.headers.get('x-admin-key');
+  if (adminKey === 'qs-admin-2024') return true;
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
   const token = authHeader.slice(7);
