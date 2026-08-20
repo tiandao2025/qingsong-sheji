@@ -29,7 +29,7 @@ export async function onRequest({ request, env }) {
     }
 
     const data = await request.json();
-    const { title, description, content, cover_image, video_url, file_url, file_name, tags, project_info, design_concept, floor_plan, spaces, materials } = data;
+    const { title, description, content, cover_image, video_url, file_url, file_name, tags, project_info, design_concept, floor_plan, spaces, materials, type, location, sort_order, featured } = data;
 
     // 获取现有记录
     const existing = await env.DB.prepare('SELECT * FROM cases WHERE id = ?').bind(id).first();
@@ -53,7 +53,7 @@ export async function onRequest({ request, env }) {
     const materialsJson = materials !== undefined ? JSON.stringify(materials) : existing.materials;
 
     const updateResult = await env.DB.prepare(
-      `UPDATE cases SET title=?, slug=?, description=?, content=?, cover_image=?, video_url=?, file_url=?, file_name=?, tags=?, project_info=?, design_concept=?, floor_plan=?, spaces=?, materials=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`
+      `UPDATE cases SET title=?, slug=?, description=?, content=?, cover_image=?, video_url=?, file_url=?, file_name=?, tags=?, project_info=?, design_concept=?, floor_plan=?, spaces=?, materials=?, type=?, location=?, sort_order=?, featured=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`
     ).bind(
       title || existing.title,
       slug,
@@ -69,6 +69,10 @@ export async function onRequest({ request, env }) {
       floorPlan,
       spacesJson,
       materialsJson,
+      type !== undefined ? type : (existing.type || ''),
+      location !== undefined ? location : (existing.location || ''),
+      sort_order !== undefined ? sort_order : (existing.sort_order || 0),
+      featured !== undefined ? (featured ? 1 : 0) : (existing.featured || 0),
       id
     ).run();
 

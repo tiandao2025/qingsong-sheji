@@ -1,6 +1,47 @@
 // admin-cases.js — 案例CRUD API (Cloudflare Pages Functions)
 // 认证: x-admin-key: qs-admin-2024
-// 存储: R2 bucket qingsong-images, 文件 cases-data.json
+// 存储: D1 数据库 cases 表 (与新版 /api/cases 统一)
+// 兼容: 返回字段映射回旧版后台弹窗字段 (name/desc/type/location/images/video/order/featured)
+
+function normalizeImagePath(p) {
+  if (!p) return '';
+  p = String(p).trim();
+  if (p.startsWith('http')) return p;
+  if (p.startsWith('/cdn/')) return p;
+  if (p.startsWith('/images/')) return p.replace(/^\/images\//, '/cdn/');
+  if (p.startsWith('images/')) return '/cdn/' + p.slice('images/'.length);
+  return '/cdn/' + p;
+}
+
+function toLegacy(row) {
+  const images = (row.images || '').split(',').filter(Boolean);
+  return {
+    id: 'case_' + row.id,
+    name: row.title || '',
+    desc: row.description || '',
+    type: row.type || '家装',
+    location: row.location || '',
+    images: images,
+    video: row.video_url || '',
+    order: row.sort_order || 0,
+    featured: !!row.featured
+  };
+}
+
+function generateSlug(title) {
+  let slug = title.toLowerCase()
+    .replace(/[^\w\u4e00-\u9fa5]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (!slug) slug = 'case';
+  const ts = Date.now().toString(36);
+  return `${slug}-${ts}`;
+}
+
+function parseCaseId(idStr) {
+  // 兼容 'case_123' 与纯数字
+  const m = String(idStr).match(/(\d+)$/);
+  return m ? parseInt(m[1], 10) : NaN;
+}
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -16,44 +57,33 @@ export async function onRequest(context) {
     });
   }
 
-  const bucket = env.IMAGES;
-  const key = 'cases-data.json';
-
-  async function readData() {
-    try {
-      const obj = await bucket.get(key);
-      if (!obj) return { cases: [] };
-      const text = await obj.text();
-      return JSON.parse(text);
-    } catch (e) {
-      return { cases: [] };
-    }
-  }
-
-  async function writeData(data) {
-    await bucket.put(key, JSON.stringify(data, null, 2), {
-      httpMetadata: { contentType: 'application/json' }
-    });
-  }
-
   try {
     // GET
     if (method === 'GET') {
-      const data = await readData();
       const caseId = url.searchParams.get('id');
       if (caseId) {
-        const item = data.cases.find(c => c.id === caseId);
-        if (!item) {
+        const id = parseCaseId(caseId);
+        if (isNaN(id)) {
           return new Response(JSON.stringify({ error: '案例不存在' }), {
             status: 404,
             headers: { 'Content-Type': 'application/json' }
           });
         }
-        return new Response(JSON.stringify({ data: item }), {
+        const row = await env.DB.prepare('SELECT * FROM cases WHERE id = ?').bind(id).first();
+        if (!row) {
+          return new Response(JSON.stringify({ error: '案例不存在' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        return new Response(JSON.stringify({ data: toLegacy(row) }), {
           headers: { 'Content-Type': 'application/json' }
         });
       }
-      return new Response(JSON.stringify({ data: data.cases }), {
+      const { results } = await env.DB.prepare(
+        'SELECT * FROM cases ORDER BY sort_order ASC, id ASC'
+      ).all();
+      return new Response(JSON.stringify({ data: results.map(toLegacy) }), {
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -67,21 +97,38 @@ export async function onRequest(context) {
           headers: { 'Content-Type': 'application/json' }
         });
       }
-      const data = await readData();
-      const newCase = {
-        id: 'case_' + Date.now(),
-        name: body.name.trim(),
-        desc: body.desc || '',
-        type: body.type || '家装',
-        location: body.location || '',
-        images: body.images || [],
-        video: body.video || '',
-        order: typeof body.order === 'number' ? body.order : data.cases.length,
-        featured: !!body.featured
-      };
-      data.cases.push(newCase);
-      await writeData(data);
-      return new Response(JSON.stringify({ success: true, data: newCase }), {
+      const title = body.name.trim();
+      const slug = generateSlug(title);
+      const images = Array.isArray(body.images) ? body.images.map(normalizeImagePath).filter(Boolean) : [];
+      const coverImage = images.length > 0 ? images[0] : '';
+      const featured = body.featured ? 1 : 0;
+      const sortOrder = typeof body.order === 'number' ? body.order : 0;
+
+      const insertResult = await env.DB.prepare(
+        `INSERT INTO cases (title, slug, description, cover_image, video_url, images, type, location, sort_order, featured)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        title,
+        slug,
+        body.desc || '',
+        coverImage,
+        body.video || '',
+        images.join(','),
+        body.type || '家装',
+        body.location || '',
+        sortOrder,
+        featured
+      ).run();
+
+      if (!insertResult.success || insertResult.changes === 0) {
+        return new Response(JSON.stringify({ error: '创建失败，数据库写入未生效' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const row = await env.DB.prepare('SELECT * FROM cases WHERE slug = ?').bind(slug).first();
+      return new Response(JSON.stringify({ success: true, data: toLegacy(row) }), {
         status: 201,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -91,34 +138,58 @@ export async function onRequest(context) {
     if (method === 'PUT') {
       const body = await request.json();
       const caseId = body.id || url.searchParams.get('id');
-      if (!caseId) {
+      const id = parseCaseId(caseId);
+      if (!caseId || isNaN(id)) {
         return new Response(JSON.stringify({ error: '缺少案例ID' }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' }
         });
       }
-      const data = await readData();
-      const idx = data.cases.findIndex(c => c.id === caseId);
-      if (idx === -1) {
+      const existing = await env.DB.prepare('SELECT * FROM cases WHERE id = ?').bind(id).first();
+      if (!existing) {
         return new Response(JSON.stringify({ error: '案例不存在' }), {
           status: 404,
           headers: { 'Content-Type': 'application/json' }
         });
       }
-      const existing = data.cases[idx];
-      data.cases[idx] = {
-        id: existing.id,
-        name: body.name !== undefined ? body.name.trim() : existing.name,
-        desc: body.desc !== undefined ? body.desc : existing.desc,
-        type: body.type !== undefined ? body.type : existing.type,
-        location: body.location !== undefined ? body.location : existing.location,
-        images: body.images !== undefined ? body.images : existing.images,
-        video: body.video !== undefined ? body.video : existing.video,
-        order: body.order !== undefined ? body.order : existing.order,
-        featured: body.featured !== undefined ? !!body.featured : existing.featured
-      };
-      await writeData(data);
-      return new Response(JSON.stringify({ success: true, data: data.cases[idx] }), {
+
+      const title = body.name !== undefined ? body.name.trim() : existing.title;
+      let slug = existing.slug;
+      if (body.name !== undefined && title !== existing.title) {
+        slug = generateSlug(title);
+      }
+      const images = body.images !== undefined
+        ? (Array.isArray(body.images) ? body.images.map(normalizeImagePath).filter(Boolean) : [])
+        : (existing.images || '').split(',').filter(Boolean);
+      const coverImage = (body.images !== undefined && images.length > 0)
+        ? images[0]
+        : (existing.cover_image || (images.length > 0 ? images[0] : ''));
+
+      const updateResult = await env.DB.prepare(
+        `UPDATE cases SET title=?, slug=?, description=?, cover_image=?, video_url=?, images=?, type=?, location=?, sort_order=?, featured=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`
+      ).bind(
+        title,
+        slug,
+        body.desc !== undefined ? body.desc : existing.description,
+        coverImage,
+        body.video !== undefined ? body.video : (existing.video_url || ''),
+        images.join(','),
+        body.type !== undefined ? body.type : (existing.type || '家装'),
+        body.location !== undefined ? body.location : (existing.location || ''),
+        body.order !== undefined ? body.order : (existing.sort_order || 0),
+        body.featured !== undefined ? (body.featured ? 1 : 0) : (existing.featured || 0),
+        id
+      ).run();
+
+      if (!updateResult.success || updateResult.changes === 0) {
+        return new Response(JSON.stringify({ error: '更新失败，数据库写入未生效' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const row = await env.DB.prepare('SELECT * FROM cases WHERE id = ?').bind(id).first();
+      return new Response(JSON.stringify({ success: true, data: toLegacy(row) }), {
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -126,22 +197,14 @@ export async function onRequest(context) {
     // DELETE
     if (method === 'DELETE') {
       const caseId = url.searchParams.get('id');
-      if (!caseId) {
+      const id = parseCaseId(caseId);
+      if (!caseId || isNaN(id)) {
         return new Response(JSON.stringify({ error: '缺少案例ID' }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' }
         });
       }
-      const data = await readData();
-      const idx = data.cases.findIndex(c => c.id === caseId);
-      if (idx === -1) {
-        return new Response(JSON.stringify({ error: '案例不存在' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-      data.cases.splice(idx, 1);
-      await writeData(data);
+      await env.DB.prepare('DELETE FROM cases WHERE id = ?').bind(id).run();
       return new Response(JSON.stringify({ success: true }), {
         headers: { 'Content-Type': 'application/json' }
       });
