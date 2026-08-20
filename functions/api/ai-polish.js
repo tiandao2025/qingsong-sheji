@@ -7,33 +7,70 @@
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB，超过则跳过视觉模型降级纯文本
 
 /**
- * 将远程图片 URL 转为 base64 data URL
- * 智谱视觉模型无法直接访问部分 CDN 域名，需先下载转 base64
- * 超过 2MB 的图片直接拒绝，避免 Worker 超时
+ * Uint8Array 转 base64（分块拼接，避免超大字符串卡顿）
  */
-async function imageUrlToBase64(url) {
-  // 先用 HEAD 检查大小
-  const headResp = await fetch(url, { method: 'HEAD' });
-  if (!headResp.ok) throw new Error(`图片获取失败 HTTP ${headResp.status}`);
-  const contentLength = parseInt(headResp.headers.get('content-length') || '0', 10);
-  if (contentLength > MAX_IMAGE_BYTES) {
-    throw new Error(`图片过大 (${(contentLength / 1024 / 1024).toFixed(1)}MB)，超过2MB上限`);
-  }
-
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`图片获取失败 HTTP ${resp.status}`);
-  const contentType = resp.headers.get('content-type') || 'image/jpeg';
-  const buffer = await resp.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
+function bytesToBase64(bytes) {
   let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
   }
-  const base64 = btoa(binary);
-  return `data:${contentType};base64,${base64}`;
+  return btoa(binary);
 }
 
-export async function onRequest({ request, env }) {
+/**
+ * 将图片转为 base64 data URL
+ * 自身域名（qingsong.ggff.net / *.qingsong-sheji.pages.dev）优先走 R2 直读，
+ * 避免 Worker 内部 fetch 自身域名触发 Cloudflare 502 错误页；
+ * 外部域名走 HTTP 下载。仅接受 image/* 类型，HTML 等非图片内容直接拒绝。
+ */
+async function imageUrlToBase64(url, env) {
+  const u = new URL(url);
+  const isSelfHost = u.hostname === 'qingsong.ggff.net' || u.hostname.endsWith('.qingsong-sheji.pages.dev');
+
+  // 自身域名：R2 直读
+  if (isSelfHost) {
+    const key = u.pathname.replace(/^\/cdn\//, '');
+    if (key) {
+      const obj = await env.IMAGES.get(key);
+      if (obj) {
+        const buf = await obj.arrayBuffer();
+        if (buf.byteLength > MAX_IMAGE_BYTES) {
+          throw new Error(`图片过大 (${(buf.byteLength / 1024 / 1024).toFixed(1)}MB)，超过2MB上限`);
+        }
+        const contentType = (obj.httpMetadata && obj.httpMetadata.contentType) || 'image/png';
+        return `data:${contentType};base64,${bytesToBase64(new Uint8Array(buf))}`;
+      }
+    }
+    throw new Error(`R2 中未找到图片: ${key || url}`);
+  }
+
+  // 外部域名：HTTP 下载
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`图片获取失败 HTTP ${resp.status}`);
+  const contentType = (resp.headers.get('content-type') || '').split(';')[0].trim();
+  if (!contentType.startsWith('image/')) {
+    throw new Error(`图片地址返回了非图片内容 (${contentType || '未知类型'})`);
+  }
+  const buffer = await resp.arrayBuffer();
+  if (buffer.byteLength > MAX_IMAGE_BYTES) {
+    throw new Error(`图片过大 (${(buffer.byteLength / 1024 / 1024).toFixed(1)}MB)，超过2MB上限`);
+  }
+  return `data:${contentType};base64,${bytesToBase64(new Uint8Array(buffer))}`;
+}
+
+export async function onRequest(context) {
+  try {
+    return await handle(context);
+  } catch (err) {
+    return new Response(JSON.stringify({ success: false, error: `服务异常: ${err && err.message ? err.message : err}` }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+async function handle({ request, env }) {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
       status: 405,
@@ -71,7 +108,7 @@ export async function onRequest({ request, env }) {
   let coverBase64 = null;
   if (coverImage) {
     try {
-      coverBase64 = await imageUrlToBase64(coverImage);
+      coverBase64 = await imageUrlToBase64(coverImage, env);
     } catch (e) {
       console.warn('封面图转换base64失败，降级为纯文本模式:', e.message);
     }
