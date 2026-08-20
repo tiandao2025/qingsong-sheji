@@ -90,6 +90,10 @@ a { color: #C9A96E; text-decoration: none; }
 .upload-row input[type=file] { font-size: 12px; }
 .img-preview { margin-top: 8px; }
 .img-preview img { max-width: 200px; max-height: 120px; border-radius: 6px; border: 1px solid #E8E8ED; }
+.img-grid { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+.img-grid-item { position: relative; display: inline-block; }
+.img-grid-item img { width: 100px; height: 75px; object-fit: cover; border-radius: 4px; border: 1px solid #E8E8ED; }
+.img-grid-item .img-del { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: none; background: #E74C3C; color: #fff; font-size: 12px; line-height: 20px; text-align: center; cursor: pointer; padding: 0; }
 .hint-text { font-size: 12px; color: #999; margin-top: 4px; }
 .dynamic-item { border: 1px solid #E8E8ED; border-radius: 8px; padding: 12px; margin-bottom: 10px; background: #FBFBFD; }
 .dynamic-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -966,12 +970,37 @@ function collectCaseFloorAreas() {
 
 // ==================== 空间展示动态列表 ====================
 var caseSpaceCounter = 0;
+function renderSpaceThumbs(id, images) {
+  var list = images || [];
+  if (!list.length) { document.getElementById(id + '_prev').innerHTML = ''; return; }
+  var html = list.map(function(url, idx) {
+    return '<div class="img-grid-item"><img src="' + escapeHtml(url) + '" alt="空间图' + (idx + 1) + '">' +
+      '<button type="button" class="img-del" title="删除" onclick="removeSpaceImage(\'' + id + '\',' + idx + ')">&times;</button></div>';
+  }).join('');
+  document.getElementById(id + '_prev').innerHTML = html;
+}
+function getSpaceImages(id) {
+  var el = document.getElementById(id + '_imgs');
+  if (!el) return [];
+  var v = el.value.trim();
+  if (!v) return [];
+  try { var arr = JSON.parse(v); return Array.isArray(arr) ? arr : []; } catch (e) { return []; }
+}
+function setSpaceImages(id, images) {
+  document.getElementById(id + '_imgs').value = JSON.stringify(images);
+  renderSpaceThumbs(id, images);
+}
+function removeSpaceImage(id, idx) {
+  var images = getSpaceImages(id);
+  images.splice(idx, 1);
+  setSpaceImages(id, images);
+}
 function addCaseSpace(data) {
   data = data || {};
   caseSpaceCounter++;
   var id = 'csp_' + caseSpaceCounter;
   var tagsVal = (data.tags || []).join(',');
-  var imgUrl = data.images && data.images[0] ? data.images[0] : '';
+  var images = (data.images && data.images.length) ? data.images.slice() : (data.image ? [data.image] : []);
   var title = data.name_zh || ('空间 #' + caseSpaceCounter);
   var html = '<div class="dynamic-item" id="' + id + '">' +
     '<div class="dynamic-item-header"><span class="dynamic-item-title">' + escapeHtml(title) + '</span>' +
@@ -983,33 +1012,40 @@ function addCaseSpace(data) {
     '<div class="form-group"><label class="form-label">英文副标题</label><input class="form-input" value="' + escapeHtml(data.subtitle_en || '') + '" placeholder="如 Where life unfolds"></div>' +
     '<div class="form-group"><label class="form-label">描述</label><textarea class="form-textarea" style="min-height:60px;" placeholder="空间描述">' + escapeHtml(data.desc || '') + '</textarea></div>' +
     '<div class="form-group"><label class="form-label">标签（逗号分隔）</label><input class="form-input" value="' + escapeHtml(tagsVal) + '" placeholder="如 开放式,极简"></div>' +
-    '<div class="form-group"><label class="form-label">空间图片</label>' +
-    '<div class="upload-row"><input type="file" id="' + id + '_file" accept="image/*" style="font-size:12px;"><button type="button" class="btn btn-outline btn-sm" onclick="uploadCaseSpaceImage(\'' + id + '\')">上传</button></div>' +
-    '<input type="hidden" id="' + id + '_img" value="' + escapeHtml(imgUrl) + '">' +
-    '<div class="img-preview" id="' + id + '_prev">' + (imgUrl ? '<img src="' + escapeHtml(imgUrl) + '">' : '') + '</div>' +
+    '<div class="form-group"><label class="form-label">空间图片（可多选，一次上传多张）</label>' +
+    '<div class="upload-row"><input type="file" id="' + id + '_file" accept="image/*" multiple style="font-size:12px;"><button type="button" class="btn btn-outline btn-sm" onclick="uploadCaseSpaceImage(\'' + id + '\')">上传</button></div>' +
+    '<input type="hidden" id="' + id + '_imgs" value="' + escapeHtml(JSON.stringify(images)) + '">' +
+    '<div class="img-grid" id="' + id + '_prev"></div>' +
     '</div></div>';
   document.getElementById('caseSpacesList').insertAdjacentHTML('beforeend', html);
+  renderSpaceThumbs(id, images);
 }
 function removeCaseSpace(id) { var el = document.getElementById(id); if (el) el.remove(); }
 async function uploadCaseSpaceImage(id) {
   var fileInput = document.getElementById(id + '_file');
-  var file = fileInput.files[0];
-  if (!file) { showToast('请先选择文件', 'error'); return; }
-  var formData = new FormData();
-  formData.append('file', file);
-  try {
-    var resp = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
-    var result = await resp.json();
-    if (result.url) {
-      document.getElementById(id + '_img').value = result.url;
-      document.getElementById(id + '_prev').innerHTML = '<img src="' + result.url + '">';
-      showToast('上传成功', 'success');
-    } else {
-      showToast('上传失败: ' + (result.error || '未知错误'), 'error');
+  var files = fileInput.files;
+  if (!files || !files.length) { showToast('请先选择文件', 'error'); return; }
+  var images = getSpaceImages(id).slice();
+  var successCount = 0;
+  for (var i = 0; i < files.length; i++) {
+    var formData = new FormData();
+    formData.append('file', files[i]);
+    try {
+      var resp = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
+      var result = await resp.json();
+      if (result.url) {
+        images.push(result.url);
+        successCount++;
+      } else {
+        showToast('第' + (i + 1) + '张上传失败: ' + (result.error || '未知错误'), 'error');
+      }
+    } catch (e) {
+      showToast('第' + (i + 1) + '张上传失败: ' + e.message, 'error');
     }
-  } catch (e) {
-    showToast('上传失败: ' + e.message, 'error');
   }
+  setSpaceImages(id, images);
+  fileInput.value = '';
+  if (successCount) showToast('成功上传 ' + successCount + ' 张图片', 'success');
 }
 function loadCaseSpaces(spaces) {
   caseSpaceCounter = 0;
@@ -1031,11 +1067,15 @@ function collectCaseSpaces() {
     var subtitleEn = inputs[2] ? inputs[2].value.trim() : '';
     var tagsStr = inputs[3] ? inputs[3].value.trim() : '';
     var desc = textareas[0] ? textareas[0].value.trim() : '';
-    var imgEl = document.getElementById(id + '_img');
-    var imgUrl = imgEl ? imgEl.value.trim() : '';
+    var imgsEl = document.getElementById(id + '_imgs');
+    var images = imgsEl ? getSpaceImages(id) : [];
+    if (!images.length) {
+      var imgEl = document.getElementById(id + '_img');
+      if (imgEl && imgEl.value.trim()) images = [imgEl.value.trim()];
+    }
     var tags = tagsStr ? tagsStr.split(',').map(function(t) { return t.trim(); }).filter(Boolean) : [];
-    if (nameZh || nameEn || desc || imgUrl) {
-      spaces.push({ name_zh: nameZh, name_en: nameEn, subtitle_en: subtitleEn, desc: desc, tags: tags, images: imgUrl ? [imgUrl] : [] });
+    if (nameZh || nameEn || desc || images.length) {
+      spaces.push({ name_zh: nameZh, name_en: nameEn, subtitle_en: subtitleEn, desc: desc, tags: tags, images: images });
     }
   });
   return spaces;

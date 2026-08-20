@@ -31,7 +31,7 @@ async function handleGet(request, env) {
   if (where.length > 0) {
     query += ' WHERE ' + where.join(' AND ');
   }
-  query += ' ORDER BY sort_order ASC, id ASC LIMIT ?';
+  query += ' ORDER BY sort_order DESC, id DESC LIMIT ?';
   params.push(limit);
 
   const { results } = await env.DB.prepare(query).bind(...params).all();
