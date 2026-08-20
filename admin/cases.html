@@ -386,6 +386,77 @@ body {
   display: none;
 }
 
+/* ===== Space Multi Images ===== */
+.space-img-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.space-img-thumb {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--tool-border);
+  background: var(--tool-bg);
+  flex: 0 0 auto;
+}
+
+.space-img-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.space-img-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  line-height: 16px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  border: none;
+  padding: 0;
+}
+
+.space-img-add {
+  position: relative;
+  border: 2px dashed var(--tool-border);
+  border-radius: 6px;
+  height: 84px;
+  width: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--tool-text-3);
+  font-size: 1.5rem;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.space-img-add:hover {
+  border-color: var(--tool-accent);
+  color: var(--tool-accent);
+}
+
+.space-img-add input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 /* ===== Dynamic Form Items ===== */
 .dynamic-item {
   border: 1px solid var(--tool-border);
@@ -1770,6 +1841,9 @@ function addSpace(data) {
   data = data || {};
   spaceCounter++;
   var id = 'sp_' + spaceCounter;
+  var imgs = [];
+  if (data.images && data.images.length) imgs = data.images.slice();
+  else if (data.image) imgs = [data.image];
   var html = '<div class="dynamic-item" id="' + id + '">' +
     '<div class="dynamic-item-header" onclick="toggleSpaceBody(\'' + id + '\')">' +
     '<span class="dynamic-item-title">' + (data.name_zh || '空间 #' + spaceCounter) + '</span>' +
@@ -1791,54 +1865,84 @@ function addSpace(data) {
     '<div class="field-group"><label class="field-label">标签（逗号分隔）</label>' +
     '<input class="field-input" id="' + id + '_tags" value="' + escapeHtml((data.tags || []).join(',')) + '" oninput="updatePreview()" placeholder="如 开放式,极简">' +
     '<button class="ai-btn" onclick="aiPolish(\'' + id + '_tags\',\'空间标签\')">AI润色</button></div>' +
-    '<div class="field-group"><label class="field-label">空间图片</label>' +
-    '<div class="image-upload" id="' + id + '_imgUpload">' + buildTabImgInner(data.images && data.images[0] ? data.images[0] : '', id) + '</div>' +
-    '<input type="hidden" id="' + id + '_img" value="' + escapeHtml(data.images && data.images[0] ? data.images[0] : '') + '"></div>' +
+    '<div class="field-group"><label class="field-label">空间图片（可多张）</label>' +
+    '<div class="image-upload" id="' + id + '_imgUpload">' + buildSpaceImgInner(imgs, id) + '</div>' +
+    '<input type="hidden" id="' + id + '_imgs" value="' + escapeHtml(JSON.stringify(imgs)) + '"></div>' +
     '</div></div>';
   document.getElementById('spacesList').insertAdjacentHTML('beforeend', html);
   updatePreview();
 }
 
-function buildTabImgInner(url, spaceId) {
-  if (url) {
-    return '<img src="' + url + '" alt="空间图"><input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
-  }
-  return '<span class="image-upload-icon">&#128247;</span><span class="image-upload-text">点击上传空间图</span><input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
+function buildSpaceImgInner(urls, spaceId) {
+  if (!urls) urls = [];
+  var html = '<div class="space-img-grid">';
+  urls.forEach(function(u, idx) {
+    html += '<div class="space-img-thumb">' +
+      '<img src="' + u + '" alt="空间图' + (idx + 1) + '">' +
+      '<button type="button" class="space-img-remove" onclick="removeSpaceImg(\'' + spaceId + '\',' + idx + ')">&times;</button>' +
+      '</div>';
+  });
+  html += '</div>';
+  html += '<div class="space-img-add">' +
+    '<span>+</span>' +
+    '<input type="file" accept="image/*" multiple onchange="handleSpaceImages(this,\'' + spaceId + '\')">' +
+    '</div>';
+  return html;
 }
 
-async function handleSpaceImage(input, spaceId) {
-  var file = input.files[0];
-  if (!file) return;
+async function handleSpaceImages(input, spaceId) {
+  var files = input.files;
+  if (!files || !files.length) return;
   var upload = document.getElementById(spaceId + '_imgUpload');
+  var hidden = document.getElementById(spaceId + '_imgs');
+  var cur = [];
+  try { cur = JSON.parse(hidden.value || '[]'); } catch (e) { cur = []; }
+  var originHtml = upload.innerHTML;
   upload.classList.add('has-image');
-  upload.innerHTML = '<span style="color:var(--tool-text-3);position:relative;z-index:1">上传中...</span>' +
-    '<input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
+  upload.innerHTML = '<span style="color:var(--tool-text-3);position:relative;z-index:1">上传中...</span>';
 
-  var formData = new FormData();
-  formData.append('file', file);
-  try {
-    var res = await authFetch('/api/upload', { method: 'POST', body: formData });
-    if (!res) {
-      upload.classList.remove('has-image');
-      upload.innerHTML = '<span class="image-upload-icon">&#128247;</span><span class="image-upload-text">点击上传空间图</span><input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
-      return;
-    }
-    var data = await res.json();
-    if (data.success) {
-      document.getElementById(spaceId + '_img').value = data.url;
-      upload.classList.add('has-image');
-      upload.innerHTML = '<img src="' + data.url + '" alt="空间图"><input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
-      updatePreview();
-    } else {
-      upload.classList.remove('has-image');
-      upload.innerHTML = '<span class="image-upload-icon">&#128247;</span><span class="image-upload-text">点击上传空间图</span><input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
-      showToast('图片上传失败');
-    }
-  } catch (e) {
+  var ok = 0;
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    if (!file) continue;
+    var formData = new FormData();
+    formData.append('file', file);
+    try {
+      var res = await authFetch('/api/upload', { method: 'POST', body: formData });
+      if (res) {
+        var data = await res.json();
+        if (data.success) {
+          cur.push(data.url);
+          ok++;
+        }
+      }
+    } catch (e) { /* 单张失败继续 */ }
+  }
+  hidden.value = JSON.stringify(cur);
+  if (ok > 0) {
+    upload.classList.add('has-image');
+    upload.innerHTML = buildSpaceImgInner(cur, spaceId);
+    updatePreview();
+  } else {
     upload.classList.remove('has-image');
-    upload.innerHTML = '<span class="image-upload-icon">&#128247;</span><span class="image-upload-text">点击上传空间图</span><input type="file" accept="image/*" onchange="handleSpaceImage(this,\'' + spaceId + '\')">';
+    upload.innerHTML = buildSpaceImgInner(cur, spaceId);
     showToast('图片上传失败');
   }
+}
+
+function removeSpaceImg(spaceId, idx) {
+  var hidden = document.getElementById(spaceId + '_imgs');
+  if (!hidden) return;
+  var cur = [];
+  try { cur = JSON.parse(hidden.value || '[]'); } catch (e) { cur = []; }
+  cur.splice(idx, 1);
+  hidden.value = JSON.stringify(cur);
+  var upload = document.getElementById(spaceId + '_imgUpload');
+  if (upload) {
+    upload.classList.toggle('has-image', cur.length > 0);
+    upload.innerHTML = buildSpaceImgInner(cur, spaceId);
+  }
+  updatePreview();
 }
 
 function updateSpaceTitle(id) {
@@ -1883,8 +1987,15 @@ function collectSpaces() {
     var subtitleEn = inputs.length > 2 ? inputs[2].value.trim() : '';
     var tagsStr = inputs.length > 3 ? inputs[3].value.trim() : '';
     var desc = textareas.length > 0 ? textareas[0].value.trim() : '';
-    var img = document.getElementById(id + '_img');
-    var imgUrl = img ? img.value : '';
+    var img = document.getElementById(id + '_imgs');
+    var imgUrls = [];
+    if (img && img.value) {
+      try { imgUrls = JSON.parse(img.value); } catch (e) { imgUrls = []; }
+    }
+    if (!imgUrls || !imgUrls.length) {
+      var oldImg = document.getElementById(id + '_img');
+      if (oldImg && oldImg.value) imgUrls = [oldImg.value];
+    }
     var tags = tagsStr ? tagsStr.split(',').map(function(t) { return t.trim(); }).filter(Boolean) : [];
     spaces.push({
       name_zh: nameZh,
@@ -1892,7 +2003,8 @@ function collectSpaces() {
       subtitle_en: subtitleEn,
       desc: desc,
       tags: tags,
-      images: imgUrl ? [imgUrl] : []
+      images: imgUrls,
+      image: imgUrls.length ? imgUrls[0] : ''
     });
   });
   return spaces;

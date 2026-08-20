@@ -425,6 +425,7 @@ a { color:inherit; text-decoration:none; }
   color:var(--color-text); margin-bottom:12px;
 }
 .space-item-desc { font-size:1.0625rem; color:var(--color-text-secondary); line-height:1.8; margin-bottom:20px; }
+.space-item-images { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px; margin-bottom:20px; }
 .space-item-image { width:100%; max-width:100%; border-radius:4px; }
 
 /* ===== Materials ===== */
@@ -846,18 +847,30 @@ a { color:inherit; text-decoration:none; }
 
     var html = '';
     spaces.forEach(function(space, i) {
-      if (!space.name && !space.description && !space.image) return;
+      var name = space.name || space.name_zh || '';
+      var desc = space.description || space.desc || '';
+      var images = [];
+      if (Array.isArray(space.images) && space.images.length) {
+        images = space.images.filter(function(u) { return u; });
+      } else if (space.image) {
+        images = [space.image];
+      }
+      if (!name && !desc && images.length === 0) return;
       var cls = 'space-item reveal';
       if (i > 0) cls += ' reveal-delay-' + Math.min(i, 4);
       html += '<div class="' + cls + '">';
-      if (space.name) {
-        html += '<h3 class="space-item-name">' + space.name + '</h3>';
+      if (name) {
+        html += '<h3 class="space-item-name">' + name + '</h3>';
       }
-      if (space.description) {
-        html += '<p class="space-item-desc">' + space.description + '</p>';
+      if (desc) {
+        html += '<p class="space-item-desc">' + desc + '</p>';
       }
-      if (space.image) {
-        html += '<img class="space-item-image" src="' + space.image + '" alt="' + (space.name || '空间') + '" loading="lazy" onerror="this.style.display=\'none\'">';
+      if (images.length) {
+        html += '<div class="space-item-images">';
+        images.forEach(function(img) {
+          html += '<img class="space-item-image" src="' + img + '" alt="' + (name || '空间') + '" loading="lazy" onerror="this.style.display=\'none\'">';
+        });
+        html += '</div>';
       }
       html += '</div>';
     });
