@@ -1,58 +1,27 @@
-// 仅密码验证
-const ADMIN_PASSWORD = 'qingsong2026';
-const JWT_SECRET = 'qs-cms-secret-2026';
-
+// 后台登录接口：校验密码后返回管理凭证
+// 密码从环境变量 ADMIN_PASSWORD 读取，不写入代码
 export async function onRequestPost({ request, env }) {
   try {
-    const { password } = await request.json();
+    const body = await request.json();
+    const password = body && body.password ? String(body.password) : '';
 
-    if (!password) {
-      return new Response(JSON.stringify({ error: '请输入密码' }), {
-        status: 400,
+    const validPassword = env.ADMIN_PASSWORD || '';
+    if (!validPassword) {
+      return new Response(JSON.stringify({ success: false, error: '服务器未配置管理员密码' }), {
+        status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    if (password !== ADMIN_PASSWORD) {
-      return new Response(JSON.stringify({ error: '密码错误' }), {
+    if (!password || password !== validPassword) {
+      return new Response(JSON.stringify({ success: false, error: '密码错误' }), {
         status: 401,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // 生成 JWT token
-    const header = { alg: 'HS256', typ: 'JWT' };
-    const payload = {
-      sub: 'admin',
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 86400 // 24小时过期
-    };
-
-    const toBase64Url = (str) => {
-      return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-    };
-
-    const headerB64 = toBase64Url(JSON.stringify(header));
-    const payloadB64 = toBase64Url(JSON.stringify(payload));
-    const signatureInput = `${headerB64}.${payloadB64}`;
-
-    const key = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(JWT_SECRET),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    const sigBuffer = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signatureInput));
-    const sigArray = Array.from(new Uint8Array(sigBuffer));
-    const sigHex = sigArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    const sigB64 = toBase64Url(sigHex);
-    const token = `${headerB64}.${payloadB64}.${sigB64}`;
-
-    return new Response(JSON.stringify({ token }), {
+    const token = env.ADMIN_TOKEN || 'qs-admin-2024';
+    return new Response(JSON.stringify({ success: true, token }), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
@@ -60,7 +29,7 @@ export async function onRequestPost({ request, env }) {
       }
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: '服务器错误' }), {
+    return new Response(JSON.stringify({ success: false, error: '服务器错误' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });

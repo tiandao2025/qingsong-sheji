@@ -16,6 +16,6 @@ bucket = "./"
 
 [vars]
 JWT_SECRET = "qs-cms-secret-2026"
-ADMIN_PASSWORD = "sfggefswc1988"
+ADMIN_PASSWORD = "sfggefswc"
 SITE_URL = "https://qingsong.ggff.net"
 ZHIPU_API_KEY = "de905fb991ce4344877e5d4400a17ad1.NAN6MxvJYl5jMzsO"

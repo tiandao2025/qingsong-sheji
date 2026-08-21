@@ -447,17 +447,33 @@ tr:hover td { background: #FAFAFA; }
 const ADMIN_TOKEN = 'qs-admin-2024';
 let authToken = sessionStorage.getItem('admin_token') || '';
 
-function doLogin() {
+async function doLogin() {
   const pwd = document.getElementById('loginPassword').value.trim();
-  if (pwd === ADMIN_TOKEN || pwd === 'admin') {
-    authToken = ADMIN_TOKEN;
-    sessionStorage.setItem('admin_token', authToken);
-    document.getElementById('loginOverlay').style.display = 'none';
-    loadDashboard();
-  } else {
-    const err = document.getElementById('loginError');
+  const err = document.getElementById('loginError');
+  if (!pwd) {
     err.style.display = 'block';
-    err.textContent = '密码错误，请重试';
+    err.textContent = '请输入密码';
+    return;
+  }
+  try {
+    const resp = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pwd })
+    });
+    const result = await resp.json();
+    if (result.success && result.token) {
+      authToken = result.token;
+      sessionStorage.setItem('admin_token', authToken);
+      document.getElementById('loginOverlay').style.display = 'none';
+      loadDashboard();
+    } else {
+      err.style.display = 'block';
+      err.textContent = result.error || '密码错误，请重试';
+    }
+  } catch (e) {
+    err.style.display = 'block';
+    err.textContent = '登录失败: ' + e.message;
   }
 }
 
@@ -532,29 +548,30 @@ async function loadDashboard() {
 // ==================== BLOG ====================
 async function loadBlogs() {
   try {
-    var res = await api('/api/admin-blog');
+    var res = await api('/api/blog?limit=200');
     if (res.error) {
       document.getElementById('blogCardGrid').innerHTML = '<p style="text-align:center;color:#E74C3C;grid-column:1/-1;">' + res.error + '</p>';
       return;
     }
-    var blogs = res.data || [];
+    var blogs = res.posts || [];
     document.getElementById('blogCount').textContent = '（共 ' + blogs.length + ' 篇）';
     if (blogs.length === 0) {
       document.getElementById('blogCardGrid').innerHTML = '<p style="text-align:center;color:#999;grid-column:1/-1;">暂无文章</p>';
     } else {
-      // 按上传时间倒序排列
-      blogs.sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+      // D1 已按 created_at 倒序，这里再排一次保证顺序
+      blogs.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
 
       document.getElementById('blogCardGrid').innerHTML = blogs.map(function(b) {
-        var date = new Date(b.updatedAt || b.createdAt).toLocaleDateString('zh-CN');
-        var statusClass = b.published !== false ? 'status-pub' : 'status-draft';
-        var statusText = b.published !== false ? '已发布' : '草稿';
-        var coverUrl = (b.cover || '').trim();
+        var date = new Date(b.updated_at || b.created_at).toLocaleDateString('zh-CN');
+        // D1 无 published 字段，一律显示已发布
+        var statusClass = 'status-pub';
+        var statusText = '已发布';
+        var coverUrl = (b.cover_image || '').trim();
         var defaultCovers = ['images/logo.jpg', 'img/logo.jpg', '/images/logo.jpg', 'logo.jpg'];
         var hasCover = coverUrl && defaultCovers.indexOf(coverUrl.toLowerCase()) === -1;
         var thumb = '';
         if (hasCover) {
-          // 将 /images/xxx.png 转换为 /api/image?key=xxx（图片在R2中通过代理访问）
+          // cover_image 已是 /cdn/ 开头的公开 URL，可直接显示；兼容 /images/ 旧路径
           var imgSrc = coverUrl;
           var m = coverUrl.match(/\/images\/([^\/\s?#]+)/);
           if (m) imgSrc = '/api/image?key=' + m[1];
@@ -590,8 +607,8 @@ function escapeHtml(str) {
 
 function openBlogForm(id) {
   if (id) {
-    api('/api/admin-blog?id=' + id).then(function(res) {
-      if (res.data) showBlogModal(res.data);
+    api('/api/blog/' + id).then(function(res) {
+      if (res && !res.error) showBlogModal(res);
     });
   } else {
     showBlogModal(null);
@@ -604,12 +621,11 @@ function showBlogModal(blog) {
   var html = '<h3>' + (isEdit ? '编辑文章' : '新建文章') + '</h3>';
   html += '<div class="form-group"><label class="form-label">标题</label><input class="form-input" id="blogTitle" value="' + (isEdit ? escapeHtml(blog.title) : '') + '"></div>';
   html += '<div class="form-row"><div class="form-group"><label class="form-label">分类</label><input class="form-input" id="blogCategory" value="' + (isEdit ? escapeHtml(blog.category || '') : '') + '"></div>';
-  html += '<div class="form-group"><label class="form-label">封面图 URL</label><input class="form-input" id="blogCover" value="' + (isEdit ? escapeHtml(blog.cover || '') : '') + '"></div></div>';
-  html += '<div class="form-group"><label class="form-label">本地上传封面</label><div style="display:flex;gap:8px;align-items:center;"><input type="file" id="blogCoverFile" accept="image/*,video/*" style="font-size:13px;"><button type="button" class="btn btn-outline btn-sm" onclick="uploadBlogCover()">上传</button></div><div id="blogCoverPreview" style="margin-top:8px;"></div></div>';
+  html += '<input type="hidden" id="blogCover" value="' + (isEdit ? escapeHtml(blog.cover_image || '') : '') + '">';
+  html += '<div class="form-group"><label class="form-label">封面图</label><div style="display:flex;gap:8px;align-items:center;"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogCoverFile\').click()">上传封面</button><input type="file" id="blogCoverFile" accept="image/*" style="display:none;" onchange="uploadBlogCover()"><span id="blogCoverStatus" style="color:#999;font-size:13px;">' + (isEdit && blog.cover_image ? '已有封面，可点击按钮更换' : '点击按钮选择图片上传') + '</span></div><div id="blogCoverPreview" style="margin-top:8px;">' + (isEdit && blog.cover_image ? '<img src="' + escapeHtml(blog.cover_image) + '" style="max-width:200px;max-height:120px;border-radius:6px;border:1px solid #E8E8ED;">' : '') + '</div></div>';
   html += '<div class="form-group"><label class="form-label">摘要</label><textarea class="form-textarea" id="blogExcerpt">' + (isEdit ? escapeHtml(blog.excerpt || '') : '') + '</textarea></div>';
-  html += '<div class="form-group"><label class="form-label">内容 (Markdown)</label><textarea class="form-textarea" id="blogContent" style="min-height:200px;">' + (isEdit ? escapeHtml(blog.content || '') : '') + '</textarea></div>';
+  html += '<div class="form-group"><label class="form-label">内容 (Markdown)</label><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;"><input type="file" id="blogContentImageFile" accept="image/*" style="display:none;" onchange="insertBlogImage()"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogContentImageFile\').click()">插入图片</button><small style="color:#999;">上传后自动插入 Markdown 图片语法到光标位置</small></div><textarea class="form-textarea" id="blogContent" style="min-height:200px;">' + (isEdit ? escapeHtml(blog.content || '') : '') + '</textarea></div>';
   html += '<div class="form-group"><label class="form-label">B站视频嵌入码</label><textarea class="form-textarea" id="blogBilibili" style="min-height:60px;" placeholder="粘贴B站视频的 &lt;iframe&gt; 嵌入代码">' + bilibiliVal + '</textarea><small style="color:#999;">B站视频 → 分享 → 嵌入代码，复制整段 iframe</small></div>';
-  html += '<div class="form-group"><label class="form-label"><input type="checkbox" id="blogPublished" ' + (isEdit && blog.published !== false ? 'checked' : '') + '> 发布</label></div>';
   html += '<div class="btn-group">';
   html += '<button class="btn btn-primary" onclick="saveBlog(\'' + (isEdit ? blog.id : '') + '\')">保存</button>';
   html += '<button class="btn btn-outline" onclick="closeBlogModal()">取消</button>';
@@ -631,20 +647,61 @@ async function uploadBlogCover() {
   var fileInput = document.getElementById('blogCoverFile');
   var file = fileInput.files[0];
   if (!file) { showToast('请先选择文件', 'error'); return; }
+  var statusEl = document.getElementById('blogCoverStatus');
+  var pv = document.getElementById('blogCoverPreview');
+  if (pv) pv.innerHTML = '<img src="' + URL.createObjectURL(file) + '" style="max-width:200px;max-height:120px;border-radius:6px;border:1px solid #E8E8ED;">';
+  if (statusEl) statusEl.textContent = '上传中...';
   var formData = new FormData();
   formData.append('file', file);
   try {
-    var resp = await fetch('/api/upload', { method: 'POST', body: formData });
+    var resp = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
     var result = await resp.json();
     if (result.url) {
       document.getElementById('blogCover').value = result.url;
-      document.getElementById('blogCoverPreview').innerHTML = '<img src="' + result.url + '" style="max-width:200px;max-height:120px;border-radius:6px;border:1px solid #E8E8ED;">';
+      if (pv) pv.innerHTML = '<img src="' + result.url + '" style="max-width:200px;max-height:120px;border-radius:6px;border:1px solid #E8E8ED;">';
+      if (statusEl) statusEl.textContent = '上传成功，保存后生效';
       showToast('上传成功', 'success');
+    } else {
+      if (statusEl) statusEl.textContent = '上传失败，请重试';
+      showToast('上传失败: ' + (result.error || '未知错误'), 'error');
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '上传失败，请重试';
+    showToast('上传失败: ' + e.message, 'error');
+  }
+}
+
+// 正文插入图片：上传到 /api/upload 后自动插入 Markdown 图片语法到光标位置
+async function insertBlogImage() {
+  var fileInput = document.getElementById('blogContentImageFile');
+  var file = fileInput.files[0];
+  if (!file) { showToast('请先选择文件', 'error'); return; }
+  var formData = new FormData();
+  formData.append('file', file);
+  try {
+    var resp = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
+    var result = await resp.json();
+    if (result.url) {
+      var ta = document.getElementById('blogContent');
+      var md = '![图片](' + result.url + ')';
+      if (ta.selectionStart !== undefined && ta.selectionStart !== null) {
+        var start = ta.selectionStart;
+        var end = ta.selectionEnd;
+        var v = ta.value;
+        ta.value = v.slice(0, start) + md + v.slice(end);
+        ta.selectionStart = ta.selectionEnd = start + md.length;
+      } else {
+        ta.value += md;
+      }
+      ta.focus();
+      showToast('图片已插入正文', 'success');
     } else {
       showToast('上传失败: ' + (result.error || '未知错误'), 'error');
     }
   } catch(e) {
     showToast('上传失败: ' + e.message, 'error');
+  } finally {
+    fileInput.value = '';
   }
 }
 
@@ -652,22 +709,20 @@ async function saveBlog(id) {
   var data = {
     title: document.getElementById('blogTitle').value,
     category: document.getElementById('blogCategory').value,
-    cover: document.getElementById('blogCover').value,
+    cover_image: document.getElementById('blogCover').value,
     excerpt: document.getElementById('blogExcerpt').value,
     content: document.getElementById('blogContent').value,
-    bilibiliEmbed: document.getElementById('blogBilibili').value,
-    published: document.getElementById('blogPublished').checked
+    bilibili: document.getElementById('blogBilibili').value
   };
   if (!data.title.trim()) { showToast('标题不能为空', 'error'); return; }
   try {
     if (id) {
-      data.id = id;
-      var res = await api('/api/admin-blog', { method: 'PUT', body: JSON.stringify(data) });
-      if (res.success) { showToast('更新成功', 'success'); closeBlogModal(); loadBlogs(); }
+      var res = await api('/api/blog/' + id, { method: 'PUT', body: JSON.stringify(data) });
+      if (res && !res.error) { showToast('更新成功', 'success'); closeBlogModal(); loadBlogs(); }
       else showToast(res.error || '更新失败', 'error');
     } else {
-      var res2 = await api('/api/admin-blog', { method: 'POST', body: JSON.stringify(data) });
-      if (res2.success) { showToast('创建成功', 'success'); closeBlogModal(); loadBlogs(); }
+      var res2 = await api('/api/blog', { method: 'POST', body: JSON.stringify(data) });
+      if (res2 && !res2.error) { showToast('创建成功', 'success'); closeBlogModal(); loadBlogs(); }
       else showToast(res2.error || '创建失败', 'error');
     }
   } catch (e) {
@@ -678,8 +733,8 @@ async function saveBlog(id) {
 async function deleteBlog(id) {
   if (!confirm('确定删除这篇文章？此操作不可撤销。')) return;
   try {
-    var res = await api('/api/admin-blog?id=' + id, { method: 'DELETE' });
-    if (res.success) { showToast('已删除', 'success'); loadBlogs(); }
+    var res = await api('/api/blog/' + id, { method: 'DELETE' });
+    if (res && res.success) { showToast('已删除', 'success'); loadBlogs(); }
     else showToast(res.error || '删除失败', 'error');
   } catch (e) {
     showToast('删除失败: ' + e.message, 'error');
@@ -765,12 +820,12 @@ function showCaseModal(item) {
   html += '<div class="form-group"><label class="form-label">简要描述</label><div class="field-flex"><textarea class="form-textarea" id="caseDesc" style="min-height:80px;" placeholder="首页/列表展示的简短描述">' + (isEdit ? escapeHtml(item.description || item.desc || '') : '') + '</textarea><button type="button" class="ai-btn" onclick="aiPolish(\'caseDesc\',\'案例描述\')">AI润色</button></div></div>';
   html += '<div class="form-row"><div class="form-group"><label class="form-label">类型</label><select class="form-select" id="caseType"><option value="家装"' + (isEdit && (item.type || '家装') === '家装' ? ' selected' : '') + '>家装</option><option value="工装"' + (isEdit && item.type === '工装' ? ' selected' : '') + '>工装</option></select></div>';
   html += '<div class="form-group"><label class="form-label">位置</label><input class="form-input" id="caseLocation" value="' + (isEdit ? escapeHtml(item.location || '') : '') + '"></div></div>';
-  html += '<div class="form-group"><label class="form-label">封面图 URL</label><div class="field-flex"><input class="form-input" id="caseCover" value="' + (isEdit ? escapeHtml(item.cover_image || '') : '') + '"><button type="button" class="btn btn-outline btn-sm" onclick="uploadCaseImage(\'caseCover\',\'caseCoverPreview\')">上传</button></div><div class="upload-row" style="margin-top:6px;"><input type="file" id="caseCoverFile" accept="image/*" style="font-size:12px;"></div><div class="img-preview" id="caseCoverPreview">' + (isEdit && item.cover_image ? '<img src="' + escapeHtml(item.cover_image) + '">' : '') + '</div></div>';
-  html += '<div class="form-group"><label class="form-label">图片画廊（每行一个 URL）</label><textarea class="form-textarea" id="caseImages" style="min-height:80px;" placeholder="每行一个图片 URL，用于案例详情页画廊">' + (isEdit && images.length ? images.join('\n') : '') + '</textarea><div class="upload-row" style="margin-top:6px;"><input type="file" id="caseGalleryFile" accept="image/*" style="font-size:12px;"><button type="button" class="btn btn-outline btn-sm" onclick="uploadCaseGallery()">上传并追加到列表</button></div></div>';
+  html += '<div class="form-group"><label class="form-label">案例封面</label><div class="upload-row"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'caseCoverFile\').click()">上传封面</button><input type="file" id="caseCoverFile" accept="image/*" style="display:none;" onchange="uploadCaseImage(\'caseCover\',\'caseCoverPreview\')"><span id="caseCoverStatus" style="color:#999;font-size:12px;">' + (isEdit && item.cover_image ? '已有封面' : '点击按钮选择图片') + '</span></div><input type="hidden" id="caseCover" value="' + (isEdit ? escapeHtml(item.cover_image || '') : '') + '"><div class="img-preview" id="caseCoverPreview">' + (isEdit && item.cover_image ? '<img src="' + escapeHtml(item.cover_image) + '">' : '') + '</div></div>';
+  html += '<div class="form-group"><label class="form-label">图片画廊（可多选）</label><div class="upload-row"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'caseGalleryFile\').click()">上传图集</button><input type="file" id="caseGalleryFile" accept="image/*" multiple style="display:none;" onchange="uploadCaseGallery()"><span id="caseGalleryStatus" style="color:#999;font-size:12px;">' + (images.length ? '已有 ' + images.length + ' 张' : '点击按钮选择图片') + '</span></div><textarea class="form-textarea" id="caseImages" style="min-height:60px;display:none;" placeholder="每行一个图片 URL">' + (isEdit && images.length ? images.join('\n') : '') + '</textarea><div class="img-grid" id="caseGalleryPreview" style="margin-top:6px;"></div></div>';
   html += '<div class="form-group"><label class="form-label">B站视频链接</label><input class="form-input" id="caseVideo" value="' + (isEdit ? escapeHtml(item.video_url || item.video || '') : '') + '" placeholder="https://www.bilibili.com/video/BV1xx... 或 av123456"><div class="hint-text">支持 BV 号 / av 号链接，前端自动转换为 B站播放器嵌入</div></div>';
   html += '<div class="form-group"><label class="form-label">详细内容（Markdown）</label><div class="field-flex"><textarea class="form-textarea" id="caseContent" style="min-height:160px;" placeholder="案例详情页展示的完整内容，支持 Markdown">' + (isEdit ? escapeHtml(item.content || '') : '') + '</textarea><button type="button" class="ai-btn" onclick="aiPolish(\'caseContent\',\'详细内容\')">AI润色</button></div></div>';
   html += '<div class="form-group"><label class="form-label">标签（逗号分隔）</label><input class="form-input" id="caseTags" value="' + (isEdit ? escapeHtml(item.tags || '') : '') + '" placeholder="如 现代简约,实景案例"></div>';
-  html += '<div class="form-group"><label class="form-label">附件下载（PDF/DOCX/PPT 等）</label><div class="upload-row"><input type="file" id="caseFile" style="font-size:12px;"><button type="button" class="btn btn-outline btn-sm" onclick="uploadCaseFile()">上传附件</button></div><input type="hidden" id="caseFileUrl" value="' + (isEdit ? escapeHtml(item.file_url || '') : '') + '"><input type="hidden" id="caseFileName" value="' + (isEdit ? escapeHtml(item.file_name || '') : '') + '"><div class="hint-text" id="caseFileHint">' + (isEdit && item.file_name ? '已上传: ' + escapeHtml(item.file_name) : '支持 PDF/DOCX/PPT 等文档格式') + '</div></div>';
+  html += '<div class="form-group"><label class="form-label">附件下载（PDF/DOCX/PPT 等）</label><div class="upload-row"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'caseFile\').click()">上传附件</button><input type="file" id="caseFile" style="display:none;" onchange="uploadCaseFile()"><span id="caseFileStatus" style="color:#999;font-size:12px;">' + (isEdit && item.file_name ? '已上传: ' + escapeHtml(item.file_name) : '点击按钮选择文件') + '</span></div><input type="hidden" id="caseFileUrl" value="' + (isEdit ? escapeHtml(item.file_url || '') : '') + '"><input type="hidden" id="caseFileName" value="' + (isEdit ? escapeHtml(item.file_name || '') : '') + '"><div class="hint-text" id="caseFileHint">' + (isEdit && item.file_name ? '已上传: ' + escapeHtml(item.file_name) : '支持 PDF/DOCX/PPT 等文档格式') + '</div></div>';
 
   // ===== 项目信息 =====
   html += '<div class="case-section-title">项目信息</div>';
@@ -786,14 +841,14 @@ function showCaseModal(item) {
   html += '<div class="form-group"><label class="form-label">理念标题</label><div class="field-flex"><input class="form-input" id="dcTitle" value="' + (isEdit ? escapeHtml(dc.title || '') : '') + '" placeholder="如 让自然光成为设计语言"><button type="button" class="ai-btn" onclick="aiPolish(\'dcTitle\',\'理念标题\')">AI润色</button></div></div>';
   html += '<div class="form-group"><label class="form-label">理念正文</label><div class="field-flex"><textarea class="form-textarea" id="dcText" style="min-height:100px;">' + (isEdit ? escapeHtml(dc.text || '') : '') + '</textarea><button type="button" class="ai-btn" onclick="aiPolish(\'dcText\',\'理念正文\')">AI润色</button></div></div>';
   html += '<div class="form-group"><label class="form-label">理念金句</label><div class="field-flex"><input class="form-input" id="dcQuote" value="' + (isEdit ? escapeHtml(dc.quote || '') : '') + '" placeholder="如 家，是生活的容器"><button type="button" class="ai-btn" onclick="aiPolish(\'dcQuote\',\'理念金句\')">AI润色</button></div></div>';
-  html += '<div class="form-group"><label class="form-label">理念配图 URL</label><div class="field-flex"><input class="form-input" id="dcImage" value="' + (isEdit ? escapeHtml(dc.image || '') : '') + '"><button type="button" class="btn btn-outline btn-sm" onclick="uploadCaseImage(\'dcImage\',\'dcImagePreview\')">上传</button></div><div class="upload-row" style="margin-top:6px;"><input type="file" id="dcImageFile" accept="image/*" style="font-size:12px;"></div><div class="img-preview" id="dcImagePreview">' + (isEdit && dc.image ? '<img src="' + escapeHtml(dc.image) + '">' : '') + '</div></div>';
+  html += '<div class="form-group"><label class="form-label">理念配图</label><div class="upload-row"><button type="button" class="btn btn-outline btn-sm" data-id="dcImageFile" onclick="caseUpload(this)">上传配图</button><input type="file" id="dcImageFile" accept="image/*" style="display:none;" onchange="uploadCaseImage(\'dcImage\',\'dcImagePreview\')"><span id="dcImageStatus" style="color:#999;font-size:12px;">' + (isEdit && dc.image ? '已有配图' : '点击按钮选择图片') + '</span></div><input type="hidden" id="dcImage" value="' + (isEdit ? escapeHtml(dc.image || '') : '') + '"><div class="img-preview" id="dcImagePreview">' + (isEdit && dc.image ? '<img src="' + escapeHtml(dc.image) + '">' : '') + '</div></div>';
 
   // ===== 户型布局 =====
   html += '<div class="case-section-title">户型布局</div>';
   html += '<div class="form-row"><div class="form-group"><label class="form-label">户型标题</label><div class="field-flex"><input class="form-input" id="fpTitle" value="' + (isEdit ? escapeHtml(fp.title || '') : '') + '" placeholder="如 原始平面图"><button type="button" class="ai-btn" onclick="aiPolish(\'fpTitle\',\'户型标题\')">AI润色</button></div></div>';
   html += '<div class="form-group"><label class="form-label">副标题</label><div class="field-flex"><input class="form-input" id="fpSubtitle" value="' + (isEdit ? escapeHtml(fp.subtitle || '') : '') + '" placeholder="如 Floor Plan"><button type="button" class="ai-btn" onclick="aiPolish(\'fpSubtitle\',\'户型副标题\')">AI润色</button></div></div></div>';
   html += '<div class="form-group"><label class="form-label">户型描述</label><div class="field-flex"><textarea class="form-textarea" id="fpDesc" style="min-height:80px;">' + (isEdit ? escapeHtml(fp.desc || '') : '') + '</textarea><button type="button" class="ai-btn" onclick="aiPolish(\'fpDesc\',\'户型描述\')">AI润色</button></div></div>';
-  html += '<div class="form-group"><label class="form-label">户型图 URL</label><div class="field-flex"><input class="form-input" id="fpImage" value="' + (isEdit ? escapeHtml(fp.image || '') : '') + '"><button type="button" class="btn btn-outline btn-sm" onclick="uploadCaseImage(\'fpImage\',\'fpImagePreview\')">上传</button></div><div class="upload-row" style="margin-top:6px;"><input type="file" id="fpImageFile" accept="image/*" style="font-size:12px;"></div><div class="img-preview" id="fpImagePreview">' + (isEdit && fp.image ? '<img src="' + escapeHtml(fp.image) + '">' : '') + '</div></div>';
+  html += '<div class="form-group"><label class="form-label">户型图</label><div class="upload-row"><button type="button" class="btn btn-outline btn-sm" data-id="fpImageFile" onclick="caseUpload(this)">上传户型图</button><input type="file" id="fpImageFile" accept="image/*" style="display:none;" onchange="uploadCaseImage(\'fpImage\',\'fpImagePreview\')"><span id="fpImageStatus" style="color:#999;font-size:12px;">' + (isEdit && fp.image ? '已有户型图' : '点击按钮选择图片') + '</span></div><input type="hidden" id="fpImage" value="' + (isEdit ? escapeHtml(fp.image || '') : '') + '"><div class="img-preview" id="fpImagePreview">' + (isEdit && fp.image ? '<img src="' + escapeHtml(fp.image) + '">' : '') + '</div></div>';
   html += '<div class="form-group"><label class="form-label">区域面积</label><div id="caseFloorAreasList"></div><button type="button" class="add-btn" onclick="addCaseFloorArea()">+ 添加区域</button></div>';
 
   // ===== 空间展示 =====
@@ -863,11 +918,23 @@ async function aiPolish(fieldId, fieldLabel) {
 }
 
 // ==================== 图片/附件上传 ====================
+function caseUpload(btn) {
+  var fid = btn.getAttribute('data-id');
+  var el = document.getElementById(fid);
+  if (el) el.click();
+}
+
 async function uploadCaseImage(targetId, previewId) {
   var fileInput = document.getElementById(targetId + 'File');
   if (!fileInput) return;
   var file = fileInput.files[0];
   if (!file) { showToast('请先选择文件', 'error'); return; }
+  var statusEl = document.getElementById(targetId + 'Status');
+  if (previewId) {
+    var pv = document.getElementById(previewId);
+    if (pv) pv.innerHTML = '<img src="' + URL.createObjectURL(file) + '">';
+  }
+  if (statusEl) statusEl.textContent = '上传中...';
   var formData = new FormData();
   formData.append('file', file);
   try {
@@ -876,43 +943,78 @@ async function uploadCaseImage(targetId, previewId) {
     if (result.url) {
       document.getElementById(targetId).value = result.url;
       if (previewId) {
-        document.getElementById(previewId).innerHTML = '<img src="' + result.url + '">';
+        var pv = document.getElementById(previewId);
+        if (pv) pv.innerHTML = '<img src="' + result.url + '">';
       }
+      if (statusEl) statusEl.textContent = '上传成功，保存后生效';
       showToast('上传成功', 'success');
     } else {
+      if (statusEl) statusEl.textContent = '上传失败，请重试';
       showToast('上传失败: ' + (result.error || '未知错误'), 'error');
     }
   } catch (e) {
+    if (statusEl) statusEl.textContent = '上传失败，请重试';
     showToast('上传失败: ' + e.message, 'error');
   }
 }
-
 async function uploadCaseGallery() {
   var fileInput = document.getElementById('caseGalleryFile');
-  var file = fileInput.files[0];
-  if (!file) { showToast('请先选择文件', 'error'); return; }
-  var formData = new FormData();
-  formData.append('file', file);
-  try {
-    var resp = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
-    var result = await resp.json();
-    if (result.url) {
-      var ta = document.getElementById('caseImages');
-      var cur = ta.value.trim();
-      ta.value = cur ? cur + '\n' + result.url : result.url;
-      showToast('已添加到图片列表', 'success');
-    } else {
-      showToast('上传失败: ' + (result.error || '未知错误'), 'error');
+  var files = fileInput.files;
+  if (!files || !files.length) { showToast('请先选择文件', 'error'); return; }
+  var statusEl = document.getElementById('caseGalleryStatus');
+  if (statusEl) statusEl.textContent = '上传中 ' + files.length + ' 张...';
+  var ta = document.getElementById('caseImages');
+  var preview = document.getElementById('caseGalleryPreview');
+  var successCount = 0;
+  for (var i = 0; i < files.length; i++) {
+    if (preview) {
+      var p = document.createElement('div');
+      p.style.cssText = 'position:relative;display:inline-block;margin:4px;';
+      var img = document.createElement('img');
+      img.src = URL.createObjectURL(files[i]);
+      img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #E8E8ED;';
+      p.appendChild(img);
+      p.setAttribute('data-pending', '1');
+      preview.appendChild(p);
     }
-  } catch (e) {
-    showToast('上传失败: ' + e.message, 'error');
+    var formData = new FormData();
+    formData.append('file', files[i]);
+    try {
+      var resp = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
+      var result = await resp.json();
+      if (result.url) {
+        var cur = ta.value.trim();
+        ta.value = cur ? cur + '\n' + result.url : result.url;
+        successCount++;
+        if (preview) {
+          var pending = preview.querySelector('[data-pending]');
+          if (pending) { pending.querySelector('img').src = result.url; pending.removeAttribute('data-pending'); }
+        }
+      } else {
+        if (preview) { var pd = preview.querySelector('[data-pending]'); if (pd) pd.remove(); }
+        showToast('第' + (i + 1) + '张上传失败: ' + (result.error || '未知错误'), 'error');
+      }
+    } catch (e) {
+      if (preview) { var pd = preview.querySelector('[data-pending]'); if (pd) pd.remove(); }
+      showToast('第' + (i + 1) + '张上传失败: ' + e.message, 'error');
+    }
   }
+  fileInput.value = '';
+  if (statusEl) statusEl.textContent = successCount ? ('已有 ' + countGalleryImages() + ' 张') : '点击按钮选择图片';
+  if (successCount) showToast('成功上传 ' + successCount + ' 张图片', 'success');
 }
-
+function countGalleryImages() {
+  var ta = document.getElementById('caseImages');
+  if (!ta) return 0;
+  var v = ta.value.trim();
+  return v ? v.split('\n').filter(function(x){ return x.trim(); }).length : 0;
+}
 async function uploadCaseFile() {
   var fileInput = document.getElementById('caseFile');
   var file = fileInput.files[0];
   if (!file) { showToast('请先选择文件', 'error'); return; }
+  var statusEl = document.getElementById('caseFileStatus');
+  if (statusEl) statusEl.textContent = '上传中...';
   var formData = new FormData();
   formData.append('file', file);
   try {
@@ -922,15 +1024,17 @@ async function uploadCaseFile() {
       document.getElementById('caseFileUrl').value = result.url;
       document.getElementById('caseFileName').value = result.name || file.name;
       document.getElementById('caseFileHint').textContent = '已上传: ' + (result.name || file.name);
+      if (statusEl) statusEl.textContent = '已上传: ' + (result.name || file.name);
       showToast('附件上传成功', 'success');
     } else {
+      if (statusEl) statusEl.textContent = '上传失败，请重试';
       showToast('上传失败: ' + (result.error || '未知错误'), 'error');
     }
   } catch (e) {
+    if (statusEl) statusEl.textContent = '上传失败，请重试';
     showToast('上传失败: ' + e.message, 'error');
   }
 }
-
 // ==================== 区域面积动态列表 ====================
 var caseAreaCounter = 0;
 function addCaseFloorArea(name, size) {
@@ -1013,7 +1117,7 @@ function addCaseSpace(data) {
     '<div class="form-group"><label class="form-label">描述</label><textarea class="form-textarea" style="min-height:60px;" placeholder="空间描述">' + escapeHtml(data.desc || '') + '</textarea></div>' +
     '<div class="form-group"><label class="form-label">标签（逗号分隔）</label><input class="form-input" value="' + escapeHtml(tagsVal) + '" placeholder="如 开放式,极简"></div>' +
     '<div class="form-group"><label class="form-label">空间图片（可多选，一次上传多张）</label>' +
-    '<div class="upload-row"><input type="file" id="' + id + '_file" accept="image/*" multiple style="font-size:12px;"><button type="button" class="btn btn-outline btn-sm" onclick="uploadCaseSpaceImage(\'' + id + '\')">上传</button></div>' +
+    '<div class="upload-row"><button type="button" class="btn btn-outline btn-sm" data-id="' + id + '" onclick="caseUpload(this)">上传空间图</button><input type="file" id="' + id + '_file" accept="image/*" multiple style="display:none;" onchange="uploadCaseSpaceImage(this.id)"><span id="' + id + '_status" style="color:#999;font-size:12px;">点击按钮选择图片</span></div>' +
     '<input type="hidden" id="' + id + '_imgs" value="' + escapeHtml(JSON.stringify(images)) + '">' +
     '<div class="img-grid" id="' + id + '_prev"></div>' +
     '</div></div>';
@@ -1026,8 +1130,21 @@ async function uploadCaseSpaceImage(id) {
   var files = fileInput.files;
   if (!files || !files.length) { showToast('请先选择文件', 'error'); return; }
   var images = getSpaceImages(id).slice();
+  var statusEl = document.getElementById(id + '_status');
+  var prevEl = document.getElementById(id + '_prev');
+  if (statusEl) statusEl.textContent = '上传中 ' + files.length + ' 张...';
   var successCount = 0;
   for (var i = 0; i < files.length; i++) {
+    if (prevEl) {
+      var p = document.createElement('div');
+      p.style.cssText = 'position:relative;display:inline-block;margin:4px;';
+      var img = document.createElement('img');
+      img.src = URL.createObjectURL(files[i]);
+      img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #E8E8ED;';
+      p.appendChild(img);
+      p.setAttribute('data-pending', '1');
+      prevEl.appendChild(p);
+    }
     var formData = new FormData();
     formData.append('file', files[i]);
     try {
@@ -1036,15 +1153,22 @@ async function uploadCaseSpaceImage(id) {
       if (result.url) {
         images.push(result.url);
         successCount++;
+        if (prevEl) {
+          var pending = prevEl.querySelector('[data-pending]');
+          if (pending) { pending.querySelector('img').src = result.url; pending.removeAttribute('data-pending'); }
+        }
       } else {
+        if (prevEl) { var pd = prevEl.querySelector('[data-pending]'); if (pd) pd.remove(); }
         showToast('第' + (i + 1) + '张上传失败: ' + (result.error || '未知错误'), 'error');
       }
     } catch (e) {
+      if (prevEl) { var pd = prevEl.querySelector('[data-pending]'); if (pd) pd.remove(); }
       showToast('第' + (i + 1) + '张上传失败: ' + e.message, 'error');
     }
   }
   setSpaceImages(id, images);
   fileInput.value = '';
+  if (statusEl) statusEl.textContent = images.length ? ('已有 ' + images.length + ' 张') : '点击按钮选择图片';
   if (successCount) showToast('成功上传 ' + successCount + ' 张图片', 'success');
 }
 function loadCaseSpaces(spaces) {
@@ -1094,7 +1218,7 @@ function addCaseMaterial(data) {
     '<div class="form-row">' +
     '<div class="form-group"><label class="form-label">颜色代码</label><input class="form-input" value="' + escapeHtml(data.color_code || '') + '" placeholder="#B8916A"></div>' +
     '<div class="form-group"><label class="form-label">材质图片</label>' +
-    '<div class="upload-row"><input type="file" id="' + id + '_file" accept="image/*" style="font-size:12px;"><button type="button" class="btn btn-outline btn-sm" onclick="uploadCaseMaterialImage(\'' + id + '\')">上传</button></div>' +
+    '<div class="upload-row"><button type="button" class="btn btn-outline btn-sm" data-id="' + id + '" onclick="caseUpload(this)">上传材质图</button><input type="file" id="' + id + '_file" accept="image/*" style="display:none;" onchange="uploadCaseMaterialImage(this.id)"><span id="' + id + '_status" style="color:#999;font-size:12px;">点击按钮选择图片</span></div>' +
     '<input type="hidden" id="' + id + '_img" value="' + escapeHtml(data.image || '') + '">' +
     '<div class="img-preview" id="' + id + '_prev">' + (data.image ? '<img src="' + escapeHtml(data.image) + '">' : '') + '</div>' +
     '</div></div></div>';
@@ -1105,6 +1229,10 @@ async function uploadCaseMaterialImage(id) {
   var fileInput = document.getElementById(id + '_file');
   var file = fileInput.files[0];
   if (!file) { showToast('请先选择文件', 'error'); return; }
+  var statusEl = document.getElementById(id + '_status');
+  var prevEl = document.getElementById(id + '_prev');
+  if (prevEl) prevEl.innerHTML = '<img src="' + URL.createObjectURL(file) + '">';
+  if (statusEl) statusEl.textContent = '上传中...';
   var formData = new FormData();
   formData.append('file', file);
   try {
@@ -1112,12 +1240,15 @@ async function uploadCaseMaterialImage(id) {
     var result = await resp.json();
     if (result.url) {
       document.getElementById(id + '_img').value = result.url;
-      document.getElementById(id + '_prev').innerHTML = '<img src="' + result.url + '">';
+      if (prevEl) prevEl.innerHTML = '<img src="' + result.url + '">';
+      if (statusEl) statusEl.textContent = '上传成功，保存后生效';
       showToast('上传成功', 'success');
     } else {
+      if (statusEl) statusEl.textContent = '上传失败，请重试';
       showToast('上传失败: ' + (result.error || '未知错误'), 'error');
     }
   } catch (e) {
+    if (statusEl) statusEl.textContent = '上传失败，请重试';
     showToast('上传失败: ' + e.message, 'error');
   }
 }
@@ -1551,11 +1682,13 @@ function resetStatsDate() {
 }
 
 // ==================== INIT ====================
-// 免密登录：直接进入后台，无需密码
-authToken = ADMIN_TOKEN;
-sessionStorage.setItem('admin_token', authToken);
-document.getElementById('loginOverlay').style.display = 'none';
-loadDashboard();
+// 已有登录态直接进入后台，否则显示登录弹窗
+if (authToken) {
+  document.getElementById('loginOverlay').style.display = 'none';
+  loadDashboard();
+} else {
+  document.getElementById('loginOverlay').style.display = 'flex';
+}
 </script>
 
 <!-- 埋点统计 -->

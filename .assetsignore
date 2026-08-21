@@ -1,0 +1,8 @@
+# 排除本地 AI 工具与构建/缓存目录
+inpaint-web/
+.wrangler/
+.git/
+node_modules/
+.temp/
+runtime_tmp/
+temp/

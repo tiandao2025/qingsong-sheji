@@ -64,6 +64,7 @@ async function handleGet(request, env) {
         cover_image: proxyImage(r.cover_image),
         tags: tags,
         category: category,
+        bilibili: r.bilibili || '',
         created_at: r.created_at,
         updated_at: r.updated_at
       };
@@ -97,7 +98,7 @@ async function handlePost(request, env) {
   }
 
   const data = await request.json();
-  const { title, excerpt, content, cover_image, tags, category } = data;
+  const { title, excerpt, content, cover_image, tags, category, bilibili } = data;
 
   if (!title) {
     return new Response(JSON.stringify({ error: '标题不能为空' }), {
@@ -113,8 +114,8 @@ async function handlePost(request, env) {
   slug = slug + '-' + Date.now().toString(36);
 
   await env.DB.prepare(
-    'INSERT INTO blog_posts (title, slug, excerpt, content, cover_image, tags, category) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).bind(title, slug, excerpt || '', content || '', cover_image || '', tags || '', category || '').run();
+    'INSERT INTO blog_posts (title, slug, excerpt, content, cover_image, tags, category, bilibili) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(title, slug, excerpt || '', content || '', cover_image || '', tags || '', category || '', bilibili || '').run();
 
   const result = await env.DB.prepare('SELECT * FROM blog_posts WHERE slug = ?').bind(slug).first();
   return new Response(JSON.stringify(result), {
@@ -124,6 +125,10 @@ async function handlePost(request, env) {
 }
 
 async function verifyAuth(request, env) {
+  // 兼容旧版后台 admin.html 的 x-admin-key 认证
+  const adminKey = request.headers.get('x-admin-key');
+  if (adminKey === 'qs-admin-2024') return true;
+  if (adminKey && adminKey === env.ADMIN_TOKEN) return true;
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
   const token = authHeader.slice(7);

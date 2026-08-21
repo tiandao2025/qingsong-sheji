@@ -204,6 +204,7 @@ body {
   <div class="loading">加载中...</div>
 </div>
 
+<script src="/js/marked.min.js"></script>
 <script>
 const id = new URLSearchParams(window.location.search).get('id');
 if (!id) {
@@ -226,6 +227,7 @@ async function loadArticle(id) {
         📅 ${new Date(p.created_at).toLocaleDateString('zh-CN')}
         ${p.category ? ` · 📂 ${p.category}` : ''}
       </div>
+      ${p.bilibili ? `<div class="article-bilibili" style="margin:20px 0;"><div style="position:relative;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#000;"><iframe src="${p.bilibili.match(/src="([^"]+)"/)?.[1] || p.bilibili}" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen scrolling="no"></iframe></div></div>` : ''}
       <div class="article-content">${formatContent(p.content)}</div>
     `;
   } catch (e) {
@@ -235,6 +237,11 @@ async function loadArticle(id) {
 
 function formatContent(html) {
   if (!html) return '';
+  // 旧文章正文直接存 HTML（含 <h3>/<iframe>/<div> 等标签）→ 原样展示；
+  // 新文章正文是 Markdown → 先渲染成 HTML
+  if (!/<[a-zA-Z!][^>]*>/.test(html) && typeof marked !== 'undefined') {
+    try { html = marked.parse(html); } catch (e) {}
+  }
   html = html.replace(/\/api\/image\?key=([^"&\s]+)/g, function(_, key) {
     return '/cdn/' + decodeURIComponent(key);
   });

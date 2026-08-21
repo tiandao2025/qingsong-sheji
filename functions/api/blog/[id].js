@@ -14,6 +14,21 @@ export async function onRequest({ request, env }) {
         headers: { 'Content-Type': 'application/json' }
       });
     }
+    // 图片路径转换：/images/ 或完整 URL 中的 images/ 统一转为 /cdn/
+    function proxyImage(url) {
+      if (!url) return '';
+      if (url.startsWith('/cdn/')) return url;
+      if (url.startsWith('/api/image?key=')) return '/cdn/' + decodeURIComponent(url.split('key=')[1].split('&')[0]);
+      const m = url.match(/images\/(.+)$/);
+      if (m) return '/cdn/' + m[1];
+      return url;
+    }
+    result.cover_image = proxyImage(result.cover_image);
+    if (result.content) {
+      result.content = result.content.replace(/\/api\/image\?key=([^"&\s]+)/g, function(_, key) {
+        return '/cdn/' + decodeURIComponent(key);
+      });
+    }
     return new Response(JSON.stringify(result), {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -50,7 +65,7 @@ export async function onRequest({ request, env }) {
     }
 
     await env.DB.prepare(
-      `UPDATE blog_posts SET title=?, slug=?, excerpt=?, content=?, cover_image=?, tags=?, category=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`
+      `UPDATE blog_posts SET title=?, slug=?, excerpt=?, content=?, cover_image=?, tags=?, category=?, bilibili=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`
     ).bind(
       data.title || existing.title,
       slug,
@@ -59,6 +74,7 @@ export async function onRequest({ request, env }) {
       data.cover_image !== undefined ? data.cover_image : existing.cover_image,
       data.tags !== undefined ? data.tags : existing.tags,
       data.category !== undefined ? data.category : existing.category,
+      data.bilibili !== undefined ? data.bilibili : existing.bilibili,
       id
     ).run();
 
@@ -87,6 +103,10 @@ export async function onRequest({ request, env }) {
 }
 
 async function verifyAuth(request, env) {
+  // 兼容旧版后台 admin.html 的 x-admin-key 认证
+  const adminKey = request.headers.get('x-admin-key');
+  if (adminKey === 'qs-admin-2024') return true;
+  if (adminKey && adminKey === env.ADMIN_TOKEN) return true;
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
   const token = authHeader.slice(7);

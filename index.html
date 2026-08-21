@@ -2647,7 +2647,9 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 
       })
 
-      .then(function(posts) {
+      .then(function(data) {
+
+        var posts = (data && data.posts) ? data.posts : (Array.isArray(data) ? data : []);
 
         var latestPosts = (posts || []).slice(0, 6);
 
@@ -2665,11 +2667,13 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 
           var p = latestPosts[i];
 
-          var date = (p.createdAt || '').substring(0, 10);
+          var date = (p.created_at || p.createdAt || '').substring(0, 10);
 
-          var summary = (p.summary || '').length > 80 ? p.summary.substring(0, 80) + '...' : (p.summary || '');
+          var summary = (p.excerpt || p.summary || '');
 
-          var cover = p.cover || '';
+          if (summary.length > 80) summary = summary.substring(0, 80) + '...';
+
+          var cover = p.cover_image || p.cover || '';
 
           html += '<a href="blog.html#' + (p.slug || '') + '" class="blog-card fade-in">';
 
