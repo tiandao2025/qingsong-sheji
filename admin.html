@@ -921,7 +921,10 @@ async function aiPolish(fieldId, fieldLabel) {
 function caseUpload(btn) {
   var fid = btn.getAttribute('data-id');
   var el = document.getElementById(fid);
-  if (el) el.click();
+  if (el && el.tagName === 'INPUT' && el.type === 'file') { el.click(); return; }
+  var el2 = document.getElementById(fid + '_file');
+  if (el2 && el2.tagName === 'INPUT' && el2.type === 'file') { el2.click(); return; }
+  showToast('未找到上传控件', 'error');
 }
 
 async function uploadCaseImage(targetId, previewId) {
