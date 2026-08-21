@@ -1544,12 +1544,12 @@ var CHAT_LIMIT = 30;
 async function loadChats(page) {
   chatPage = page || 1;
   try {
-    var res = await api('/api/admin-chats?page=' + chatPage + '&limit=' + CHAT_LIMIT);
+    var res = await api('/api/chat/logs?limit=' + CHAT_LIMIT + '&offset=' + ((chatPage - 1) * CHAT_LIMIT));
     if (res.error) {
       document.getElementById('chatTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:#E74C3C;">' + res.error + '</td></tr>';
       return;
     }
-    allChats = res.data || [];
+    allChats = res.logs || [];
     var stats = res.stats || {};
     document.getElementById('chatStats').textContent =
       '（总 ' + stats.totalMessages + ' 条 | 今日 ' + stats.todayMessages + ' | ' + stats.uniqueSessions + ' 个会话）';
@@ -1566,15 +1566,16 @@ function renderChatTable(chats) {
     return;
   }
   document.getElementById('chatTableBody').innerHTML = chats.map(function(c) {
-    var time = new Date(c.time).toLocaleString('zh-CN');
-    var userMsg = (c.userMessage || '').substring(0, 60);
-    var aiMsg = (c.aiReply || '').substring(0, 60);
+    var time = new Date(c.created_at).toLocaleString('zh-CN');
+    var userMsg = (c.first_user_message || '').substring(0, 60);
+    var aiMsg = (c.last_ai_message || '').substring(0, 60);
+    var loc = c.visitor_location && c.visitor_location !== '未知' ? ' · ' + escapeHtml(c.visitor_location) : '';
     return '<tr>' +
       '<td style="font-size:12px;color:#86868B;">' + time + '</td>' +
-      '<td>' + escapeHtml(userMsg) + (c.userMessage && c.userMessage.length > 60 ? '...' : '') + '</td>' +
-      '<td>' + escapeHtml(aiMsg) + (c.aiReply && c.aiReply.length > 60 ? '...' : '') + '</td>' +
-      '<td style="font-size:11px;color:#999;">' + (c.sessionId || '').substring(0, 12) + '...</td>' +
-      '<td><button class="btn btn-outline btn-sm" onclick="viewChatDetail(\'' + c.sessionId + '\')">详情</button></td>' +
+      '<td>' + escapeHtml(userMsg) + (c.first_user_message && c.first_user_message.length > 60 ? '...' : '') + '</td>' +
+      '<td>' + escapeHtml(aiMsg) + (c.last_ai_message && c.last_ai_message.length > 60 ? '...' : '') + '</td>' +
+      '<td style="font-size:11px;color:#999;">' + escapeHtml((c.session_id || '').substring(0, 12)) + '...' + loc + '</td>' +
+      '<td><button class="btn btn-outline btn-sm" onclick="viewChatDetail(' + c.id + ')">详情</button></td>' +
       '</tr>';
   }).join('');
 }
@@ -1593,7 +1594,7 @@ function filterChats() {
   var q = document.getElementById('chatSearch').value.toLowerCase();
   if (!q) { renderChatTable(allChats); return; }
   var filtered = allChats.filter(function(c) {
-    return (c.userMessage || '').toLowerCase().indexOf(q) >= 0 || (c.aiReply || '').toLowerCase().indexOf(q) >= 0;
+    return (c.first_user_message || '').toLowerCase().indexOf(q) >= 0 || (c.last_ai_message || '').toLowerCase().indexOf(q) >= 0 || (c.visitor_location || '').toLowerCase().indexOf(q) >= 0;
   });
   renderChatTable(filtered);
 }
@@ -1601,7 +1602,7 @@ function filterChats() {
 async function clearAllChats() {
   if (!confirm('确定清空全部聊天记录？此操作不可撤销。')) return;
   try {
-    var res = await api('/api/admin-chats?clear=1', { method: 'DELETE' });
+    var res = await api('/api/chat/logs?clear=1', { method: 'DELETE' });
     if (res.success) { showToast('已清空', 'success'); loadChats(); }
     else showToast(res.error || '清空失败', 'error');
   } catch (e) {
@@ -1609,18 +1610,22 @@ async function clearAllChats() {
   }
 }
 
-async function viewChatDetail(sid) {
+async function viewChatDetail(id) {
   try {
-    var res = await api('/api/admin-chats?sid=' + sid);
-    if (!res.data || res.data.length === 0) { showToast('无记录', 'error'); return; }
-    var html = '<h3>会话详情</h3><div style="max-height:500px;overflow-y:auto;">';
-    res.data.reverse().forEach(function(c) {
-      var time = new Date(c.time).toLocaleString('zh-CN');
-      html += '<div style="margin-bottom:12px;">';
-      html += '<div style="font-size:11px;color:#86868B;margin-bottom:4px;">' + time + '</div>';
-      html += '<div style="background:#C9A96E;color:#fff;padding:8px 12px;border-radius:8px;margin-bottom:4px;">' + escapeHtml(c.userMessage || '') + '</div>';
-      html += '<div style="background:#F0F0F2;padding:8px 12px;border-radius:8px;color:#333;">' + escapeHtml(c.aiReply || '') + '</div>';
-      html += '</div>';
+    var res = await api('/api/chat/logs?id=' + id);
+    if (!res || !res.messages) { showToast('无记录', 'error'); return; }
+    var msgs = res.messages || [];
+    if (msgs.length === 0) { showToast('无记录', 'error'); return; }
+    var html = '<h3>会话详情</h3>';
+    html += '<div style="font-size:12px;color:#86868B;margin-bottom:10px;">Session: ' + escapeHtml(res.session_id || '') + ' · 访客位置: ' + escapeHtml(res.visitor_location || '未知') + '</div>';
+    html += '<div style="max-height:500px;overflow-y:auto;">';
+    msgs.forEach(function(m) {
+      var content = m.content || '';
+      if (m.role === 'user') {
+        html += '<div style="background:#C9A96E;color:#fff;padding:8px 12px;border-radius:8px;margin-bottom:4px;white-space:pre-wrap;">' + escapeHtml(content) + '</div>';
+      } else {
+        html += '<div style="background:#F0F0F2;padding:8px 12px;border-radius:8px;color:#333;margin-bottom:4px;white-space:pre-wrap;">' + escapeHtml(content) + '</div>';
+      }
     });
     html += '</div><div style="margin-top:16px;text-align:right;"><button class="btn btn-outline" onclick="closeBlogModal()">关闭</button></div>';
     document.getElementById('blogModalContent').innerHTML = html;

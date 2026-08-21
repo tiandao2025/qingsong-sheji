@@ -191,16 +191,29 @@ export async function onRequest(context) {
         }
       } catch (e) {}
 
-      // 聊天统计
+      // 聊天统计：优先读 D1 chat_logs（前端智能客服数据），R2 chats-index.json 兜底
       let chatStats = { totalMessages: 0, todayMessages: 0, uniqueSessions: 0 };
       try {
-        const chatsObj = await env.IMAGES.get('chats-index.json');
-        if (chatsObj) {
-          const chats = JSON.parse(await chatsObj.text());
-          if (Array.isArray(chats)) {
-            chatStats.totalMessages = chats.length;
-            chatStats.todayMessages = chats.filter(c => c.time && c.time.startsWith(today)).length;
-            chatStats.uniqueSessions = [...new Set(chats.map(c => c.sessionId))].length;
+        if (env.DB) {
+          const totalRow = await env.DB.prepare('SELECT COUNT(*) as c FROM chat_logs').first();
+          const todayRow = await env.DB.prepare(
+            "SELECT COUNT(*) as c FROM chat_logs WHERE substr(created_at, 1, 10) = ?"
+          ).bind(today).first();
+          const sessionRow = await env.DB.prepare(
+            'SELECT COUNT(DISTINCT session_id) as c FROM chat_logs'
+          ).first();
+          chatStats.totalMessages = totalRow ? totalRow.c : 0;
+          chatStats.todayMessages = todayRow ? todayRow.c : 0;
+          chatStats.uniqueSessions = sessionRow ? sessionRow.c : 0;
+        } else {
+          const chatsObj = await env.IMAGES.get('chats-index.json');
+          if (chatsObj) {
+            const chats = JSON.parse(await chatsObj.text());
+            if (Array.isArray(chats)) {
+              chatStats.totalMessages = chats.length;
+              chatStats.todayMessages = chats.filter(c => c.time && c.time.startsWith(today)).length;
+              chatStats.uniqueSessions = [...new Set(chats.map(c => c.sessionId))].length;
+            }
           }
         }
       } catch (e) {}
