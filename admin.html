@@ -401,6 +401,12 @@ tr:hover td { background: #FAFAFA; }
       </div>
       <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
     </div>
+    <div class="card">
+      <div class="card-header">
+        <h3 id="hourlyTitle">访问时段分布（近30天）</h3>
+      </div>
+      <div class="chart-wrap"><canvas id="hourlyChart"></canvas></div>
+    </div>
     <div class="form-row">
       <div class="card">
         <div class="card-header"><h3>热门页面 Top 10</h3></div>
@@ -421,13 +427,24 @@ tr:hover td { background: #FAFAFA; }
         </div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-header"><h3>访客地理分布</h3></div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>排名</th><th>省份</th><th>访问次数</th></tr></thead>
-          <tbody id="geoTableBody"></tbody>
-        </table>
+    <div class="form-row">
+      <div class="card">
+        <div class="card-header"><h3>访客地理分布</h3></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>排名</th><th>省份</th><th>城市</th><th>访问次数</th></tr></thead>
+            <tbody id="geoTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>国家分布</h3></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>排名</th><th>国家/地区</th><th>访问次数</th></tr></thead>
+            <tbody id="countryTableBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -1615,6 +1632,7 @@ async function viewChatDetail(sid) {
 
 // ==================== STATS ====================
 var trendChart = null;
+var hourlyChart = null;
 
 async function loadStats(dateStr) {
   try {
@@ -1650,6 +1668,37 @@ async function loadStats(dateStr) {
       }
     });
 
+    // 访问时段分布（24小时柱状图）
+    var hourlyValues = d.hourlyStats || [];
+    var hourlyLabels = [];
+    for (var hi = 0; hi < 24; hi++) {
+      hourlyLabels.push(hi + ':00');
+    }
+    if (hourlyValues.length === 24) {
+      document.getElementById('hourlyTitle').textContent = dateStr ? '访问时段分布（' + dateStr + '）' : '访问时段分布（近30天）';
+      var hctx = document.getElementById('hourlyChart');
+      if (hourlyChart) hourlyChart.destroy();
+      hourlyChart = new Chart(hctx, {
+        type: 'bar',
+        data: {
+          labels: hourlyLabels,
+          datasets: [{
+            label: '访问次数',
+            data: hourlyValues,
+            backgroundColor: 'rgba(201,169,110,0.55)',
+            borderColor: '#C9A96E',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
+
     var topPages = d.topPages || [];
     document.getElementById('topPagesBody').innerHTML = topPages.length > 0
       ? topPages.map(function(p, i) { return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(p.page) + '</td><td>' + p.count + '</td></tr>'; }).join('')
@@ -1660,9 +1709,22 @@ async function loadStats(dateStr) {
       ? topRefs.map(function(r, i) { return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(r.host) + '</td><td>' + r.count + '</td></tr>'; }).join('')
       : '<tr><td colspan="3" style="color:#999;">暂无数据</td></tr>';
 
+    // 地理分布：省份 + 城市明细
     var geoDist = d.geoDistribution || [];
     document.getElementById('geoTableBody').innerHTML = geoDist.length > 0
-      ? geoDist.map(function(g, i) { return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(g.region) + '</td><td>' + g.count + '</td></tr>'; }).join('')
+      ? geoDist.map(function(g, i) {
+          var cities = (g.cities || []).slice(0, 6).map(function(c) {
+            return escapeHtml(c.city) + ' <span style="color:#999;font-size:12px;">' + c.count + '</span>';
+          }).join('、');
+          if ((g.cities || []).length > 6) cities += ' 等';
+          return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(g.region) + '</td><td>' + cities + '</td><td>' + g.count + '</td></tr>';
+        }).join('')
+      : '<tr><td colspan="4" style="color:#999;">暂无数据</td></tr>';
+
+    // 国家/地区分布
+    var countryStats = d.countryStats || [];
+    document.getElementById('countryTableBody').innerHTML = countryStats.length > 0
+      ? countryStats.map(function(c, i) { return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(c.country) + '</td><td>' + c.count + '</td></tr>'; }).join('')
       : '<tr><td colspan="3" style="color:#999;">暂无数据</td></tr>';
 
   } catch (e) {

@@ -33,6 +33,9 @@ function getDefaultStats() {
     visitCount: 0,
     pageViews: {},
     dailyPV: {},
+    dailyUV: {},
+    dailyPageViews: {},
+    dailyReferrers: {},
     referrers: {},
     cities: {},
     regions: {},
@@ -57,6 +60,9 @@ async function trackPageView(env, page, referrer, visitorId, duration, cf, isExi
   stats.pageViews[page] = (stats.pageViews[page] || 0) + 1;
   stats.dailyPV = stats.dailyPV || {};
   stats.dailyPV[today] = (stats.dailyPV[today] || 0) + 1;
+  stats.dailyPageViews = stats.dailyPageViews || {};
+  stats.dailyPageViews[today] = stats.dailyPageViews[today] || {};
+  stats.dailyPageViews[today][page] = (stats.dailyPageViews[today][page] || 0) + 1;
 
   // 停留时长累计：仅在 exit 时累加，防止心跳稀释平均时长
   if (isExit && duration && typeof duration === 'number' && duration > 0) {
@@ -67,9 +73,12 @@ async function trackPageView(env, page, referrer, visitorId, duration, cf, isExi
   // 来源
   if (referrer && referrer !== '') {
     stats.referrers = stats.referrers || {};
+    stats.dailyReferrers = stats.dailyReferrers || {};
+    stats.dailyReferrers[today] = stats.dailyReferrers[today] || {};
     try {
       const refHost = new URL(referrer).hostname;
       stats.referrers[refHost] = (stats.referrers[refHost] || 0) + 1;
+      stats.dailyReferrers[today][refHost] = (stats.dailyReferrers[today][refHost] || 0) + 1;
     } catch (e) {}
   }
 
@@ -121,6 +130,8 @@ async function trackPageView(env, page, referrer, visitorId, duration, cf, isExi
       const existing = await env.IMAGES.get(uvKey);
       if (!existing) {
         stats.totalUV = (stats.totalUV || 0) + 1;
+        stats.dailyUV = stats.dailyUV || {};
+        stats.dailyUV[today] = (stats.dailyUV[today] || 0) + 1;
         await env.IMAGES.put(uvKey, '1', {
           httpMetadata: { contentType: 'text/plain' },
           customMetadata: { ttl: '86400' }
@@ -213,14 +224,22 @@ export async function onRequest(context) {
         }
       }
 
-      // 热门页面 Top 10
-      const topPages = Object.entries(stats.pageViews || {})
+      // 热门页面 Top 10：指定日期时优先取该日明细，否则取全局
+      let pageSource = stats.pageViews || {};
+      if (queryDate && stats.dailyPageViews && stats.dailyPageViews[queryDate]) {
+        pageSource = stats.dailyPageViews[queryDate];
+      }
+      const topPages = Object.entries(pageSource)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
         .map(([page, count]) => ({ page, count }));
 
-      // 来源统计 Top 10
-      const topReferrers = Object.entries(stats.referrers || {})
+      // 来源统计 Top 10：指定日期时优先取该日明细，否则取全局
+      let referrerSource = stats.referrers || {};
+      if (queryDate && stats.dailyReferrers && stats.dailyReferrers[queryDate]) {
+        referrerSource = stats.dailyReferrers[queryDate];
+      }
+      const topReferrers = Object.entries(referrerSource)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
         .map(([host, count]) => ({ host, count }));
@@ -319,6 +338,40 @@ export async function onRequest(context) {
         geoDistribution.sort((a, b) => b.count - a.count);
       } catch (e) {}
 
+      // 访问时段分布（24 小时）：有 date 参数时只取该日，否则近 30 天
+      const hourlyStats = Array(24).fill(0);
+      const countryStats = [];
+      try {
+        const countryMap = {};
+        const collectDays = [];
+        if (queryDate) {
+          collectDays.push(queryDate);
+        } else {
+          for (let i = 0; i < 30; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            collectDays.push(d.toISOString().split('T')[0]);
+          }
+        }
+        for (const dk of collectDays) {
+          const geoObj = await env.IMAGES.get(GEO_KEY_PREFIX + dk);
+          if (!geoObj) continue;
+          const geoList = JSON.parse(await geoObj.text());
+          geoList.forEach(g => {
+            if (g.time) {
+              const h = parseInt(g.time.substring(11, 13), 10);
+              if (!isNaN(h) && h >= 0 && h < 24) hourlyStats[h]++;
+            }
+            const cntry = g.country || '未知';
+            countryMap[cntry] = (countryMap[cntry] || 0) + 1;
+          });
+        }
+        for (const [country, count] of Object.entries(countryMap)) {
+          countryStats.push({ country, count });
+        }
+        countryStats.sort((a, b) => b.count - a.count);
+      } catch (e) {}
+
       return new Response(JSON.stringify({
         success: true,
         data: {
@@ -326,6 +379,7 @@ export async function onRequest(context) {
             totalPV: stats.totalPV || 0,
             totalUV: stats.totalUV || 0,
             todayPV: (stats.dailyPV && stats.dailyPV[queryDate || today]) || 0,
+            todayUV: (stats.dailyUV && stats.dailyUV[queryDate || today]) || 0,
             blogCount,
             chatStats,
             avgDuration,
@@ -335,6 +389,8 @@ export async function onRequest(context) {
           topPages,
           topReferrers,
           geoDistribution,
+          hourlyStats,
+          countryStats,
           durationStats: {
             todayAvg,
             weeklyAvg
