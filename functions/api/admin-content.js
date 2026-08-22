@@ -23,6 +23,10 @@ export async function onRequest(context) {
       const obj = await bucket.get(key);
       if (!obj) {
         return {
+          hero: {
+            title: '用设计重塑生活',
+            sub: '上海青松空间设计,专注室内设计 19 年。\n从方案设计到施工落地,用匠心打造有温度的空间'
+          },
           about: {
             title: '关于青松设计',
             text1: '',
@@ -43,6 +47,7 @@ export async function onRequest(context) {
       return JSON.parse(text);
     } catch (e) {
       return {
+        hero: { title: '', sub: '' },
         about: { title: '', text1: '', text2: '', highlights: [] },
         services: [],
         process: [],
@@ -69,6 +74,13 @@ export async function onRequest(context) {
       const body = await request.json();
       const current = await readData();
 
+      if (body.hero) {
+        current.hero = {
+          title: body.hero.title !== undefined ? body.hero.title : (current.hero && current.hero.title || ''),
+          sub: body.hero.sub !== undefined ? body.hero.sub : (current.hero && current.hero.sub || '')
+        };
+      }
+
       if (body.about) {
         current.about = {
           title: body.about.title !== undefined ? body.about.title : current.about.title,
@@ -82,7 +94,10 @@ export async function onRequest(context) {
         current.services = body.services.map((s, i) => ({
           icon: s.icon !== undefined ? s.icon : (current.services[i] && current.services[i].icon || ''),
           title: s.title !== undefined ? s.title : '',
-          desc: s.desc !== undefined ? s.desc : ''
+          desc: s.desc !== undefined ? s.desc : '',
+          price: s.price !== undefined ? s.price : (current.services[i] && current.services[i].price || ''),
+          unit: s.unit !== undefined ? s.unit : (current.services[i] && current.services[i].unit || ''),
+          img: s.img !== undefined ? s.img : (current.services[i] && current.services[i].img || '')
         }));
       }
 

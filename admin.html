@@ -312,6 +312,19 @@ tr:hover td { background: #FAFAFA; }
   <div class="page-content" id="page-content">
     <div class="page-title">网站内容管理</div>
 
+    <!-- Hero -->
+    <div class="card">
+      <div class="card-header"><h3>首页首屏（Hero）</h3></div>
+      <div class="form-group">
+        <label class="form-label">主标题</label>
+        <input class="form-input" id="contentHeroTitle" placeholder="用设计重塑生活">
+      </div>
+      <div class="form-group">
+        <label class="form-label">副标题（换行用 \n）</label>
+        <textarea class="form-textarea" id="contentHeroSub" rows="2"></textarea>
+      </div>
+    </div>
+
     <!-- About -->
     <div class="card">
       <div class="card-header"><h3>关于我们</h3></div>
@@ -1402,6 +1415,9 @@ async function loadSiteContent() {
 
 function renderContentForms(data) {
   var d = data || {};
+  // Hero
+  document.getElementById('contentHeroTitle').value = (d.hero && d.hero.title) || '';
+  document.getElementById('contentHeroSub').value = (d.hero && d.hero.sub) || '';
   // About
   document.getElementById('contentAboutTitle').value = (d.about && d.about.title) || '';
   document.getElementById('contentAboutText1').value = (d.about && d.about.text1) || '';
@@ -1449,6 +1465,9 @@ function renderServices(services) {
       '<input class="form-input" style="width:60px;flex:none;" id="svcIcon' + i + '" value="' + escapeHtml(s.icon || '') + '" placeholder="图标">' +
       '<input class="form-input" style="flex:1;min-width:100px;" id="svcTitle' + i + '" value="' + escapeHtml(s.title || '') + '" placeholder="标题">' +
       '<input class="form-input" style="flex:2;min-width:150px;" id="svcDesc' + i + '" value="' + escapeHtml(s.desc || '') + '" placeholder="描述">' +
+      '<input class="form-input" style="width:70px;flex:none;" id="svcPrice' + i + '" value="' + escapeHtml(s.price || '') + '" placeholder="价格">' +
+      '<input class="form-input" style="width:70px;flex:none;" id="svcUnit' + i + '" value="' + escapeHtml(s.unit || '') + '" placeholder="单位">' +
+      '<input class="form-input" style="flex:1;min-width:120px;" id="svcImg' + i + '" value="' + escapeHtml(s.img || '') + '" placeholder="图片URL(可选)">' +
       '<button class="btn btn-danger btn-sm" onclick="removeServiceItem(' + i + ')" title="删除">×</button>' +
       '</div>';
   }
@@ -1458,7 +1477,7 @@ function renderServices(services) {
 function addServiceItem() {
   if (!currentSiteContent) return;
   var svcs = currentSiteContent.services || [];
-  svcs.push({ icon: '', title: '', desc: '' });
+  svcs.push({ icon: '', title: '', desc: '', price: '', unit: '', img: '' });
   currentSiteContent.services = svcs;
   renderServices(svcs);
 }
@@ -1488,10 +1507,16 @@ async function saveSiteContent() {
     var iconEl = svcRows[j].querySelector('[id^="svcIcon"]');
     var titleEl = svcRows[j].querySelector('[id^="svcTitle"]');
     var descEl = svcRows[j].querySelector('[id^="svcDesc"]');
+    var priceEl = svcRows[j].querySelector('[id^="svcPrice"]');
+    var unitEl = svcRows[j].querySelector('[id^="svcUnit"]');
+    var imgEl = svcRows[j].querySelector('[id^="svcImg"]');
     services.push({
       icon: iconEl ? iconEl.value : '',
       title: titleEl ? titleEl.value : '',
-      desc: descEl ? descEl.value : ''
+      desc: descEl ? descEl.value : '',
+      price: priceEl ? priceEl.value : '',
+      unit: unitEl ? unitEl.value : '',
+      img: imgEl ? imgEl.value : ''
     });
   }
 
@@ -1507,6 +1532,10 @@ async function saveSiteContent() {
   }
 
   var payload = {
+    hero: {
+      title: document.getElementById('contentHeroTitle').value,
+      sub: document.getElementById('contentHeroSub').value
+    },
     about: {
       title: document.getElementById('contentAboutTitle').value,
       text1: document.getElementById('contentAboutText1').value,

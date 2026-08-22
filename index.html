@@ -1926,7 +1926,7 @@ body {
 
     </div>
 
-    <div class="process-steps fade-in">
+    <div class="process-steps fade-in" id="processSteps">
 
       <div class="process-step">
 
@@ -2076,7 +2076,7 @@ body {
 
         <p id="aboutText2">我们坚持"方案先行、效果可见、施工精准"的理念,以 SU 三维模型为核心,确保设计创意的可视化呈现与精确落地。合作模式灵活,首付 60% 启动项目,40% 尾款于交付时结清</p>
 
-        <div class="about-highlights">
+        <div class="about-highlights" id="aboutHighlights">
 
           <div class="about-hl">
 
@@ -2186,9 +2186,9 @@ body {
 
           <p>上海青松空间设计</p>
 
-          <p>联系电话:<span class="gold">19907444111</span></p>
+          <p>联系电话:<span class="gold" id="contactPhone">19907444111</span></p>
 
-          <p>电子邮箱:<span class="gold"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7b484c434a4e4e4c4d483b0a0a55181416">[email&#160;protected]</a></span></p>
+          <p>电子邮箱:<span class="gold"><a href="mailto:qingsong@ggff.net" id="contactEmail">qingsong@ggff.net</a></span></p>
 
         </div>
 
@@ -2731,6 +2731,112 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 
       });
 
+  })();
+
+  // ==================== Site Content from API ====================
+  // 后台(admin.html 网站内容管理) → /api/site-content → 首页 Hero/服务/流程/关于/联系 联动
+  // 优先级：API 数据 > localStorage > 默认内容
+  (function loadSiteContent() {
+    fetch('/api/site-content')
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function(res) {
+        var d = (res && res.data) ? res.data : null;
+        if (!d) return;
+
+        // Hero
+        var ht = document.getElementById('heroTitle');
+        if (ht && d.hero && d.hero.title) ht.textContent = d.hero.title;
+        var hs = document.getElementById('heroSub');
+        if (hs && d.hero && d.hero.sub) hs.innerHTML = d.hero.sub.replace(/\n/g, '<br/>');
+
+        // About
+        var at = document.getElementById('aboutTitle');
+        if (at && d.about && d.about.title) at.innerHTML = d.about.title.replace('青松设计', '<span class="gold">青松设计</span>');
+        var a1 = document.getElementById('aboutText1');
+        if (a1 && d.about && d.about.text1) a1.textContent = d.about.text1;
+        var a2 = document.getElementById('aboutText2');
+        if (a2 && d.about && d.about.text2) a2.textContent = d.about.text2;
+
+        // About highlights
+        var ah = document.getElementById('aboutHighlights');
+        if (ah && d.about && d.about.highlights && d.about.highlights.length) {
+          var hlHtml = '';
+          for (var h = 0; h < d.about.highlights.length; h++) {
+            var hl = d.about.highlights[h];
+            if (!hl || (!hl.num && !hl.label)) continue;
+            hlHtml += '<div class="about-hl">';
+            hlHtml += '<div class="about-hl-num">' + (hl.num || '') + '</div>';
+            hlHtml += '<div class="about-hl-label">' + (hl.label || '') + '</div>';
+            hlHtml += '</div>';
+          }
+          if (hlHtml) ah.innerHTML = hlHtml;
+        }
+
+        // Services
+        if (d.services && d.services.length) {
+          var sGrid = document.getElementById('servicesGrid');
+          if (sGrid) {
+            var icons = ['&#9678;', '&#9640;', '&#9711;', '&#9654;', '&#9639;', '&#9998;'];
+            var svcHTML = '';
+            for (var s = 0; s < d.services.length; s++) {
+              var sv = d.services[s];
+              var svcImg = sv.img || '';
+              var svcImgTag = svcImg ? '<img src="' + svcImg + '" alt="' + (sv.title || sv.name || '') + '" class="service-card-img" loading="lazy">' : '';
+              svcHTML += '<div class="service-card fade-in">';
+              svcHTML += svcImgTag;
+              svcHTML += '<div class="service-card-icon">' + (sv.icon || icons[s] || icons[0]) + '</div>';
+              svcHTML += '<h3>' + (sv.title || sv.name || '') + '</h3>';
+              svcHTML += '<p>' + (sv.desc || '') + '</p>';
+              if (sv.price) {
+                svcHTML += '<div class="price">&yen;' + (sv.price || '') + ' <span class="price-unit">/ ' + (sv.unit || '') + '</span></div>';
+              }
+              svcHTML += '</div>';
+            }
+            sGrid.innerHTML = svcHTML;
+          }
+        }
+
+        // Process
+        var ps = document.getElementById('processSteps');
+        if (ps && d.process && d.process.length) {
+          var pHTML = '';
+          for (var pp = 0; pp < d.process.length; pp++) {
+            var pr = d.process[pp];
+            pHTML += '<div class="process-step">';
+            pHTML += '<div class="process-step-num">' + (pr.step || (pp + 1)) + '</div>';
+            pHTML += '<h4>' + (pr.title || '') + '</h4>';
+            pHTML += '<p>' + (pr.desc || '') + '</p>';
+            pHTML += '</div>';
+          }
+          ps.innerHTML = pHTML;
+        }
+
+        // Contact / Footer
+        if (d.contact) {
+          var cp = document.getElementById('contactPhone');
+          if (cp && d.contact.phone) cp.textContent = d.contact.phone;
+          var ce = document.getElementById('contactEmail');
+          if (ce && d.contact.email) {
+            ce.textContent = d.contact.email;
+            ce.href = 'mailto:' + d.contact.email;
+          }
+          var fi = document.getElementById('footerInfo');
+          if (fi) {
+            var extra = '';
+            if (d.contact.wechat) extra += '<p>微信号:<span class="gold">' + d.contact.wechat + '</span></p>';
+            if (d.contact.address) extra += '<p>公司地址:<span class="gold">' + d.contact.address + '</span></p>';
+            if (extra) {
+              var extraDiv = document.createElement('div');
+              extraDiv.innerHTML = extra;
+              while (extraDiv.firstChild) fi.appendChild(extraDiv.firstChild);
+            }
+          }
+        }
+      })
+      .catch(function() { /* API 加载失败，保持默认内容 */ });
   })();
 
 })();
