@@ -61,9 +61,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 .editor-tab:last-child { border-radius:0 6px 0 0; }
 .editor-tab.active { background:#fff; color:#C9A96E; border-bottom-color:#fff; font-weight:600; }
 .editor-tab:hover:not(.active) { background:#e8e8e8; }
-#postContent { border-radius:0 0 8px 8px; font-family:'SF Mono','Consolas','Monaco',monospace; font-size:13px; line-height:1.6; min-height:300px; }
+#postContent { border-radius:0 0 8px 8px; font-family:'SF Mono','Consolas','Monaco',monospace; font-size:13px; line-height:1.6; min-height:560px; }
 #postContent.preview-hidden { display:none; }
-.content-preview { display:none; border:1px solid #ddd; border-top:none; border-radius:0 0 8px 8px; padding:20px 24px; min-height:300px; max-height:520px; overflow-y:auto; background:#fff; font-size:15px; line-height:1.85; color:#333; word-wrap:break-word; }
+.content-preview { display:none; border:1px solid #ddd; border-top:none; border-radius:0 0 8px 8px; padding:20px 24px; min-height:300px; max-height:560px; overflow-y:auto; background:#fff; font-size:15px; line-height:1.85; color:#333; word-wrap:break-word; }
 .content-preview.show { display:block; }
 .content-preview img { max-width:100%; height:auto; border-radius:6px; margin:8px 0; }
 .content-preview iframe { max-width:100%; border-radius:6px; margin:8px 0; }
@@ -119,10 +119,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
         </div>
       </div>
       <div class="form-group">
-        <label>摘要</label>
-        <textarea id="postExcerpt" rows="2" placeholder="简短摘要，显示在列表卡片中"></textarea>
-      </div>
-      <div class="form-group">
         <label>封面图片</label>
         <div class="upload-preview" id="coverPreview" onclick="document.getElementById('coverInput').click()">
           <span class="placeholder">点击上传封面图</span>
@@ -138,7 +134,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
             <button type="button" class="editor-tab" id="tabPreview" onclick="switchEditorMode('preview')">预览</button>
           </div>
         </div>
-        <textarea id="postContent" rows="16" placeholder="支持 HTML / Markdown 格式"></textarea>
+        <textarea id="postContent" rows="24" placeholder="支持 HTML / Markdown 格式"></textarea>
         <div id="contentPreview" class="content-preview"></div>
         <div class="hint">源码模式编辑 HTML，预览模式查看渲染效果；切换回源码继续编辑。</div>
       </div>
@@ -239,7 +235,6 @@ async function openEditor(id) {
       document.getElementById('postTitle').value = p.title || '';
       document.getElementById('postCategory').value = p.category || 'SketchUp教程';
       document.getElementById('postTags').value = tagsStr;
-      document.getElementById('postExcerpt').value = p.excerpt || '';
       document.getElementById('postContent').value = p.content || '';
       document.getElementById('postCover').value = p.cover_image || '';
       const preview = document.getElementById('coverPreview');
@@ -317,7 +312,6 @@ document.getElementById('postForm').addEventListener('submit', async (e) => {
     title: document.getElementById('postTitle').value,
     category: document.getElementById('postCategory').value,
     tags: document.getElementById('postTags').value,
-    excerpt: document.getElementById('postExcerpt').value,
     content: document.getElementById('postContent').value,
     cover_image: document.getElementById('postCover').value
   };

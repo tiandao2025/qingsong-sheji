@@ -662,8 +662,7 @@ function showBlogModal(blog) {
   html += '<div class="form-row"><div class="form-group"><label class="form-label">分类</label><input class="form-input" id="blogCategory" value="' + (isEdit ? escapeHtml(blog.category || '') : '') + '"></div>';
   html += '<input type="hidden" id="blogCover" value="' + (isEdit ? escapeHtml(blog.cover_image || '') : '') + '">';
   html += '<div class="form-group"><label class="form-label">封面图</label><div style="display:flex;gap:8px;align-items:center;"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogCoverFile\').click()">上传封面</button><input type="file" id="blogCoverFile" accept="image/*" style="display:none;" onchange="uploadBlogCover()"><span id="blogCoverStatus" style="color:#999;font-size:13px;">' + (isEdit && blog.cover_image ? '已有封面，可点击按钮更换' : '点击按钮选择图片上传') + '</span></div><div id="blogCoverPreview" style="margin-top:8px;">' + (isEdit && blog.cover_image ? '<img src="' + escapeHtml(blog.cover_image) + '" style="max-width:200px;max-height:120px;border-radius:6px;border:1px solid #E8E8ED;">' : '') + '</div></div>';
-  html += '<div class="form-group"><label class="form-label">摘要</label><textarea class="form-textarea" id="blogExcerpt">' + (isEdit ? escapeHtml(blog.excerpt || '') : '') + '</textarea></div>';
-  html += '<div class="form-group"><label class="form-label">内容 (Markdown)</label><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;"><input type="file" id="blogContentImageFile" accept="image/*" style="display:none;" onchange="insertBlogImage()"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogContentImageFile\').click()">插入图片</button><small style="color:#999;">上传后自动插入 Markdown 图片语法到光标位置</small></div><textarea class="form-textarea" id="blogContent" style="min-height:200px;">' + (isEdit ? escapeHtml(blog.content || '') : '') + '</textarea></div>';
+  html += '<div class="form-group"><label class="form-label">内容 (Markdown)</label><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;"><input type="file" id="blogContentImageFile" accept="image/*" style="display:none;" onchange="insertBlogImage()"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogContentImageFile\').click()">插入图片</button><small style="color:#999;">上传后自动插入 Markdown 图片语法到光标位置</small></div><textarea class="form-textarea" id="blogContent" style="min-height:560px;">' + (isEdit ? escapeHtml(blog.content || '') : '') + '</textarea></div>';
   html += '<div class="form-group"><label class="form-label">B站视频嵌入码</label><textarea class="form-textarea" id="blogBilibili" style="min-height:60px;" placeholder="粘贴B站视频的 &lt;iframe&gt; 嵌入代码">' + bilibiliVal + '</textarea><small style="color:#999;">B站视频 → 分享 → 嵌入代码，复制整段 iframe</small></div>';
   html += '<div class="btn-group">';
   html += '<button class="btn btn-primary" onclick="saveBlog(\'' + (isEdit ? blog.id : '') + '\')">保存</button>';
@@ -749,7 +748,6 @@ async function saveBlog(id) {
     title: document.getElementById('blogTitle').value,
     category: document.getElementById('blogCategory').value,
     cover_image: document.getElementById('blogCover').value,
-    excerpt: document.getElementById('blogExcerpt').value,
     content: document.getElementById('blogContent').value,
     bilibili: document.getElementById('blogBilibili').value
   };
