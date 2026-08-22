@@ -18,6 +18,15 @@ export async function onRequest(context) {
   const bucket = env.IMAGES;
   const key = 'site-content.json';
 
+  const DEFAULT_SERVICES = [
+    { icon: '&#9678;', title: '住宅全案设计', desc: '从平面方案到全景效果图、施工图,提供一站式全案设计服务', price: '120', unit: 'm²', img: '' },
+    { icon: '&#9640;', title: '商业空间设计', desc: '办公室、店铺、展厅等商业空间的创意设计与空间规划', price: '150', unit: 'm²', img: '' },
+    { icon: '&#9711;', title: '软装搭配设计', desc: '家具、灯具、窗帘等软装甄选搭配,打造和谐空间氛围', price: '80', unit: 'm²', img: '' },
+    { icon: '&#9654;', title: 'SU效果图制作', desc: 'SketchUp三维建模 + Enscape实时渲染,所见即所得', price: '500', unit: '张', img: '' },
+    { icon: '&#9639;', title: '施工图深化', desc: '平面/立面/节点详图,CAD标准出图,指导施工落地', price: '60', unit: 'm²', img: '' },
+    { icon: '&#9998;', title: '旧房翻新设计', desc: '老房改造、二手房翻新,优化空间布局焕新居住体验', price: '100', unit: 'm²', img: '' }
+  ];
+
   async function readData() {
     try {
       const obj = await bucket.get(key);
@@ -38,13 +47,18 @@ export async function onRequest(context) {
               { num: '10+ 年', label: 'SU 教学培训经验' }
             ]
           },
-          services: [],
+          services: DEFAULT_SERVICES,
           process: [],
           contact: { phone: '', wechat: '', address: '', email: '' }
         };
       }
       const text = await obj.text();
-      return JSON.parse(text);
+      const parsed = JSON.parse(text);
+      // 兼容旧数据：services 为空时补默认 6 项，保证后台有可编辑条目
+      if (!parsed.services || parsed.services.length === 0) {
+        parsed.services = DEFAULT_SERVICES;
+      }
+      return parsed;
     } catch (e) {
       return {
         hero: { title: '', sub: '' },
