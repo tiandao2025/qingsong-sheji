@@ -321,7 +321,10 @@ tr:hover td { background: #FAFAFA; }
       </div>
       <div class="form-group">
         <label class="form-label">副标题（换行用 \n）</label>
-        <textarea class="form-textarea" id="contentHeroSub" rows="2"></textarea>
+        <div style="display:flex;gap:6px;align-items:flex-start;">
+          <textarea class="form-textarea" id="contentHeroSub" rows="2" style="flex:1;"></textarea>
+          <button type="button" class="btn btn-sm" style="flex:none;" onclick="polishField('contentHeroSub','首页副标题', this)" title="AI 润色">AI 润色</button>
+        </div>
       </div>
     </div>
 
@@ -334,11 +337,17 @@ tr:hover td { background: #FAFAFA; }
       </div>
       <div class="form-group">
         <label class="form-label">正文第一段</label>
-        <textarea class="form-textarea" id="contentAboutText1" rows="3"></textarea>
+        <div style="display:flex;gap:6px;align-items:flex-start;">
+          <textarea class="form-textarea" id="contentAboutText1" rows="3" style="flex:1;"></textarea>
+          <button type="button" class="btn btn-sm" style="flex:none;" onclick="polishField('contentAboutText1','关于正文第一段', this)" title="AI 润色">AI 润色</button>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">正文第二段</label>
-        <textarea class="form-textarea" id="contentAboutText2" rows="3"></textarea>
+        <div style="display:flex;gap:6px;align-items:flex-start;">
+          <textarea class="form-textarea" id="contentAboutText2" rows="3" style="flex:1;"></textarea>
+          <button type="button" class="btn btn-sm" style="flex:none;" onclick="polishField('contentAboutText2','关于正文第二段', this)" title="AI 润色">AI 润色</button>
+        </div>
       </div>
       <label class="form-label">亮点数据（4 项）</label>
       <div id="contentAboutHighlights"></div>
@@ -1446,7 +1455,8 @@ function renderContentForms(data) {
     procHtml += '<div class="form-row" style="margin-bottom:8px;">' +
       '<div class="form-group"><input class="form-input" id="contentProcTitle' + j + '" placeholder="步骤标题" value="' + escapeHtml(p.title || '') + '"></div>' +
       '</div>' +
-      '<div class="form-group"><textarea class="form-textarea" id="contentProcDesc' + j + '" rows="2" placeholder="步骤描述">' + escapeHtml(p.desc || '') + '</textarea></div>';
+      '<div class="form-group"><textarea class="form-textarea" id="contentProcDesc' + j + '" rows="2" placeholder="步骤描述">' + escapeHtml(p.desc || '') + '</textarea>' +
+      '<button class="btn btn-sm" style="margin-top:4px;" onclick="polishField(\'contentProcDesc' + j + '\',\'流程步骤描述\', this)" title="AI 润色">AI 润色</button></div>';
   }
   document.getElementById('contentProcess').innerHTML = procHtml;
 
@@ -1465,6 +1475,7 @@ function renderServices(services) {
       '<input class="form-input" style="width:60px;flex:none;" id="svcIcon' + i + '" value="' + escapeHtml(s.icon || '') + '" placeholder="图标">' +
       '<input class="form-input" style="flex:1;min-width:100px;" id="svcTitle' + i + '" value="' + escapeHtml(s.title || '') + '" placeholder="名称">' +
       '<input class="form-input" style="flex:2;min-width:150px;" id="svcDesc' + i + '" value="' + escapeHtml(s.desc || '') + '" placeholder="描述">' +
+      '<button class="btn btn-sm" style="flex:none;" onclick="polishField(\'svcDesc' + i + '\',\'服务描述\', this)" title="AI 润色">AI</button>' +
       '<input class="form-input" style="width:70px;flex:none;" id="svcPrice' + i + '" value="' + escapeHtml(s.price || '') + '" placeholder="价格">' +
       '<input class="form-input" style="width:70px;flex:none;" id="svcUnit' + i + '" value="' + escapeHtml(s.unit || '') + '" placeholder="单位">' +
       '<div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:150px;">' +
@@ -1506,6 +1517,34 @@ async function uploadSvcImg(idx) {
     showToast('上传失败: ' + e.message, 'error');
   } finally {
     fileInput.value = '';
+  }
+}
+
+async function polishField(id, label, btn) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var text = (el.value || '').trim();
+  if (!text) { showToast('请先填写内容再润色', 'error'); return; }
+  var oldHtml = btn ? btn.innerHTML : '';
+  var oldDisabled = btn ? btn.disabled : false;
+  if (btn) { btn.disabled = true; btn.innerHTML = '润色中…'; }
+  try {
+    var resp = await fetch('/api/ai-polish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, fieldLabel: label })
+    });
+    var data = await resp.json();
+    if (data.success) {
+      el.value = data.text;
+      showToast('润色完成，已填充结果', 'success');
+    } else {
+      showToast('润色失败: ' + (data.error || '未知错误'), 'error');
+    }
+  } catch (e) {
+    showToast('润色失败: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = oldDisabled; btn.innerHTML = oldHtml; }
   }
 }
 
