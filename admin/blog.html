@@ -629,7 +629,7 @@ function switchMaterialTab(tab) {
 async function loadMaterialImages() {
   const body = document.getElementById('matBody');
   try {
-    const res = await authFetch('/api/blog-materials/images');
+    const res = await authFetch('/api/blog-materials-images');
     if (!res) return;
     const data = await res.json();
     const images = data.images || [];

@@ -906,7 +906,7 @@ function switchBlogMaterialTab(tab) {
 async function loadBlogMaterialImages() {
   var body = document.getElementById('matBody');
   try {
-    var data = await api('/api/blog-materials/images');
+    var data = await api('/api/blog-materials-images');
     var images = data.images || [];
     if (!images.length) {
       body.innerHTML = '<div class="mat-empty">暂无历史图片，点击上方"上传图片"添加</div>';
