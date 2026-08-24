@@ -73,6 +73,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 .content-preview h1,.content-preview h2,.content-preview h3 { margin:12px 0 8px; }
 .content-preview .empty-preview { color:#999; font-style:italic; }
 </style>
+<script src="/js/marked.min.js"></script>
 </head>
 <body>
 <div class="sidebar">
@@ -273,10 +274,21 @@ function switchEditorMode(mode) {
   const tabPreview = document.getElementById('tabPreview');
 
   if (mode === 'preview') {
-    const html = textarea.value.trim();
+    const raw = textarea.value.trim();
+    let html = raw;
+    // 与详情页 article.html formatContent 保持一致：无 HTML 标签时按 Markdown 渲染，
+    // breaks:true 让单个换行渲染为 <br>，预览所见即所得
+    if (raw && !/<[a-zA-Z!][^>]*>/.test(raw) && typeof marked !== 'undefined') {
+      try { html = marked.parse(raw, { breaks: true, gfm: true }); } catch (e) {}
+    }
+    html = (html || '')
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/\s+on\w+\s*=\s*"[^"]*"/gi, '')
+      .replace(/\s+on\w+\s*=\s*'[^']*'/gi, '')
+      .replace(/href\s*=\s*"javascript:[^"]*"/gi, 'href="#"');
     preview.innerHTML = html
       ? html
-      : '<div class="empty-preview">暂无内容，请先在源码模式中输入 HTML</div>';
+      : '<div class="empty-preview">暂无内容，请先在源码模式中输入内容</div>';
     textarea.classList.add('preview-hidden');
     preview.classList.add('show');
     tabSource.classList.remove('active');

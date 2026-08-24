@@ -246,7 +246,8 @@ function formatContent(html) {
   // 旧文章正文直接存 HTML（含 <h3>/<iframe>/<div> 等标签）→ 原样展示；
   // 新文章正文是 Markdown → 先渲染成 HTML
   if (!/<[a-zA-Z!][^>]*>/.test(html) && typeof marked !== 'undefined') {
-    try { html = marked.parse(html); } catch (e) {}
+    // breaks:true —— 单个换行也渲染为 <br>，保证从别处复制粘贴的多行文本换行可识别、可保留
+    try { html = marked.parse(html, { breaks: true, gfm: true }); } catch (e) {}
   }
   html = html.replace(/\/api\/image\?key=([^"&\s]+)/g, function(_, key) {
     return '/cdn/' + decodeURIComponent(key);
