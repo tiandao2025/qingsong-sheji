@@ -72,6 +72,31 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 .content-preview a { color:#C9A96E; }
 .content-preview h1,.content-preview h2,.content-preview h3 { margin:12px 0 8px; }
 .content-preview .empty-preview { color:#999; font-style:italic; }
+
+/* ===== 常用素材面板 ===== */
+#materialOverlay .modal { max-width:min(900px, 96vw); padding:24px; }
+.mat-tabs { display:flex; gap:8px; margin-bottom:14px; border-bottom:1px solid #eee; padding-bottom:10px; }
+.mat-tab { padding:7px 18px; border:1px solid #ddd; border-radius:20px; background:#f7f7f7; cursor:pointer; font-size:13px; color:#666; transition:all .15s; }
+.mat-tab.active { background:#C9A96E; border-color:#C9A96E; color:#fff; font-weight:600; }
+.mat-body { max-height:520px; overflow-y:auto; min-height:200px; }
+.mat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; }
+.mat-grid .mat-img-item { border:1px solid #e5e5e7; border-radius:8px; overflow:hidden; cursor:pointer; background:#fafafa; position:relative; transition:box-shadow .15s; }
+.mat-grid .mat-img-item:hover { box-shadow:0 2px 8px rgba(0,0,0,0.12); }
+.mat-grid .mat-img-item img { width:100%; height:90px; object-fit:cover; display:block; background:#eee; }
+.mat-grid .mat-img-item .mat-img-name { padding:5px 7px; font-size:11px; color:#888; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mat-list-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid #e5e5e7; border-radius:8px; margin-bottom:8px; background:#fff; }
+.mat-list-item .mat-main { flex:1; min-width:0; cursor:pointer; }
+.mat-list-item .mat-title { font-size:13px; font-weight:600; color:#333; }
+.mat-list-item .mat-sub { font-size:12px; color:#999; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mat-list-item .mat-content-preview { font-size:12px; color:#777; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.mat-del { border:1px solid #ddd; background:#fff; color:#d32f2f; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer; flex-shrink:0; }
+.mat-del:hover { background:#d32f2f; color:#fff; }
+.mat-add-row { display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap; }
+.mat-add-row input { flex:1; min-width:120px; padding:7px 12px; border:1px solid #ddd; border-radius:6px; font-size:13px; }
+.mat-upload-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border:1px solid #C9A96E; background:#fff; color:#C9A96E; border-radius:6px; font-size:13px; cursor:pointer; }
+.mat-upload-btn:hover { background:#C9A96E; color:#fff; }
+.mat-empty { text-align:center; padding:50px 20px; color:#aaa; font-size:13px; }
+.mat-hint { font-size:11px; color:#999; margin-top:8px; }
 </style>
 <script src="/js/marked.min.js"></script>
 </head>
@@ -134,9 +159,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
       <div class="form-group editor-group">
         <div class="editor-header">
           <label>正文内容</label>
-          <div class="editor-tabs">
-            <button type="button" class="editor-tab active" id="tabSource" onclick="switchEditorMode('source')">源码</button>
-            <button type="button" class="editor-tab" id="tabPreview" onclick="switchEditorMode('preview')">预览</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="openMaterialPanel('image')">插入常用</button>
+            <div class="editor-tabs">
+              <button type="button" class="editor-tab active" id="tabSource" onclick="switchEditorMode('source')">源码</button>
+              <button type="button" class="editor-tab" id="tabPreview" onclick="switchEditorMode('preview')">预览</button>
+            </div>
           </div>
         </div>
         <textarea id="postContent" rows="24" placeholder="支持 HTML / Markdown 格式"></textarea>
@@ -556,6 +584,184 @@ function clickDlAsset(btn, kind) {
 }
 
 loadPosts();
+
+// ===== 常用素材面板（图片/链接/内容）=====
+document.getElementById('materialOverlay').addEventListener('click', function(e) { if (e.target === this) closeMaterialPanel(); });
+
+function openMaterialPanel(tab) {
+  document.getElementById('materialOverlay').classList.add('show');
+  switchMaterialTab(tab || 'image');
+}
+
+function closeMaterialPanel() {
+  document.getElementById('materialOverlay').classList.remove('show');
+}
+
+function switchMaterialTab(tab) {
+  document.querySelectorAll('.mat-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  const body = document.getElementById('matBody');
+  const addArea = document.getElementById('matAddArea');
+  if (tab === 'image') {
+    body.innerHTML = '<div class="mat-empty">加载中...</div>';
+    addArea.innerHTML =
+      '<div class="mat-add-row"><input type="file" id="matImageFile" accept="image/*" style="display:none;" onchange="uploadMaterialImage(this)">' +
+      '<button type="button" class="mat-upload-btn" onclick="document.getElementById(\'matImageFile\').click()">+ 上传图片并插入</button>' +
+      '<span class="mat-hint">上传后自动插入正文光标处，并出现在常用图片中</span></div>';
+    loadMaterialImages();
+  } else if (tab === 'link') {
+    body.innerHTML = '<div class="mat-empty">加载中...</div>';
+    addArea.innerHTML =
+      '<div class="mat-add-row"><input type="text" id="matTitle" placeholder="链接标题，如：SketchUp 官方教程">' +
+      '<input type="text" id="matContent" placeholder="链接 URL，如：https://...">' +
+      '<button type="button" class="btn btn-primary btn-sm" onclick="addMaterial(\'link\')">新增</button></div>';
+    loadMaterialList('link');
+  } else if (tab === 'content') {
+    body.innerHTML = '<div class="mat-empty">加载中...</div>';
+    addArea.innerHTML =
+      '<div class="mat-add-row"><input type="text" id="matTitle" placeholder="片段标题，如：公司简介">' +
+      '<input type="text" id="matContent" placeholder="内容文本，如：青松设计是一家...">' +
+      '<button type="button" class="btn btn-primary btn-sm" onclick="addMaterial(\'content\')">新增</button></div>';
+    loadMaterialList('content');
+  }
+}
+
+// 图片 tab：R2 历史上传图片网格
+async function loadMaterialImages() {
+  const body = document.getElementById('matBody');
+  try {
+    const res = await authFetch('/api/blog-materials/images');
+    if (!res) return;
+    const data = await res.json();
+    const images = data.images || [];
+    if (!images.length) {
+      body.innerHTML = '<div class="mat-empty">暂无历史图片，点击上方"上传图片"添加</div>';
+      return;
+    }
+    body.innerHTML =
+      '<div class="mat-grid">' + images.map(img =>
+        '<div class="mat-img-item" title="点击插入" onclick="insertMaterialText(\'![](' + img.url + ')\')">' +
+        '<img src="' + img.url + '" loading="lazy" onerror="this.style.display=\'none\'">' +
+        '<div class="mat-img-name">' + escapeHtml(decodeURIComponent(img.key.split('/').pop())) + '</div>' +
+        '</div>').join('') + '</div>' +
+      '<div class="mat-hint">点击图片插入 Markdown 图片语法到光标位置</div>';
+  } catch (e) {
+    body.innerHTML = '<div class="mat-empty">加载失败: ' + escapeHtml(e.message) + '</div>';
+  }
+}
+
+// 链接/内容 tab：D1 素材列表
+async function loadMaterialList(type) {
+  const body = document.getElementById('matBody');
+  try {
+    const res = await authFetch('/api/blog-materials?type=' + type);
+    if (!res) return;
+    const data = await res.json();
+    const list = data.materials || [];
+    const emptyHint = type === 'link' ? '暂无常用链接，使用上方表单新增' : '暂无常用内容，使用上方表单新增';
+    if (!list.length) {
+      body.innerHTML = '<div class="mat-empty">' + emptyHint + '</div>';
+      return;
+    }
+    body.innerHTML = list.map(m => {
+      const sub = type === 'link' ? escapeHtml(m.content) : escapeHtml((m.content || '').slice(0, 120));
+      const insertText = type === 'link' ? ('[' + m.title.replace(/[\[\]]/g, '') + '](' + m.content + ')') : (m.content || '');
+      return '<div class="mat-list-item">' +
+        '<div class="mat-main" onclick="insertMaterialText(' + JSON.stringify(insertText) + ')">' +
+        '<div class="mat-title">' + escapeHtml(m.title) + '</div>' +
+        (type === 'link'
+          ? '<div class="mat-sub">' + sub + '</div>'
+          : '<div class="mat-content-preview">' + sub + '</div>') +
+        '</div>' +
+        '<button type="button" class="mat-del" onclick="deleteMaterial(' + m.id + ', \'' + type + '\')">删除</button>' +
+        '</div>';
+    }).join('') +
+      '<div class="mat-hint">点击条目插入到正文光标位置</div>';
+  } catch (e) {
+    body.innerHTML = '<div class="mat-empty">加载失败: ' + escapeHtml(e.message) + '</div>';
+  }
+}
+
+// 插入文本到 postContent 光标处
+function insertMaterialText(text) {
+  const ta = document.getElementById('postContent');
+  if (!ta) return;
+  if (ta.selectionStart !== undefined && ta.selectionStart !== null) {
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const v = ta.value;
+    ta.value = v.slice(0, start) + text + v.slice(end);
+    ta.selectionStart = ta.selectionEnd = start + text.length;
+  } else {
+    ta.value += text;
+  }
+  ta.focus();
+  switchEditorMode('source');
+}
+
+// 新增链接/内容素材
+async function addMaterial(type) {
+  const titleInput = document.getElementById('matTitle');
+  const contentInput = document.getElementById('matContent');
+  const title = (titleInput.value || '').trim();
+  const content = (contentInput.value || '').trim();
+  if (!title) { alert('请输入标题'); return; }
+  if (!content) { alert(type === 'link' ? '请输入链接 URL' : '请输入内容'); return; }
+  const res = await authFetch('/api/blog-materials', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: type, title: title, content: content })
+  });
+  if (!res) return;
+  const data = await res.json();
+  if (!data.success) { alert('新增失败: ' + (data.error || '未知错误')); return; }
+  titleInput.value = '';
+  contentInput.value = '';
+  loadMaterialList(type);
+}
+
+// 删除素材
+async function deleteMaterial(id, type) {
+  if (!confirm('确定删除这条常用素材？')) return;
+  const res = await authFetch('/api/blog-materials?id=' + id, { method: 'DELETE' });
+  if (!res) return;
+  const data = await res.json();
+  if (data.success) loadMaterialList(type);
+  else alert('删除失败: ' + (data.error || '未知错误'));
+}
+
+// 上传图片素材：上传成功后插入正文，并刷新图片网格
+function uploadMaterialImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  authFetch('/api/upload', { method: 'POST', body: formData }).then(async res => {
+    if (!res) return;
+    const data = await res.json();
+    if (data.url) {
+      insertMaterialText('![](' + data.url + ')');
+      loadMaterialImages();
+    } else {
+      alert('上传失败: ' + (data.error || '未知错误'));
+    }
+  });
+  input.value = '';
+}
 </script>
+<div class="modal-overlay" id="materialOverlay">
+  <div class="modal">
+    <div class="modal-header" style="cursor:default;margin-bottom:12px;">
+      <h2>插入常用素材</h2>
+      <button type="button" class="btn btn-outline btn-sm" onclick="closeMaterialPanel()">关闭</button>
+    </div>
+    <div class="mat-tabs">
+      <button type="button" class="mat-tab" data-tab="image" onclick="switchMaterialTab('image')">常用图片</button>
+      <button type="button" class="mat-tab" data-tab="link" onclick="switchMaterialTab('link')">常用链接</button>
+      <button type="button" class="mat-tab" data-tab="content" onclick="switchMaterialTab('content')">常用内容</button>
+    </div>
+    <div id="matBody" class="mat-body"></div>
+    <div id="matAddArea" style="margin-top:14px;border-top:1px solid #eee;padding-top:12px;"></div>
+  </div>
+</div>
 </body>
 </html>
