@@ -143,6 +143,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
         <div id="contentPreview" class="content-preview"></div>
         <div class="hint">源码模式编辑 HTML，预览模式查看渲染效果；切换回源码继续编辑。</div>
       </div>
+      <div class="form-group">
+        <div class="editor-header" style="align-items:center;">
+          <label>下载设置（扫码付费后自助领取）</label>
+          <button type="button" class="btn btn-outline btn-sm" onclick="addDownloadItem()">+ 添加下载项</button>
+        </div>
+        <div id="downloadsContainer"></div>
+        <div class="hint">每个下载项含名称、费用（元）、收款二维码（本地上传）、下载文件（本地上传到 R2）、说明文案。前台点击"下载"弹出收款码，付款后自助领取下载链接。</div>
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-outline" onclick="closeEditor()">取消</button>
         <button type="button" class="btn btn-danger btn-sm" id="deleteBtn" style="display:none;margin-right:auto" onclick="deletePost()">删除</button>
@@ -246,6 +254,7 @@ async function openEditor(id) {
       document.getElementById('postCover').value = p.cover_image || '';
       const preview = document.getElementById('coverPreview');
       preview.innerHTML = p.cover_image ? `<img src="${p.cover_image}" alt="封面">` : '<span class="placeholder">点击上传封面图</span>';
+      fillDownloads(p.downloads || []);
     } catch (e) {
       alert('获取文章详情失败: ' + e.message);
       closeEditor();
@@ -260,6 +269,7 @@ async function openEditor(id) {
     document.getElementById('postId').value = '';
     document.getElementById('postCover').value = '';
     document.getElementById('coverPreview').innerHTML = '<span class="placeholder">点击上传封面图</span>';
+    fillDownloads([]);
     document.getElementById('saveBtn').disabled = false;
     document.getElementById('saveBtn').textContent = '发布';
   }
@@ -331,7 +341,8 @@ document.getElementById('postForm').addEventListener('submit', async (e) => {
     category: document.getElementById('postCategory').value,
     tags: document.getElementById('postTags').value,
     content: document.getElementById('postContent').value,
-    cover_image: document.getElementById('postCover').value
+    cover_image: document.getElementById('postCover').value,
+    downloads: collectDownloads()
   };
 
   try {
@@ -432,6 +443,117 @@ function initModalDrag() {
 }
 
 initModalDrag();
+
+// ===== 下载设置（方案A：扫码付费后自助领取）=====
+function escapeHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function addDownloadItem(data) {
+  const d = data || {};
+  const container = document.getElementById('downloadsContainer');
+  const idx = container.children.length;
+  const item = document.createElement('div');
+  item.className = 'download-item';
+  item.style.cssText = 'border:1px solid #e5e5e7;border-radius:10px;padding:14px;margin-bottom:14px;background:#fafafa;';
+  item.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <b>下载项 ${idx + 1}</b>
+      <button type="button" class="btn btn-outline btn-sm" onclick="removeDownloadItem(this)">删除</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>下载名称</label>
+        <input type="text" class="dl-name" placeholder="如：课程资料包" value="${escapeHtml(d.name || '')}">
+      </div>
+      <div class="form-group">
+        <label>费用（元）</label>
+        <input type="number" class="dl-price" min="0" step="0.01" placeholder="如：9.9（0 为免费）" value="${d.price != null ? d.price : ''}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>收款二维码（本地上传，选图即预览）</label>
+        <div class="dl-qr-preview" style="margin-bottom:6px;">${d.qr_image ? `<img src="${escapeHtml(d.qr_image)}" style="max-width:120px;max-height:120px;border:1px solid #e5e5e7;border-radius:6px;">` : ''}</div>
+        <input type="file" accept="image/*" style="display:none;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="clickDlAsset(this, 'qr')">上传二维码</button>
+        <input type="hidden" class="dl-qr" value="${escapeHtml(d.qr_image || '')}">
+      </div>
+      <div class="form-group">
+        <label>下载文件（本地上传到 R2）</label>
+        <div style="margin-bottom:6px;color:#888;font-size:12px;" class="dl-file-name">${d.file_url ? escapeHtml(d.file_url.split('/').pop()) : ''}</div>
+        <input type="file" style="display:none;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="clickDlAsset(this, 'file')">上传文件</button>
+        <input type="hidden" class="dl-file" value="${escapeHtml(d.file_url || '')}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>说明文案</label>
+      <textarea class="dl-desc" rows="2" placeholder="如：扫码支付后点击『我已付款』自助领取下载链接">${escapeHtml(d.description || '')}</textarea>
+    </div>
+    <input type="hidden" class="dl-sort" value="${d.sort_order != null ? d.sort_order : idx}">
+  `;
+  container.appendChild(item);
+}
+
+function removeDownloadItem(btn) {
+  const item = btn.closest('.download-item');
+  if (item) item.remove();
+  const container = document.getElementById('downloadsContainer');
+  [...container.children].forEach((el, i) => {
+    const b = el.querySelector('b');
+    if (b) b.textContent = '下载项 ' + (i + 1);
+  });
+}
+
+function fillDownloads(list) {
+  const container = document.getElementById('downloadsContainer');
+  container.innerHTML = '';
+  (list || []).forEach(d => addDownloadItem(d));
+}
+
+function collectDownloads() {
+  const container = document.getElementById('downloadsContainer');
+  return [...container.children].map((el, i) => ({
+    name: (el.querySelector('.dl-name') || {}).value || '',
+    price: parseFloat((el.querySelector('.dl-price') || {}).value) || 0,
+    qr_image: (el.querySelector('.dl-qr') || {}).value || '',
+    file_url: (el.querySelector('.dl-file') || {}).value || '',
+    description: (el.querySelector('.dl-desc') || {}).value || '',
+    sort_order: i
+  })).filter(d => d.name || d.file_url);
+}
+
+function clickDlAsset(btn, kind) {
+  const item = btn.closest('.download-item');
+  const input = item.querySelector(kind === 'qr' ? 'input[type="file"][accept="image/*"]' : 'input[type="file"]:not([accept])');
+  input.onchange = function() {
+    const file = input.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    authFetch('/api/upload', { method: 'POST', body: formData }).then(async res => {
+      if (!res) return;
+      const data = await res.json();
+      if (data.url) {
+        const hidden = item.querySelector(kind === 'qr' ? '.dl-qr' : '.dl-file');
+        hidden.value = data.url;
+        if (kind === 'qr') {
+          const pv = item.querySelector('.dl-qr-preview');
+          pv.innerHTML = `<img src="${data.url}" style="max-width:120px;max-height:120px;border:1px solid #e5e5e7;border-radius:6px;">`;
+        } else {
+          const fn = item.querySelector('.dl-file-name');
+          fn.textContent = data.name || data.url.split('/').pop();
+        }
+      } else {
+        alert('上传失败: ' + (data.error || '未知错误'));
+      }
+    });
+  };
+  input.click();
+}
 
 loadPosts();
 </script>

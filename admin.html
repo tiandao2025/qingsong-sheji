@@ -671,12 +671,17 @@ function showBlogModal(blog) {
   html += '<div class="form-group"><label class="form-label">封面图</label><div style="display:flex;gap:8px;align-items:center;"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogCoverFile\').click()">上传封面</button><input type="file" id="blogCoverFile" accept="image/*" style="display:none;" onchange="uploadBlogCover()"><span id="blogCoverStatus" style="color:#999;font-size:13px;">' + (isEdit && blog.cover_image ? '已有封面，可点击按钮更换' : '点击按钮选择图片上传') + '</span></div><div id="blogCoverPreview" style="margin-top:8px;">' + (isEdit && blog.cover_image ? '<img src="' + escapeHtml(blog.cover_image) + '" style="max-width:200px;max-height:120px;border-radius:6px;border:1px solid #E8E8ED;">' : '') + '</div></div>';
   html += '<div class="form-group" style="flex:1;display:flex;flex-direction:column;min-height:0;"><label class="form-label">内容 (Markdown)</label><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;"><input type="file" id="blogContentImageFile" accept="image/*" style="display:none;" onchange="insertBlogImage()"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogContentImageFile\').click()">插入图片</button><small style="color:#999;">上传后自动插入 Markdown 图片语法到光标位置</small></div><textarea class="form-textarea" id="blogContent" style="flex:1;min-height:200px;resize:vertical;overflow:auto;">' + (isEdit ? escapeHtml(blog.content || '') : '') + '</textarea></div>';
   html += '<div class="form-group"><label class="form-label">B站视频嵌入码</label><textarea class="form-textarea" id="blogBilibili" style="min-height:60px;" placeholder="粘贴B站视频的 &lt;iframe&gt; 嵌入代码">' + bilibiliVal + '</textarea><small style="color:#999;">B站视频 → 分享 → 嵌入代码，复制整段 iframe</small></div>';
+  html += '<div class="form-group"><label class="form-label">下载设置（扫码付费后自助领取）</label>';
+  html += '<div id="blogDownloadsContainer"></div>';
+  html += '<button type="button" class="btn btn-outline btn-sm" onclick="addBlogDownloadItem()">+ 添加下载项</button>';
+  html += '<small style="color:#999;display:block;margin-top:4px;">每项含名称、费用（元）、收款二维码（本地上传）、下载文件（本地上传到 R2）、说明文案。前台点击"下载"弹出收款码，付款后自助领取下载链接。</small></div>';
   html += '<div class="btn-group">';
   html += '<button class="btn btn-primary" onclick="saveBlog(\'' + (isEdit ? blog.id : '') + '\')">保存</button>';
   html += '<button class="btn btn-outline" onclick="closeBlogModal()">取消</button>';
   html += '</div>';
   html += '<div class="modal-resize-handle"></div>';
   document.getElementById('blogModalContent').innerHTML = html;
+  fillBlogDownloads(isEdit ? (blog.downloads || []) : []);
   document.getElementById('blogModalOverlay').classList.add('show');
 }
 
@@ -818,13 +823,113 @@ async function insertBlogImage() {
   }
 }
 
+// ===== 博客下载设置（方案A：扫码付费后自助领取）=====
+function addBlogDownloadItem(data) {
+  var d = data || {};
+  var container = document.getElementById('blogDownloadsContainer');
+  if (!container) return;
+  var idx = container.children.length;
+  var item = document.createElement('div');
+  item.className = 'blog-download-item';
+  item.style.cssText = 'border:1px solid #E8E8ED;border-radius:8px;padding:12px;margin-bottom:12px;background:#FAFAFC;';
+  item.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><b>下载项 ' + (idx + 1) + '</b>' +
+    '<button type="button" class="btn btn-outline btn-sm" onclick="removeBlogDownloadItem(this)">删除</button></div>' +
+    '<div class="form-row"><div class="form-group" style="flex:1;margin-right:8px;"><label class="form-label">下载名称</label>' +
+    '<input class="form-input dl-name" placeholder="如：课程资料包" value="' + escapeHtml(d.name || '') + '"></div>' +
+    '<div class="form-group" style="width:120px;"><label class="form-label">费用（元）</label>' +
+    '<input class="form-input dl-price" type="number" min="0" step="0.01" placeholder="0 免费" value="' + (d.price != null ? d.price : '') + '"></div></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group" style="flex:1;margin-right:8px;"><label class="form-label">收款二维码（本地上传，选图即预览）</label>' +
+    '<div class="dl-qr-preview" style="margin-bottom:6px;">' + (d.qr_image ? '<img src="' + escapeHtml(d.qr_image) + '" style="max-width:110px;max-height:110px;border:1px solid #E8E8ED;border-radius:6px;">' : '') + '</div>' +
+    '<input type="file" accept="image/*" style="display:none;">' +
+    '<button type="button" class="btn btn-outline btn-sm" onclick="clickBlogDlAsset(this, \'qr\')">上传二维码</button>' +
+    '<input type="hidden" class="dl-qr" value="' + escapeHtml(d.qr_image || '') + '"></div>' +
+    '<div class="form-group" style="flex:1;"><label class="form-label">下载文件（本地上传到 R2）</label>' +
+    '<div class="dl-file-name" style="margin-bottom:6px;color:#999;font-size:12px;">' + (d.file_url ? escapeHtml(d.file_url.split('/').pop()) : '') + '</div>' +
+    '<input type="file" style="display:none;">' +
+    '<button type="button" class="btn btn-outline btn-sm" onclick="clickBlogDlAsset(this, \'file\')">上传文件</button>' +
+    '<input type="hidden" class="dl-file" value="' + escapeHtml(d.file_url || '') + '"></div>' +
+    '</div>' +
+    '<div class="form-group"><label class="form-label">说明文案</label>' +
+    '<textarea class="form-textarea dl-desc" rows="2" placeholder="如：扫码支付后点击『我已付款』自助领取下载链接">' + escapeHtml(d.description || '') + '</textarea></div>' +
+    '<input type="hidden" class="dl-sort" value="' + (d.sort_order != null ? d.sort_order : idx) + '">';
+  container.appendChild(item);
+}
+
+function removeBlogDownloadItem(btn) {
+  var item = btn.closest('.blog-download-item');
+  if (item) item.remove();
+  var container = document.getElementById('blogDownloadsContainer');
+  if (!container) return;
+  for (var i = 0; i < container.children.length; i++) {
+    var b = container.children[i].querySelector('b');
+    if (b) b.textContent = '下载项 ' + (i + 1);
+  }
+}
+
+function fillBlogDownloads(list) {
+  var container = document.getElementById('blogDownloadsContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  (list || []).forEach(function(d) { addBlogDownloadItem(d); });
+}
+
+function collectBlogDownloads() {
+  var container = document.getElementById('blogDownloadsContainer');
+  if (!container) return [];
+  var result = [];
+  for (var i = 0; i < container.children.length; i++) {
+    var el = container.children[i];
+    var name = el.querySelector('.dl-name') ? el.querySelector('.dl-name').value : '';
+    var price = el.querySelector('.dl-price') ? parseFloat(el.querySelector('.dl-price').value) || 0 : 0;
+    var qr = el.querySelector('.dl-qr') ? el.querySelector('.dl-qr').value : '';
+    var file = el.querySelector('.dl-file') ? el.querySelector('.dl-file').value : '';
+    var desc = el.querySelector('.dl-desc') ? el.querySelector('.dl-desc').value : '';
+    if (name || file) result.push({ name: name, price: price, qr_image: qr, file_url: file, description: desc, sort_order: i });
+  }
+  return result;
+}
+
+function clickBlogDlAsset(btn, kind) {
+  var item = btn.closest('.blog-download-item');
+  var input = kind === 'qr'
+    ? item.querySelector('input[type="file"][accept="image/*"]')
+    : item.querySelector('input[type="file"]:not([accept])');
+  input.onchange = function() {
+    var file = input.files[0];
+    if (!file) return;
+    var formData = new FormData();
+    formData.append('file', file);
+    fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData })
+      .then(function(resp) { return resp.json(); })
+      .then(function(result) {
+        if (result.url) {
+          var hidden = item.querySelector(kind === 'qr' ? '.dl-qr' : '.dl-file');
+          hidden.value = result.url;
+          if (kind === 'qr') {
+            var pv = item.querySelector('.dl-qr-preview');
+            pv.innerHTML = '<img src="' + result.url + '" style="max-width:110px;max-height:110px;border:1px solid #E8E8ED;border-radius:6px;">';
+          } else {
+            var fn = item.querySelector('.dl-file-name');
+            fn.textContent = result.name || result.url.split('/').pop();
+          }
+        } else {
+          showToast('上传失败: ' + (result.error || '未知错误'), 'error');
+        }
+      });
+  };
+  input.click();
+}
+
 async function saveBlog(id) {
   var data = {
     title: document.getElementById('blogTitle').value,
     category: document.getElementById('blogCategory').value,
     cover_image: document.getElementById('blogCover').value,
     content: document.getElementById('blogContent').value,
-    bilibili: document.getElementById('blogBilibili').value
+    bilibili: document.getElementById('blogBilibili').value,
+    downloads: collectBlogDownloads()
   };
   if (!data.title.trim()) { showToast('标题不能为空', 'error'); return; }
   try {

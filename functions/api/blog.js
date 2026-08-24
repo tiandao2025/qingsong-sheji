@@ -99,6 +99,7 @@ async function handlePost(request, env) {
 
   const data = await request.json();
   const { title, excerpt, content, cover_image, tags, category, bilibili } = data;
+  const downloads = Array.isArray(data.downloads) ? data.downloads : [];
 
   if (!title) {
     return new Response(JSON.stringify({ error: '标题不能为空' }), {
@@ -118,6 +119,26 @@ async function handlePost(request, env) {
   ).bind(title, slug, excerpt || '', content || '', cover_image || '', tags || '', category || '', bilibili || '').run();
 
   const result = await env.DB.prepare('SELECT * FROM blog_posts WHERE slug = ?').bind(slug).first();
+
+  // 创建下载项（方案A：扫码+自助领取，一篇文章多个下载项）
+  if (downloads.length > 0) {
+    const ins = env.DB.prepare(
+      'INSERT INTO blog_downloads (blog_id, name, price, qr_image, file_url, description, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    );
+    for (let i = 0; i < downloads.length; i++) {
+      const d = downloads[i] || {};
+      await ins.bind(
+        result.id,
+        String(d.name || '').slice(0, 500),
+        Number(d.price) || 0,
+        d.qr_image || '',
+        d.file_url || '',
+        d.description || '',
+        parseInt(d.sort_order, 10) || i
+      ).run();
+    }
+  }
+
   return new Response(JSON.stringify(result), {
     status: 201,
     headers: { 'Content-Type': 'application/json' }

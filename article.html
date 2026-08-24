@@ -49,6 +49,40 @@ body {
 .copy-btn:hover { background:rgba(255,255,255,0.25); color:#fff; }
 .copy-btn.copied { background:#238636; border-color:#238636; color:#fff; }
 
+/* 付费下载（方案A：扫码+自助领取） */
+.downloads-section { margin-top:36px; padding-top:24px; border-top:1px solid #eee; }
+.downloads-section h2 { font-size:20px; margin-bottom:16px; color:#1D1D1F; }
+.dl-card { display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; border:1px solid #eee; border-radius:12px; padding:16px 18px; margin-bottom:12px; transition:box-shadow 0.2s; }
+.dl-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.06); }
+.dl-card-info { flex:1; min-width:0; }
+.dl-card-name { font-size:16px; font-weight:600; color:#1D1D1F; margin-bottom:4px; }
+.dl-card-desc { font-size:13px; color:#999; line-height:1.5; word-break:break-word; }
+.dl-card-price { font-size:15px; color:#C9A96E; font-weight:600; white-space:nowrap; margin-left:8px; }
+.dl-card-btn { flex-shrink:0; background:#C9A96E; color:#fff; border:none; border-radius:8px; padding:9px 20px; font-size:14px; cursor:pointer; transition:background 0.2s; white-space:nowrap; }
+.dl-card-btn:hover { background:#A68A4C; }
+
+.pay-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:none; align-items:center; justify-content:center; padding:20px; }
+.pay-overlay.show { display:flex; }
+.pay-modal { background:#fff; border-radius:16px; max-width:400px; width:100%; padding:26px 28px; text-align:center; box-shadow:0 12px 48px rgba(0,0,0,0.2); max-height:90vh; overflow-y:auto; position:relative; }
+.pay-modal h3 { font-size:18px; margin-bottom:8px; color:#1D1D1F; }
+.pay-modal .pay-price { font-size:28px; font-weight:700; color:#C9A96E; margin:6px 0 14px; }
+.pay-modal .pay-price.free { color:#238636; }
+.pay-modal .pay-qr { max-width:220px; width:100%; border:1px solid #eee; border-radius:10px; margin:10px auto; display:block; }
+.pay-modal .pay-desc { font-size:13px; color:#888; line-height:1.6; margin:10px 0 18px; white-space:pre-wrap; word-break:break-word; }
+.pay-modal .pay-actions { display:flex; flex-direction:column; gap:10px; }
+.pay-btn { border:none; border-radius:10px; padding:12px; font-size:15px; cursor:pointer; transition:opacity 0.2s; }
+.pay-btn-primary { background:#C9A96E; color:#fff; }
+.pay-btn-primary:hover { opacity:0.9; }
+.pay-btn-plain { background:#f2f2f4; color:#666; }
+.pay-btn-plain:hover { background:#e8e8ea; }
+.pay-close { position:absolute; top:12px; right:14px; background:none; border:none; font-size:22px; color:#bbb; cursor:pointer; line-height:1; }
+.pay-close:hover { color:#666; }
+.pay-claim { margin-top:16px; padding-top:16px; border-top:1px dashed #eee; display:none; }
+.pay-claim.show { display:block; }
+.pay-claim .dl-link { display:inline-block; margin-top:8px; background:#238636; color:#fff; text-decoration:none; border-radius:8px; padding:10px 24px; font-size:14px; }
+.pay-claim .dl-link:hover { opacity:0.9; }
+.pay-tip { font-size:12px; color:#bbb; margin-top:12px; line-height:1.5; }
+
 @media (max-width:768px) {
   .article-title { font-size:22px; }
   .article-container { padding:12px 16px 40px; }
@@ -225,6 +259,7 @@ async function loadArticle(id) {
     if (!res.ok) throw new Error('加载失败');
     const p = await res.json();
     document.title = p.title + ' - 青松设计';
+    payDownloads = p.downloads || [];
     container.innerHTML = `
       ${p.cover_image ? `<img class="cover-image" src="${p.cover_image}" alt="${p.title}" onerror="this.style.display='none'">` : ''}
       <h1 class="article-title">${p.title}</h1>
@@ -234,11 +269,86 @@ async function loadArticle(id) {
       </div>
       ${p.bilibili ? `<div class="article-bilibili" style="margin:20px 0;"><div style="position:relative;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#000;"><iframe src="${p.bilibili.match(/src="([^"]+)"/)?.[1] || p.bilibili}" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen scrolling="no"></iframe></div></div>` : ''}
       <div class="article-content">${formatContent(p.content)}</div>
+      ${renderDownloads(p.downloads)}
     `;
     enhanceCodeBlocks();
   } catch (e) {
     container.innerHTML = '<div class="error">加载失败，请返回列表重试</div>';
   }
+}
+
+// 付费下载区域：展示下载项卡片，点击弹出收款弹窗
+function renderDownloads(downloads) {
+  if (!downloads || !downloads.length) return '';
+  const sorted = downloads.slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  const cards = sorted.map((d, i) => {
+    const name = (d.name || ('下载项 ' + (i + 1)));
+    const price = parseFloat(d.price) || 0;
+    const desc = d.description || '';
+    const priceHtml = price > 0
+      ? '<span class="dl-card-price">¥' + price.toFixed(2) + '</span>'
+      : '<span class="dl-card-price free">免费</span>';
+    return '<div class="dl-card">' +
+      '<div class="dl-card-info"><div class="dl-card-name">' + escapeHtml(name) + '</div>' +
+      (desc ? '<div class="dl-card-desc">' + escapeHtml(desc) + '</div>' : '') +
+      '</div>' + priceHtml +
+      '<button type="button" class="dl-card-btn" data-idx="' + i + '" onclick="openPayModal(' + i + ')">立即下载</button>' +
+      '</div>';
+  }).join('');
+  return '<div class="downloads-section"><h2>资料下载</h2>' + cards + '</div>';
+}
+
+let payDownloads = [];
+
+function openPayModal(idx) {
+  const dl = payDownloads[idx];
+  if (!dl) return;
+  const price = parseFloat(dl.price) || 0;
+  const modal = document.getElementById('payModal');
+  document.getElementById('payTitle').textContent = dl.name || '下载资料';
+  const priceEl = document.getElementById('payPrice');
+  if (price > 0) {
+    priceEl.textContent = '¥' + price.toFixed(2);
+    priceEl.classList.remove('free');
+  } else {
+    priceEl.textContent = '免费';
+    priceEl.classList.add('free');
+  }
+  const qrEl = document.getElementById('payQr');
+  const claimEl = document.getElementById('payClaim');
+  claimEl.classList.remove('show');
+  const linkEl = document.getElementById('payDlLink');
+  if (dl.file_url) {
+    linkEl.href = dl.file_url;
+    linkEl.textContent = '点击下载' + (dl.file_url.split('/').pop() ? '：' + dl.file_url.split('/').pop() : '');
+  }
+  if (dl.qr_image && price > 0) {
+    qrEl.src = dl.qr_image;
+    qrEl.style.display = 'block';
+    document.getElementById('payDesc').textContent = dl.description || '请先扫码支付，付款后点击下方按钮领取下载链接';
+    document.getElementById('payBtn').style.display = 'block';
+  } else {
+    qrEl.style.display = 'none';
+    document.getElementById('payDesc').textContent = dl.description || '免费资料，直接点击下载';
+    document.getElementById('payBtn').style.display = 'none';
+    claimEl.classList.add('show');
+  }
+  modal.classList.add('show');
+}
+
+function claimDownload() {
+  document.getElementById('payClaim').classList.add('show');
+}
+
+function closePayModal() {
+  document.getElementById('payModal').classList.remove('show');
+  document.getElementById('payClaim').classList.remove('show');
+}
+
+function escapeHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function formatContent(html) {
@@ -306,6 +416,25 @@ function enhanceCodeBlocks() {
   });
 }
 </script>
+
+<!-- 付费下载收款弹窗 -->
+<div class="pay-overlay" id="payModal" onclick="if(event.target===this)closePayModal()">
+  <div class="pay-modal">
+    <button type="button" class="pay-close" onclick="closePayModal()">&times;</button>
+    <h3 id="payTitle">下载资料</h3>
+    <div class="pay-price" id="payPrice">¥0.00</div>
+    <img class="pay-qr" id="payQr" alt="收款二维码">
+    <div class="pay-desc" id="payDesc"></div>
+    <div class="pay-actions">
+      <button type="button" class="pay-btn pay-btn-primary" id="payBtn" onclick="claimDownload()">我已付款，领取下载链接</button>
+    </div>
+    <div class="pay-claim" id="payClaim">
+      <div style="font-size:14px;color:#333;">领取成功，点击下方按钮下载：</div>
+      <a class="dl-link" id="payDlLink" href="#" target="_blank" rel="noopener">点击下载</a>
+    </div>
+    <div class="pay-tip">本内容为站长共享资料，请按需付费支持创作</div>
+  </div>
+</div>
 
 <!-- 赛赛 AI 客服聊天组件 -->
 <div class="chat-widget-btn" id="chatBtn" title="在线咨询">

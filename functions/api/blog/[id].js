@@ -29,6 +29,11 @@ export async function onRequest({ request, env }) {
         return '/cdn/' + decodeURIComponent(key);
       });
     }
+    // 附带下载项（方案A：扫码+自助领取）
+    const { results: downloads } = await env.DB.prepare(
+      'SELECT id, name, price, qr_image, file_url, description, sort_order FROM blog_downloads WHERE blog_id = ? ORDER BY sort_order ASC, id ASC'
+    ).bind(id).all();
+    result.downloads = downloads || [];
     return new Response(JSON.stringify(result), {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -78,6 +83,27 @@ export async function onRequest({ request, env }) {
       id
     ).run();
 
+    // 保存下载项（全量替换：先删旧再插新）
+    const downloads = Array.isArray(data.downloads) ? data.downloads : [];
+    await env.DB.prepare('DELETE FROM blog_downloads WHERE blog_id = ?').bind(id).run();
+    if (downloads.length > 0) {
+      const ins = env.DB.prepare(
+        'INSERT INTO blog_downloads (blog_id, name, price, qr_image, file_url, description, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      );
+      for (let i = 0; i < downloads.length; i++) {
+        const d = downloads[i] || {};
+        await ins.bind(
+          id,
+          String(d.name || '').slice(0, 500),
+          Number(d.price) || 0,
+          d.qr_image || '',
+          d.file_url || '',
+          d.description || '',
+          parseInt(d.sort_order, 10) || i
+        ).run();
+      }
+    }
+
     const result = await env.DB.prepare('SELECT * FROM blog_posts WHERE id = ?').bind(id).first();
     return new Response(JSON.stringify(result), {
       headers: { 'Content-Type': 'application/json' }
@@ -93,6 +119,7 @@ export async function onRequest({ request, env }) {
       });
     }
 
+    await env.DB.prepare('DELETE FROM blog_downloads WHERE blog_id = ?').bind(id).run();
     await env.DB.prepare('DELETE FROM blog_posts WHERE id = ?').bind(id).run();
     return new Response(JSON.stringify({ success: true }), {
       headers: { 'Content-Type': 'application/json' }
