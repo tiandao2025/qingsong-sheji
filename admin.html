@@ -605,7 +605,7 @@ document.querySelectorAll('.nav-item').forEach(function(item) {
     else if (page === 'cases') loadCases();
     else if (page === 'content') loadSiteContent();
     else if (page === 'chats') loadChats();
-    else if (page === 'stats') loadStats();
+    else if (page === 'stats') { setDefaultStatsDate(); loadStats(); }
   });
 });
 
@@ -2125,6 +2125,14 @@ async function viewChatDetail(id) {
 // ==================== STATS ====================
 var trendChart = null;
 var hourlyChart = null;
+
+// 统计页日期默认选中今天（北京时间），已有值则保留（如用户点了"全部"后再次进入）
+function setDefaultStatsDate() {
+  var el = document.getElementById('statsDate');
+  if (el && !el.value) {
+    el.value = new Date(Date.now() + 8 * 3600 * 1000).toISOString().split('T')[0];
+  }
+}
 
 async function loadStats(dateStr) {
   try {

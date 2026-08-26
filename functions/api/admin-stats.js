@@ -6,6 +6,16 @@ const STATS_KEY = 'site-stats.json';
 const GEO_KEY_PREFIX = 'geo-';
 const UV_KEY_PREFIX = 'uv-';
 
+// 北京时间（UTC+8）日期 YYYY-MM-DD：统计按中国时区自然日归档
+function cnDateStr(d = new Date()) {
+  return new Date(d.getTime() + 8 * 3600 * 1000).toISOString().split('T')[0];
+}
+
+// 北京时间 ISO 时间字符串（小时字段即北京时间，用于 geo 明细的时段分布）
+function cnISO(d = new Date()) {
+  return new Date(d.getTime() + 8 * 3600 * 1000).toISOString();
+}
+
 function verifyAuth(request, env) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
@@ -39,7 +49,7 @@ function getDefaultStats() {
     referrers: {},
     cities: {},
     regions: {},
-    startDate: new Date().toISOString().split('T')[0]
+    startDate: cnDateStr()
   };
 }
 
@@ -52,7 +62,7 @@ async function saveStats(env, stats) {
 // 记录一次访问
 async function trackPageView(env, page, referrer, visitorId, duration, cf, isExit) {
   const stats = await getStats(env);
-  const today = new Date().toISOString().split('T')[0];
+  const today = cnDateStr();
 
   // 基础 PV
   stats.totalPV = (stats.totalPV || 0) + 1;
@@ -104,7 +114,7 @@ async function trackPageView(env, page, referrer, visitorId, duration, cf, isExi
         lat: lat,
         lon: lon,
         page: page,
-        time: new Date().toISOString(),
+        time: cnISO(),
         duration: duration || 0
       });
       await env.IMAGES.put(geoKey, JSON.stringify(geoList), {
@@ -179,7 +189,7 @@ export async function onRequest(context) {
       const url = new URL(request.url);
       const queryDate = url.searchParams.get('date') || null;
       const stats = await getStats(env);
-      const today = new Date().toISOString().split('T')[0];
+      const today = cnDateStr();
 
       // 博客文章数
       let blogCount = 0;
@@ -227,9 +237,7 @@ export async function onRequest(context) {
         });
       } else {
         for (let i = 29; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          const dateKey = d.toISOString().split('T')[0];
+          const dateKey = cnDateStr(new Date(Date.now() - i * 86400000));
           dailyTrend.push({
             date: dateKey,
             pv: (stats.dailyPV && stats.dailyPV[dateKey]) || 0
@@ -289,9 +297,7 @@ export async function onRequest(context) {
 
           const weeklyDurs = [];
           for (let i = 0; i < 7; i++) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const dk = d.toISOString().split('T')[0];
+            const dk = cnDateStr(new Date(Date.now() - i * 86400000));
             const geoObj = await env.IMAGES.get(GEO_KEY_PREFIX + dk);
             if (geoObj) {
               const geoList = JSON.parse(await geoObj.text());
@@ -324,9 +330,7 @@ export async function onRequest(context) {
           }
         } else {
           for (let i = 0; i < 30; i++) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const dk = d.toISOString().split('T')[0];
+            const dk = cnDateStr(new Date(Date.now() - i * 86400000));
             const geoObj = await env.IMAGES.get(GEO_KEY_PREFIX + dk);
             if (geoObj) {
               const geoList = JSON.parse(await geoObj.text());
@@ -361,9 +365,7 @@ export async function onRequest(context) {
           collectDays.push(queryDate);
         } else {
           for (let i = 0; i < 30; i++) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            collectDays.push(d.toISOString().split('T')[0]);
+            collectDays.push(cnDateStr(new Date(Date.now() - i * 86400000)));
           }
         }
         for (const dk of collectDays) {
