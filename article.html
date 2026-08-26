@@ -370,9 +370,10 @@ function markdownLinkify(md) {
   var guards = [];
   md = md.replace(/(```[\s\S]*?```|`[^`\n]+`)/g, function(m) { guards.push(m); return '\u0001G' + (guards.length - 1) + '\u0001'; });
   md = md.replace(/\[[^\]]*\]\([^)]*\)/g, function(m) { guards.push(m); return '\u0001G' + (guards.length - 1) + '\u0001'; });
-  md = md.replace(/(https?:\/\/[^\s<>"'，。；、）】」》！？…]+)/g, function(m) {
+  md = md.replace(/(https?:\/\/[^\s<>"'，。；、）】」》！？…]+)|((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?:\/[^\s<>"'，。；、：）】」》！？…]*)?)/g, function(m, prot, bare) {
     var u = trimUrlTail(m);
     var safe = u.replace(/\)/g, '%29');
+    if (bare) safe = 'https://' + safe;
     if (u.length !== m.length) return '[' + safe + '](' + safe + ')' + m.slice(u.length);
     return '[' + safe + '](' + safe + ')';
   });
@@ -386,9 +387,9 @@ function linkifyTextUrls(str) {
   str = str.replace(/<pre[\s\S]*?<\/pre>/gi, function(m) { guards.push(m); return '\u0001G' + (guards.length - 1) + '\u0001'; });
   str = str.replace(/<code[\s\S]*?<\/code>/gi, function(m) { guards.push(m); return '\u0001G' + (guards.length - 1) + '\u0001'; });
   str = str.replace(/<[^>]+>/g, function(m) { guards.push(m); return '\u0001G' + (guards.length - 1) + '\u0001'; });
-  str = str.replace(/(https?:\/\/[^\s<>"'，。；、）】」》！？…]+)/g, function(m) {
+  str = str.replace(/(https?:\/\/[^\s<>"'，。；、）】」》！？…]+)|((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?:\/[^\s<>"'，。；、：）】」》！？…]*)?)/g, function(m, prot, bare) {
     var u = trimUrlTail(m);
-    var href = escapeHtmlAttr(u);
+    var href = escapeHtmlAttr(bare ? 'https://' + u : u);
     if (u.length !== m.length) return '<a href="' + href + '" target="_blank" rel="noopener">' + href + '</a>' + m.slice(u.length);
     return '<a href="' + href + '" target="_blank" rel="noopener">' + href + '</a>';
   });

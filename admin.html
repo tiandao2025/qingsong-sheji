@@ -692,10 +692,19 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function trimChatUrlTail(url) {
+  var m = url.match(/^(.*?)[.,;:!?]+$/);
+  if (m && m[1] && m[1].length > 8 && !/\.(zip|pdf|docx?|xlsx?|pptx?|rar|7z|tar|gz|mp4|mp3|png|jpe?g|gif|webp|svg|exe|apk|html?)$/i.test(url)) return m[1];
+  return url;
+}
+
 function linkifyChatText(text) {
   var s = escapeHtml(text || '');
-  s = s.replace(/(https?:\/\/[^\s<>"')\]]+)/g, function(m) {
-    return '<a href="' + m + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">' + m + '</a>';
+  s = s.replace(/(https?:\/\/[^\s<>"'，。；、：）】」》！？…)\]]+)|((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?:\/[^\s<>"'，。；、：）】」》！？…)\]]*)?)/g, function(m, prot, bare) {
+    var u = trimChatUrlTail(m);
+    var href = (bare ? 'https://' : '') + u;
+    if (u.length !== m.length) return '<a href="' + href + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">' + href + '</a>' + m.slice(u.length);
+    return '<a href="' + href + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">' + href + '</a>';
   });
   s = s.replace(/\r?\n/g, '<br>');
   return s;
