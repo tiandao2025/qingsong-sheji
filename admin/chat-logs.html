@@ -463,6 +463,21 @@ async function loadList(page) {
   renderPagination(page);
 }
 
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function linkifyChatText(text) {
+  var s = escapeHtml(text || '');
+  s = s.replace(/(https?:\/\/[^\s<>"')\]]+)/g, function(m) {
+    return '<a href="' + m + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">' + m + '</a>';
+  });
+  s = s.replace(/\r?\n/g, '<br>');
+  return s;
+}
+
 async function toggleDetail(el, id) {
   var detailEl = document.getElementById('detail-' + id);
 
