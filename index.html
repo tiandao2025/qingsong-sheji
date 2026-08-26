@@ -3198,13 +3198,43 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 
 
 
+  function escapeHtml(str) {
+
+    var div = document.createElement('div');
+
+    div.textContent = str;
+
+    return div.innerHTML;
+
+  }
+
+
+
+  function formatChatText(text) {
+
+    var s = escapeHtml(text || '');
+
+    s = s.replace(/(https?:\/\/[^\s<>"')\]]+)/g, function(m) {
+
+      return '<a href="' + m + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">' + m + '</a>';
+
+    });
+
+    s = s.replace(/\r?\n/g, '<br>');
+
+    return s;
+
+  }
+
+
+
   function addMsg(role, text) {
 
     var div = document.createElement('div');
 
     div.className = 'msg ' + role;
 
-    div.textContent = text;
+    div.innerHTML = formatChatText(text);
 
     body.appendChild(div);
 
