@@ -351,17 +351,66 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+function trimUrlTail(url) {
+  // 剥除 URL 尾部常见的句子标点（. , ; : ! ?），但保留 .zip/.pdf 等扩展名结尾
+  var m = url.match(/^(.*?)[.,;:!?]+$/);
+  if (m && m[1] && m[1].length > 8 && !/\.(zip|pdf|docx?|xlsx?|pptx?|rar|7z|tar|gz|mp4|mp3|png|jpe?g|gif|webp|svg|exe|apk|html?)$/i.test(url)) {
+    return m[1];
+  }
+  return url;
+}
+
+function escapeHtmlAttr(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function markdownLinkify(md) {
+  // 渲染前将 Markdown 正文中的裸 URL 转为 Markdown 链接格式 [url](url)，
+  // 保护：代码块/行内代码、已有 Markdown 链接语法不被破坏
+  var guards = [];
+  md = md.replace(/(```[\s\S]*?```|`[^`\n]+`)/g, function(m) { guards.push(m); return '\u0001G' + (guards.length - 1) + '\u0001'; });
+  md = md.replace(/\[[^\]]*\]\([^)]*\)/g, function(m) { guards.push(m); return '\u0001G' + (guards.length - 1) + '\u0001'; });
+  md = md.replace(/(https?:\/\/[^\s<>"'，。；、）】」》！？…]+)/g, function(m) {
+    var u = trimUrlTail(m);
+    var safe = u.replace(/\)/g, '%29');
+    if (u.length !== m.length) return '[' + safe + '](' + safe + ')' + m.slice(u.length);
+    return '[' + safe + '](' + safe + ')';
+  });
+  md = md.replace(/\u0001G(\d+)\u0001/g, function(_, i) { return guards[+i]; });
+  return md;
+}
+
+function linkifyTextUrls(str) {
+  // HTML 正文（旧文章）中的纯文本 URL 转 <a> 标签，保护代码块与标签属性
+  var guards = [];
+  str = str.replace(/<pre[\s\S]*?<\/pre>/gi, function(m) { guards.push(m); return '\u0001G' + (guards.length - 1) + '\u0001'; });
+  str = str.replace(/<code[\s\S]*?<\/code>/gi, function(m) { guards.push(m); return '\u0001G' + (guards.length - 1) + '\u0001'; });
+  str = str.replace(/<[^>]+>/g, function(m) { guards.push(m); return '\u0001G' + (guards.length - 1) + '\u0001'; });
+  str = str.replace(/(https?:\/\/[^\s<>"'，。；、）】」》！？…]+)/g, function(m) {
+    var u = trimUrlTail(m);
+    var href = escapeHtmlAttr(u);
+    if (u.length !== m.length) return '<a href="' + href + '" target="_blank" rel="noopener">' + href + '</a>' + m.slice(u.length);
+    return '<a href="' + href + '" target="_blank" rel="noopener">' + href + '</a>';
+  });
+  str = str.replace(/\u0001G(\d+)\u0001/g, function(_, i) { return guards[+i]; });
+  return str;
+}
+
 function formatContent(html) {
   if (!html) return '';
   // 旧文章正文直接存 HTML（含 <h3>/<iframe>/<div> 等标签）→ 原样展示；
   // 新文章正文是 Markdown → 先渲染成 HTML
   if (!/<[a-zA-Z!][^>]*>/.test(html) && typeof marked !== 'undefined') {
     // breaks:true —— 单个换行也渲染为 <br>，保证从别处复制粘贴的多行文本换行可识别、可保留
-    try { html = marked.parse(html, { breaks: true, gfm: true }); } catch (e) {}
+    try { html = marked.parse(markdownLinkify(html), { breaks: true, gfm: true }); } catch (e) {}
+  } else {
+    html = linkifyTextUrls(html);
   }
   html = html.replace(/\/api\/image\?key=([^"&\s]+)/g, function(_, key) {
     return '/cdn/' + decodeURIComponent(key);
   });
+  // 所有外部 <a>（含 marked 渲染的 Markdown 链接）统一补 target=_blank + rel=noopener
+  html = html.replace(/<a\b(?![^>]*\btarget=)([^>]*\bhref="https?:\/\/[^"]*"[^>]*)>/g, '<a$1 target="_blank" rel="noopener">');
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/\s+on\w+\s*=\s*"[^"]*"/gi, '')
