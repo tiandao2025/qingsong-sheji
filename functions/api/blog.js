@@ -65,6 +65,7 @@ async function handleGet(request, env) {
         tags: tags,
         category: category,
         bilibili: r.bilibili || '',
+        views: r.views || 0,
         created_at: r.created_at,
         updated_at: r.updated_at
       };

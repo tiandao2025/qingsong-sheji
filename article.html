@@ -266,12 +266,22 @@ async function loadArticle(id) {
       <div class="article-meta">
         📅 ${new Date(p.created_at).toLocaleDateString('zh-CN')}
         ${p.category ? ` · 📂 ${p.category}` : ''}
+        · 👁 <span id="viewCount">${p.views || 0}</span>
       </div>
       ${p.bilibili ? `<div class="article-bilibili" style="margin:20px 0;"><div style="position:relative;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#000;"><iframe src="${p.bilibili.match(/src="([^"]+)"/)?.[1] || p.bilibili}" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen scrolling="no"></iframe></div></div>` : ''}
       <div class="article-content">${formatContent(p.content)}</div>
       ${renderDownloads(p.downloads)}
     `;
     enhanceCodeBlocks();
+    // 页面加载即调用计数接口（服务端做 IP 去重），成功后刷新显示
+    try {
+      const vr = await fetch(`/api/blog/${id}/view`, { method: 'POST' });
+      if (vr.ok) {
+        const v = await vr.json();
+        const vc = document.getElementById('viewCount');
+        if (vc && typeof v.views === 'number') vc.textContent = v.views;
+      }
+    } catch (e) { /* 计数失败不影响正文展示 */ }
   } catch (e) {
     container.innerHTML = '<div class="error">加载失败，请返回列表重试</div>';
   }

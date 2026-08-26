@@ -152,6 +152,7 @@ function renderPosts() {
         <div class="meta">
           <span>📅 ${new Date(p.created_at).toLocaleDateString('zh-CN')}</span>
           ${p.category ? `<span>📂 ${p.category}</span>` : ''}
+          <span>👁 ${p.views || 0}</span>
         </div>
       </div>
     </a>
