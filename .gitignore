@@ -7,3 +7,7 @@ output/
 dist/
 .DS_Store
 Thumbs.db
+
+inpaint-web/
+%log%
+.wrangler/
