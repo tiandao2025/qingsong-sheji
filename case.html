@@ -1235,10 +1235,16 @@ a { color:inherit; text-decoration:none; }
       lbCounter.textContent = (current + 1) + ' / ' + items.length;
       lb.classList.add('open');
       document.body.style.overflow = 'hidden';
+      var de = document.documentElement;
+      if (!document.fullscreenElement) {
+        if (de.requestFullscreen) de.requestFullscreen().catch(function(){});
+        else if (de.webkitRequestFullscreen) de.webkitRequestFullscreen();
+      }
     }
     function hide() {
       lb.classList.remove('open');
       document.body.style.overflow = '';
+      if (document.fullscreenElement && document.exitFullscreen) { document.exitFullscreen().catch(function(){}); }
     }
 
     document.addEventListener('click', function(e) {

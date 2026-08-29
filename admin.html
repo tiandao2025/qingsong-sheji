@@ -1332,6 +1332,8 @@ function showCaseModal(item) {
   loadCaseFloorAreas(areas);
   loadCaseSpaces(spaces);
   loadCaseMaterials(materials);
+  // 渲染已有图集缩略图（点击放大到全屏）
+  renderCaseGalleryPreview(images);
 }
 
 function safeParseJSON(val, fallback) {
@@ -1475,6 +1477,119 @@ async function uploadCaseImage(targetId, previewId) {
     });
   });
 }
+// ===== 图集全屏查看器（2026-08-29）=====
+var _galleryLightbox = null;
+function ensureGalleryLightbox() {
+  if (_galleryLightbox) return _galleryLightbox;
+  var div = document.createElement('div');
+  div.id = 'galleryLightbox';
+  div.style.cssText = 'position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(8,8,10,.95);flex-direction:column;';
+  div.innerHTML =
+    '<img id="galleryLightboxImg" style="max-width:94vw;max-height:86vh;object-fit:contain;border-radius:4px;box-shadow:0 0 40px rgba(0,0,0,.6);transition:transform .15s ease;">' +
+    '<div style="color:#fff;margin-top:14px;font-size:14px;letter-spacing:1px;" id="galleryLightboxCounter"></div>' +
+    '<button id="galleryLightboxClose" style="position:absolute;top:18px;right:22px;background:rgba(255,255,255,.14);border:none;color:#fff;font-size:18px;width:40px;height:40px;border-radius:50%;cursor:pointer;z-index:2;">&#10005;</button>' +
+    '<button id="galleryLightboxPrev" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.14);border:none;color:#fff;font-size:28px;width:46px;height:46px;border-radius:50%;cursor:pointer;z-index:2;">&#8249;</button>' +
+    '<button id="galleryLightboxNext" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.14);border:none;color:#fff;font-size:28px;width:46px;height:46px;border-radius:50%;cursor:pointer;z-index:2;">&#8250;</button>';
+  document.body.appendChild(div);
+  _galleryLightbox = div;
+  var img = document.getElementById('galleryLightboxImg');
+  var counter = document.getElementById('galleryLightboxCounter');
+  var scale = 1;
+  function hide() {
+    div.style.display = 'none';
+    document.body.style.overflow = '';
+    if (document.fullscreenElement && document.exitFullscreen) { document.exitFullscreen().catch(function(){}); }
+  }
+  function show(dir) {
+    var urls = window._caseGalleryUrls || [];
+    if (!urls.length) return;
+    var cur = (window._caseGalleryIndex || 0) + dir;
+    cur = ((cur % urls.length) + urls.length) % urls.length;
+    window._caseGalleryIndex = cur;
+    img.src = urls[cur];
+    scale = 1;
+    img.style.transform = 'scale(1)';
+    counter.textContent = (cur + 1) + ' / ' + urls.length;
+  }
+  document.getElementById('galleryLightboxClose').addEventListener('click', hide);
+  document.getElementById('galleryLightboxPrev').addEventListener('click', function(){ show(-1); });
+  document.getElementById('galleryLightboxNext').addEventListener('click', function(){ show(1); });
+  div.addEventListener('click', function(e) { if (e.target === div) hide(); });
+  img.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    scale = Math.min(4, Math.max(1, scale + (e.deltaY < 0 ? 0.15 : -0.15)));
+    img.style.transform = 'scale(' + scale + ')';
+  }, { passive: false });
+  img.addEventListener('dblclick', function() { scale = 1; img.style.transform = 'scale(1)'; });
+  document.addEventListener('keydown', function(e) {
+    if (div.style.display === 'none') return;
+    if (e.key === 'Escape') hide();
+    else if (e.key === 'ArrowLeft') show(-1);
+    else if (e.key === 'ArrowRight') show(1);
+  });
+  return div;
+}
+function openCaseGalleryLightbox(idx) {
+  var ta = document.getElementById('caseImages');
+  var urls = [];
+  if (ta && ta.value.trim()) {
+    urls = ta.value.trim().split('\n').map(function(x){ return x.trim(); }).filter(function(x){ return x; });
+  }
+  if (!urls.length) return;
+  ensureGalleryLightbox();
+  window._caseGalleryUrls = urls;
+  window._caseGalleryIndex = (typeof idx === 'number' && idx >= 0 && idx < urls.length) ? idx : 0;
+  var div = _galleryLightbox;
+  var img = document.getElementById('galleryLightboxImg');
+  var counter = document.getElementById('galleryLightboxCounter');
+  img.src = urls[window._caseGalleryIndex];
+  counter.textContent = (window._caseGalleryIndex + 1) + ' / ' + urls.length;
+  div.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  var de = document.documentElement;
+  if (!document.fullscreenElement) {
+    if (de.requestFullscreen) de.requestFullscreen().catch(function(){});
+    else if (de.webkitRequestFullscreen) de.webkitRequestFullscreen();
+  }
+}
+function renderCaseGalleryPreview(images) {
+  var preview = document.getElementById('caseGalleryPreview');
+  if (!preview) return;
+  preview.innerHTML = '';
+  if (!images || !images.length) return;
+  var urls = images.filter(function(x){ return x && x.trim(); });
+  urls.forEach(function(url, i) {
+    var p = document.createElement('div');
+    p.style.cssText = 'position:relative;display:inline-block;margin:4px;cursor:zoom-in;';
+    p.title = '点击放大';
+    var img = document.createElement('img');
+    img.src = url;
+    img.loading = 'lazy';
+    img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #E8E8ED;';
+    p.appendChild(img);
+    var del = document.createElement('span');
+    del.textContent = '\u00d7';
+    del.title = '移除该图';
+    del.style.cssText = 'position:absolute;top:-7px;right:-7px;width:18px;height:18px;background:#e74c3c;color:#fff;border-radius:50%;font-size:12px;line-height:17px;text-align:center;cursor:pointer;border:1px solid #fff;';
+    del.onclick = function(e) { e.stopPropagation(); removeGalleryImage(i); };
+    p.appendChild(del);
+    p.onclick = function() { openCaseGalleryLightbox(i); };
+    preview.appendChild(p);
+  });
+}
+function removeGalleryImage(idx) {
+  var ta = document.getElementById('caseImages');
+  if (!ta) return;
+  var urls = ta.value.trim().split('\n').map(function(x){ return x.trim(); }).filter(function(x){ return x; });
+  if (idx < 0 || idx >= urls.length) return;
+  urls.splice(idx, 1);
+  ta.value = urls.join('\n');
+  renderCaseGalleryPreview(urls);
+  var statusEl = document.getElementById('caseGalleryStatus');
+  if (statusEl) statusEl.textContent = urls.length ? ('已有 ' + urls.length + ' 张') : '点击按钮选择图片';
+  showToast('已移除该图片', 'success');
+}
+
 async function uploadCaseGallery() {
   var fileInput = document.getElementById('caseGalleryFile');
   var files = fileInput.files;
@@ -1518,6 +1633,10 @@ async function uploadCaseGallery() {
     }
   }
   fileInput.value = '';
+  // 重建预览：统一绑定点击放大/删除
+  var ta2 = document.getElementById('caseImages');
+  var urls2 = ta2 ? ta2.value.trim().split('\n').map(function(x){ return x.trim(); }).filter(function(x){ return x; }) : [];
+  renderCaseGalleryPreview(urls2);
   if (statusEl) statusEl.textContent = successCount ? ('已有 ' + countGalleryImages() + ' 张') : '点击按钮选择图片';
   if (successCount) showToast('成功上传 ' + successCount + ' 张图片', 'success');
 }
