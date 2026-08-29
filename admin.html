@@ -878,11 +878,11 @@ async function insertBlogImage() {
   var fileInput = document.getElementById('blogContentImageFile');
   var file = fileInput.files[0];
   if (!file) { showToast('请先选择文件', 'error'); return; }
+  var blob = await compressImageFileAsync(file, 2048, 0.85);
   var formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', blob, uploadFileName(file, blob));
   try {
-    var resp = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
-    var result = await resp.json();
+    var result = await uploadWithRetry(formData, 2);
     if (result.url) {
       var ta = document.getElementById('blogContent');
       var md = '![图片](' + result.url + ')';
@@ -1383,6 +1383,64 @@ function caseUpload(btn) {
   showToast('未找到上传控件', 'error');
 }
 
+// ===== 上传加固：图片压缩 + 自动重试（2026-08-29）=====
+function compressImageFile(file, maxSide, quality, cb) {
+  maxSide = maxSide || 2048;
+  quality = quality || 0.85;
+  if (!file || file.type.indexOf('image/') !== 0) { cb(file); return; }
+  if (file.type === 'image/gif') { cb(file); return; }
+  if (file.size <= 1.5 * 1024 * 1024) { cb(file); return; }
+  var url = URL.createObjectURL(file);
+  var img = new Image();
+  img.onload = function() {
+    try {
+      var w = img.naturalWidth, h = img.naturalHeight;
+      if (w <= maxSide && h <= maxSide && file.size <= 4 * 1024 * 1024) { URL.revokeObjectURL(url); cb(file); return; }
+      var scale = Math.min(1, maxSide / Math.max(w, h));
+      var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+      var canvas = document.createElement('canvas');
+      canvas.width = cw; canvas.height = ch;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch);
+      ctx.drawImage(img, 0, 0, cw, ch);
+      canvas.toBlob(function(blob) {
+        URL.revokeObjectURL(url);
+        if (blob && blob.size < file.size) { cb(blob); } else { cb(file); }
+      }, 'image/jpeg', quality);
+    } catch (e) { URL.revokeObjectURL(url); cb(file); }
+  };
+  img.onerror = function() { URL.revokeObjectURL(url); cb(file); };
+  img.src = url;
+}
+function compressImageFileAsync(file, maxSide, quality) {
+  return new Promise(function(resolve) { compressImageFile(file, maxSide, quality, resolve); });
+}
+function uploadWithRetry(formData, retries) {
+  retries = retries || 2;
+  var attempt = 0;
+  function tryOnce() {
+    attempt++;
+    return new Promise(function(resolve, reject) {
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 60000) : null;
+      fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData, signal: ctrl ? ctrl.signal : undefined })
+        .then(function(resp){ if (timer) clearTimeout(timer); return resp.json(); })
+        .then(resolve)
+        .catch(function(err) {
+          if (timer) clearTimeout(timer);
+          if (attempt <= retries) {
+            setTimeout(function(){ tryOnce().then(resolve, reject); }, 800 * attempt);
+          } else { reject(err); }
+        });
+    });
+  }
+  return tryOnce();
+}
+function uploadFileName(file, blob) {
+  if (blob === file) return file.name;
+  return (file.name.replace(/\.[^.]+$/, '') || 'image') + '.jpg';
+}
+
 async function uploadCaseImage(targetId, previewId) {
   var fileInput = document.getElementById(targetId + 'File');
   if (!fileInput) return;
@@ -1393,28 +1451,29 @@ async function uploadCaseImage(targetId, previewId) {
     var pv = document.getElementById(previewId);
     if (pv) pv.innerHTML = '<img src="' + URL.createObjectURL(file) + '">';
   }
-  if (statusEl) statusEl.textContent = '上传中...';
-  var formData = new FormData();
-  formData.append('file', file);
-  try {
-    var resp = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
-    var result = await resp.json();
-    if (result.url) {
-      document.getElementById(targetId).value = result.url;
-      if (previewId) {
-        var pv = document.getElementById(previewId);
-        if (pv) pv.innerHTML = '<img src="' + result.url + '">';
+  if (statusEl) statusEl.textContent = '处理图片中...';
+  compressImageFile(file, 2048, 0.85, function(blob) {
+    var formData = new FormData();
+    formData.append('file', blob, uploadFileName(file, blob));
+    if (statusEl) statusEl.textContent = '上传中...';
+    uploadWithRetry(formData, 2).then(function(result) {
+      if (result.url) {
+        document.getElementById(targetId).value = result.url;
+        if (previewId) {
+          var pv = document.getElementById(previewId);
+          if (pv) pv.innerHTML = '<img src="' + result.url + '">';
+        }
+        if (statusEl) statusEl.textContent = '上传成功，保存后生效';
+        showToast('上传成功', 'success');
+      } else {
+        if (statusEl) statusEl.textContent = '上传失败，请重试';
+        showToast('上传失败: ' + (result.error || '未知错误'), 'error');
       }
-      if (statusEl) statusEl.textContent = '上传成功，保存后生效';
-      showToast('上传成功', 'success');
-    } else {
+    }).catch(function(e) {
       if (statusEl) statusEl.textContent = '上传失败，请重试';
-      showToast('上传失败: ' + (result.error || '未知错误'), 'error');
-    }
-  } catch (e) {
-    if (statusEl) statusEl.textContent = '上传失败，请重试';
-    showToast('上传失败: ' + uploadErrMsg(e), 'error');
-  }
+      showToast('上传失败: ' + uploadErrMsg(e), 'error');
+    });
+  });
 }
 async function uploadCaseGallery() {
   var fileInput = document.getElementById('caseGalleryFile');
@@ -1436,11 +1495,11 @@ async function uploadCaseGallery() {
       p.setAttribute('data-pending', '1');
       preview.appendChild(p);
     }
+    var blob = await compressImageFileAsync(files[i], 2048, 0.85);
     var formData = new FormData();
-    formData.append('file', files[i]);
+    formData.append('file', blob, uploadFileName(files[i], blob));
     try {
-      var resp = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
-      var result = await resp.json();
+      var result = await uploadWithRetry(formData, 2);
       if (result.url) {
         var cur = ta.value.trim();
         ta.value = cur ? cur + '\n' + result.url : result.url;
@@ -1455,7 +1514,7 @@ async function uploadCaseGallery() {
       }
     } catch (e) {
       if (preview) { var pd = preview.querySelector('[data-pending]'); if (pd) pd.remove(); }
-      showToast('第' + (i + 1) + '张上传失败: ' + e.message, 'error');
+      showToast('第' + (i + 1) + '张上传失败: ' + uploadErrMsg(e), 'error');
     }
   }
   fileInput.value = '';
@@ -1477,8 +1536,7 @@ async function uploadCaseFile() {
   var formData = new FormData();
   formData.append('file', file);
   try {
-    var resp = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
-    var result = await resp.json();
+    var result = await uploadWithRetry(formData, 2);
     if (result.url) {
       document.getElementById('caseFileUrl').value = result.url;
       document.getElementById('caseFileName').value = result.name || file.name;
@@ -1914,11 +1972,11 @@ async function uploadSvcImg(idx) {
   if (!file) return;
   var pv = document.getElementById('svcImgPreview' + idx);
   if (pv) pv.innerHTML = '<img src="' + URL.createObjectURL(file) + '" style="max-width:70px;max-height:40px;border-radius:4px;">';
+  var blob = await compressImageFileAsync(file, 2048, 0.85);
   var formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', blob, uploadFileName(file, blob));
   try {
-    var resp = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
-    var result = await resp.json();
+    var result = await uploadWithRetry(formData, 2);
     if (result.url) {
       if (!currentSiteContent.services) currentSiteContent.services = [];
       if (!currentSiteContent.services[idx]) currentSiteContent.services[idx] = {};
