@@ -194,18 +194,33 @@
         <div>点击或拖拽老照片到此处</div>
         <input type="file" accept="image/*">
       </div>
-      <div class="row">
-        <button class="btn" id="btn-restore-run" data-label="开始修复">开始修复（免费）</button>
-        <span class="tags">免费 · 云端 AI 修复</span>
+      <div class="workflow">
+        <div class="wcol">
+          <h3>原图</h3>
+          <div class="src-wrap"><div class="imgbox"><canvas class="src-canvas" width="1" height="1"></canvas></div></div>
+          <div class="row">
+            <button class="btn" id="btn-restore-run" data-label="开始修复">开始修复（免费）</button>
+            <span class="tags">免费 · 云端 AI 修复</span>
+          </div>
+        </div>
+        <div class="wcol">
+          <h3>修复结果</h3>
+          <div class="res-out">
+            <div class="imgbox"><canvas class="res-canvas" width="1" height="1"></canvas></div>
+            <div class="row" style="margin-top:10px">
+              <button class="btn res-download" data-tab="restore">下载 JPG</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="statusbar"><span id="status"></span></div>
     </div>
   </div>
 
-  <div class="footer">AI 图片工具 · 抠图 / 换背景 / 去人物 免费 · 本地浏览器处理 · 图片不出设备</div>
+  <div class="footer">AI 图片工具 · 抠图 / 换背景 / 去人物 / 老照片修复 免费 · 本地浏览器 + 云端 AI</div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js"></script>
+<script src="js/tools/vendor/ort/ort.min.js"></script>
 <script src="js/tools/segment.js"></script>
 <script src="js/tools/inpaint.js"></script>
 <script src="js/tools/main.js"></script>

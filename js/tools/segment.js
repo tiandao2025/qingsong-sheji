@@ -9,6 +9,11 @@
   'use strict';
 
   const MODEL_URL = './tools/model/u2netp.onnx';
+  // 自托管 onnxruntime WASM（避免 jsdelivr CDN 国内不稳定导致推理失败）
+  if (global.ort && global.ort.env && global.ort.env.wasm) {
+    global.ort.env.wasm.wasmPaths = './js/tools/vendor/ort/';
+    global.ort.env.wasm.numThreads = 1; // 减少多线程 wasm 加载失败概率
+  }
 
   class Segmenter {
     constructor(modelUrl) {
@@ -54,10 +59,14 @@
           executionProviders: ['wasm'],
           graphOptimizationLevel: 'all'
         };
-        if (global.ort?.env?.wasm) {
-          // safetensors 之外不需要额外 wasm 设置；顶层 wasm 由 CDN 提供
+        try {
+          this.session = await ort.InferenceSession.create(arrayBuffer, opts);
+        } catch (err) {
+          // 首次创建失败（wasm 加载瞬断等）时清理重试一次
+          this._loading = null;
+          await new Promise((r) => setTimeout(r, 600));
+          this.session = await ort.InferenceSession.create(arrayBuffer, opts);
         }
-        this.session = await ort.InferenceSession.create(arrayBuffer, opts);
         this._log('模型就绪，开始分割');
         return this.session;
       })();

@@ -208,10 +208,10 @@
         try {
           const fused = await cloudInpaint({
             canvas: resCanv,
-            model: 'sdxl-lightning',
-            prompt: 'same subject and background, harmonized natural lighting, soft seamless blend, photorealistic, consistent light direction',
-            negative_prompt: 'blurry, artifacts, distorted, changed identity, wrong lighting',
-            strength: 0.35, maxSide: 768,
+            model: 'sd15-inpaint',
+            prompt: 'same person and pose, same composition, background replaced with plain solid color, harmonized natural lighting, soft seamless blend, photorealistic, consistent light direction and color temperature',
+            negative_prompt: 'blurry, artifacts, distorted, changed identity, wrong lighting, double edges',
+            strength: 0.35, maxSide: 512, fullMask: true,
           });
           const fEl = $('#tab-bg .res-canvas');
           fEl.width = fused.width; fEl.height = fused.height;
@@ -283,10 +283,10 @@
     try {
       const out = await cloudInpaint({
         canvas: currentSrc.canvas,
-        model: 'sdxl-lightning',
-        prompt: 'restore old damaged photo, sharp clear face, natural skin tone, realistic details, vivid color photo',
-        negative_prompt: 'blurry, noise, scratches, cracks, low quality, deformed, distorted, faded',
-        strength: 0.45, maxSide: 768,
+        model: 'sd15-inpaint',
+        prompt: 'restore old damaged photo, enhance details, sharp clear face, natural skin tone, realistic textures, vivid colors, high quality photo restoration',
+        negative_prompt: 'blurry, noise, scratches, cracks, low quality, deformed, distorted, faded, oversharpened',
+        strength: 0.4, maxSide: 512, fullMask: true,
       });
       const resEl = $('#tab-restore .res-canvas');
       resEl.width = out.width; resEl.height = out.height;
@@ -320,42 +320,66 @@
   /* ==========================================================
    * 云端 AI 处理（Workers AI 免费模型，经 /api/inpaint）
    * ========================================================== */
-  async function canvasToRGB(canvas, maxSide) {
-    let c = canvas;
-    const scale = Math.min(1, maxSide / Math.max(canvas.width, canvas.height));
-    if (scale < 1) {
-      c = document.createElement('canvas');
-      c.width = Math.round(canvas.width * scale);
-      c.height = Math.round(canvas.height * scale);
-      c.getContext('2d').drawImage(canvas, 0, 0, c.width, c.height);
-    }
-    const d = c.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, c.width, c.height).data;
-    const rgb = new Array(c.width * c.height * 3);
-    for (let i = 0, j = 0; i < d.length; i += 4, j += 3) {
-      rgb[j] = d[i]; rgb[j + 1] = d[i + 1]; rgb[j + 2] = d[i + 2];
-    }
-    return { rgb, width: c.width, height: c.height };
+  /** 缩放并 pad 成正方形（SD1.5-inpaint 对非方形输入易失败/黑图），返回 b64 与裁切信息 */
+  async function prepareSquare(canvas, maxSide) {
+    const ow = canvas.width, oh = canvas.height;
+    const scale = Math.min(1, maxSide / Math.max(ow, oh));
+    const w = Math.max(1, Math.round(ow * scale));
+    const h = Math.max(1, Math.round(oh * scale));
+    const size = Math.max(w, h);
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, size, size);
+    const ox = Math.round((size - w) / 2);
+    const oy = Math.round((size - h) / 2);
+    ctx.drawImage(canvas, ox, oy, w, h);
+    const b64 = c.toDataURL('image/png').split(',')[1];
+    return { b64, size, ox, oy, w, h, ow, oh };
   }
 
-  async function cloudInpaint(opts) {
-    const { canvas, mask, model, prompt, negative_prompt, strength, maxSide } = opts;
-    const { rgb, width, height } = await canvasToRGB(canvas, maxSide || 768);
-    const body = { image: rgb, width, height, model, prompt, strength };
-    if (negative_prompt) body.negative_prompt = negative_prompt;
-    if (mask) {
-      const m = new Array(width * height);
-      const sc = document.createElement('canvas');
-      sc.width = width; sc.height = height;
-      const sctx = sc.getContext('2d');
-      const id = sctx.createImageData(width, height);
-      for (let i = 0; i < width * height; i++) {
-        const v = mask[i] > 128 ? 255 : 0;
-        id.data[i * 4] = v; id.data[i * 4 + 1] = v; id.data[i * 4 + 2] = v; id.data[i * 4 + 3] = 255;
+  /** 把原尺寸 mask 缩放并 pad 到正方形画布（pad 区域=0 不重绘），返回字节数组 */
+  function resizeMask(mask, ow, oh, size, ox, oy, w, h) {
+    const m = new Uint8Array(size * size);
+    for (let y = 0; y < h; y++) {
+      const sy = Math.min(oh - 1, Math.floor(y * oh / h));
+      for (let x = 0; x < w; x++) {
+        const sx = Math.min(ow - 1, Math.floor(x * ow / w));
+        const v = mask[sy * ow + sx] > 128 ? 255 : 0;
+        m[(oy + y) * size + (ox + x)] = v;
       }
-      sctx.putImageData(id, 0, 0);
-      const md = sctx.getImageData(0, 0, width, height).data;
-      for (let i = 0; i < width * height; i++) m[i] = md[i * 4];
-      body.mask = m;
+    }
+    return m;
+  }
+
+  function maskArrayToB64(m, size) {
+    const sc = document.createElement('canvas');
+    sc.width = size; sc.height = size;
+    const sctx = sc.getContext('2d');
+    const id = sctx.createImageData(size, size);
+    for (let i = 0; i < size * size; i++) {
+      const v = m[i] || 0;
+      id.data[i * 4] = v; id.data[i * 4 + 1] = v; id.data[i * 4 + 2] = v; id.data[i * 4 + 3] = 255;
+    }
+    sctx.putImageData(id, 0, 0);
+    return sc.toDataURL('image/png').split(',')[1];
+  }
+
+  /**
+   * 云端 inpainting：统一做正方形 pad → 调 /api/inpaint → 裁回原尺寸
+   * @param {object} opts { canvas, mask?, fullMask?, model, prompt, negative_prompt?, strength, maxSide }
+   */
+  async function cloudInpaint(opts) {
+    const { canvas, mask, fullMask, model, prompt, negative_prompt, strength, maxSide } = opts;
+    const prep = await prepareSquare(canvas, maxSide || 512);
+    const { b64, size, ox, oy, w, h, ow, oh } = prep;
+    const body = { image_b64: b64, width: size, height: size, model, prompt, strength };
+    if (negative_prompt) body.negative_prompt = negative_prompt;
+    if (fullMask) {
+      body.mask_b64 = maskArrayToB64(new Uint8Array(size * size).fill(255), size);
+    } else if (mask) {
+      body.mask_b64 = maskArrayToB64(resizeMask(mask, ow, oh, size, ox, oy, w, h), size);
     }
     setStatus('云端 AI 处理中，约 5~20 秒…');
     const resp = await fetch('/api/inpaint', {
@@ -376,7 +400,20 @@
     c.width = img.width; c.height = img.height;
     c.getContext('2d').drawImage(img, 0, 0);
     URL.revokeObjectURL(url);
-    return c;
+    // 校验：黑图/空图视为失败（历史踩坑：模型输入格式错会返回全黑）
+    const px = c.getContext('2d').getImageData(0, 0, Math.min(64, c.width), Math.min(64, c.height)).data;
+    let sum = 0, maxv = 0;
+    for (let i = 0; i < px.length; i += 4) {
+      const v = (px[i] + px[i + 1] + px[i + 2]) / 3;
+      sum += v; if (v > maxv) maxv = v;
+    }
+    const avg = sum / (px.length / 4);
+    if (avg < 3 && maxv < 16) throw new Error('云端模型返回异常结果，请重试或换图');
+    // 裁回原尺寸（去掉 pad 黑边）
+    const out = document.createElement('canvas');
+    out.width = ow; out.height = oh;
+    out.getContext('2d').drawImage(c, ox, oy, w, h, 0, 0, ow, oh);
+    return out;
   }
 
   function showResult(tabId, msg) {

@@ -4,6 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>后台管理 | 青松设计</title>
+<script>
+// 防呆：本地 file:// 直接打开时无法上传，引导用户使用线上地址
+if (location.protocol === 'file:') {
+  (function () {
+    var s = document.createElement('div');
+    s.id = 'fileProtocolWarn';
+    s.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#C0392B;color:#fff;padding:12px 16px;font-size:14px;font-family:inherit;text-align:center;';
+    s.textContent = '警告：当前是通过本地文件打开的，上传功能不可用。请改用线上地址 https://qingsong.ggff.net/admin 访问后台。';
+    document.documentElement.appendChild(s);
+    setTimeout(function () {
+      var ok = confirm('当前是本地文件模式，图片上传会失败。\n\n是否立即跳转到线上后台 https://qingsong.ggff.net/admin ？');
+      if (ok) location.href = 'https://qingsong.ggff.net/admin';
+    }, 300);
+  })();
+}
+// 上传失败提示：对网络层错误给出可操作的指引
+function uploadErrMsg(e) {
+  var m = (e && e.message) ? e.message : '未知错误';
+  if (m === 'Failed to fetch') {
+    return '网络请求失败：请确认是通过线上地址 https://qingsong.ggff.net/admin 访问后台（不要用本地文件打开），并检查网络后重试';
+  }
+  return m;
+}
+</script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -845,7 +869,7 @@ async function uploadBlogCover() {
     }
   } catch(e) {
     if (statusEl) statusEl.textContent = '上传失败，请重试';
-    showToast('上传失败: ' + e.message, 'error');
+    showToast('上传失败: ' + uploadErrMsg(e), 'error');
   }
 }
 
@@ -877,7 +901,7 @@ async function insertBlogImage() {
       showToast('上传失败: ' + (result.error || '未知错误'), 'error');
     }
   } catch(e) {
-    showToast('上传失败: ' + e.message, 'error');
+    showToast('上传失败: ' + uploadErrMsg(e), 'error');
   } finally {
     fileInput.value = '';
   }
@@ -1034,7 +1058,7 @@ function uploadBlogMaterialImage(input) {
         showToast('上传失败: ' + (result.error || '未知错误'), 'error');
       }
     })
-    .catch(function(e) { showToast('上传失败: ' + e.message, 'error'); });
+    .catch(function(e) { showToast('上传失败: ' + uploadErrMsg(e), 'error'); });
   input.value = '';
 }
 
@@ -1389,7 +1413,7 @@ async function uploadCaseImage(targetId, previewId) {
     }
   } catch (e) {
     if (statusEl) statusEl.textContent = '上传失败，请重试';
-    showToast('上传失败: ' + e.message, 'error');
+    showToast('上传失败: ' + uploadErrMsg(e), 'error');
   }
 }
 async function uploadCaseGallery() {
@@ -1467,7 +1491,7 @@ async function uploadCaseFile() {
     }
   } catch (e) {
     if (statusEl) statusEl.textContent = '上传失败，请重试';
-    showToast('上传失败: ' + e.message, 'error');
+    showToast('上传失败: ' + uploadErrMsg(e), 'error');
   }
 }
 // ==================== 区域面积动态列表 ====================
@@ -1684,7 +1708,7 @@ async function uploadCaseMaterialImage(id) {
     }
   } catch (e) {
     if (statusEl) statusEl.textContent = '上传失败，请重试';
-    showToast('上传失败: ' + e.message, 'error');
+    showToast('上传失败: ' + uploadErrMsg(e), 'error');
   }
 }
 function loadCaseMaterials(materials) {
@@ -1907,7 +1931,7 @@ async function uploadSvcImg(idx) {
     }
   } catch (e) {
     if (pv) pv.innerHTML = '<span style="color:#e74c3c;font-size:12px;">上传失败</span>';
-    showToast('上传失败: ' + e.message, 'error');
+    showToast('上传失败: ' + uploadErrMsg(e), 'error');
   } finally {
     fileInput.value = '';
   }

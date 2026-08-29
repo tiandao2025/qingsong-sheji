@@ -1,4 +1,4 @@
-﻿# 排除本地 AI 工具与构建/缓存目录
+# 排除本地 AI 工具与构建/缓存目录
 **/inpaint-web/**
 **/*.onnx
 .wrangler/
