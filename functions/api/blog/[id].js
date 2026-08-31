@@ -70,7 +70,7 @@ export async function onRequest({ request, env }) {
     }
 
     await env.DB.prepare(
-      `UPDATE blog_posts SET title=?, slug=?, excerpt=?, content=?, cover_image=?, tags=?, category=?, bilibili=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`
+      `UPDATE blog_posts SET title=?, slug=?, excerpt=?, content=?, cover_image=?, tags=?, category=?, bilibili=?, video_url=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`
     ).bind(
       data.title || existing.title,
       slug,
@@ -80,6 +80,7 @@ export async function onRequest({ request, env }) {
       data.tags !== undefined ? data.tags : existing.tags,
       data.category !== undefined ? data.category : existing.category,
       data.bilibili !== undefined ? data.bilibili : existing.bilibili,
+      data.video_url !== undefined ? data.video_url : existing.video_url,
       id
     ).run();
 

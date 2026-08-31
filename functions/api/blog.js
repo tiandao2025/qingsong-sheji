@@ -65,6 +65,7 @@ async function handleGet(request, env) {
         tags: tags,
         category: category,
         bilibili: r.bilibili || '',
+        video_url: r.video_url || '',
         views: r.views || 0,
         created_at: r.created_at,
         updated_at: r.updated_at
@@ -100,6 +101,7 @@ async function handlePost(request, env) {
 
   const data = await request.json();
   const { title, excerpt, content, cover_image, tags, category, bilibili } = data;
+  const video_url = data.video_url || '';
   const downloads = Array.isArray(data.downloads) ? data.downloads : [];
 
   if (!title) {
@@ -116,8 +118,8 @@ async function handlePost(request, env) {
   slug = slug + '-' + Date.now().toString(36);
 
   await env.DB.prepare(
-    'INSERT INTO blog_posts (title, slug, excerpt, content, cover_image, tags, category, bilibili) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).bind(title, slug, excerpt || '', content || '', cover_image || '', tags || '', category || '', bilibili || '').run();
+    'INSERT INTO blog_posts (title, slug, excerpt, content, cover_image, tags, category, bilibili, video_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(title, slug, excerpt || '', content || '', cover_image || '', tags || '', category || '', bilibili || '', video_url).run();
 
   const result = await env.DB.prepare('SELECT * FROM blog_posts WHERE slug = ?').bind(slug).first();
 

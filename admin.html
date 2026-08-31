@@ -755,6 +755,7 @@ function showBlogModal(blog) {
   html += '<div class="form-group"><label class="form-label">封面图</label><div style="display:flex;gap:8px;align-items:center;"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogCoverFile\').click()">上传封面</button><input type="file" id="blogCoverFile" accept="image/*" style="display:none;" onchange="uploadBlogCover()"><span id="blogCoverStatus" style="color:#999;font-size:13px;">' + (isEdit && blog.cover_image ? '已有封面，可点击按钮更换' : '点击按钮选择图片上传') + '</span></div><div id="blogCoverPreview" style="margin-top:8px;">' + (isEdit && blog.cover_image ? '<img src="' + escapeHtml(blog.cover_image) + '" style="max-width:200px;max-height:120px;border-radius:6px;border:1px solid #E8E8ED;">' : '') + '</div></div>';
   html += '<div class="form-group" style="flex:1;display:flex;flex-direction:column;min-height:0;"><label class="form-label">内容 (Markdown)</label><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;"><input type="file" id="blogContentImageFile" accept="image/*" style="display:none;" onchange="insertBlogImage()"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogContentImageFile\').click()">插入图片</button><button type="button" class="btn btn-outline btn-sm" onclick="openBlogMaterialPanel(\'image\')">插入常用</button><small style="color:#999;">上传后自动插入 Markdown 图片语法到光标位置</small></div><textarea class="form-textarea" id="blogContent" style="flex:1;min-height:200px;resize:vertical;overflow:auto;">' + (isEdit ? escapeHtml(blog.content || '') : '') + '</textarea></div>';
   html += '<div class="form-group"><label class="form-label">B站视频嵌入码</label><textarea class="form-textarea" id="blogBilibili" style="min-height:60px;" placeholder="粘贴B站视频的 &lt;iframe&gt; 嵌入代码">' + bilibiliVal + '</textarea><small style="color:#999;">B站视频 → 分享 → 嵌入代码，复制整段 iframe</small></div>';
+  html += '<div class="form-group"><label class="form-label">本地视频（1GB 以内，分片直传）</label><div class="upload-row"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogVideoFile\').click()">' + (isEdit && blog.video_url ? '更换视频' : '上传视频') + '</button><input type="file" id="blogVideoFile" accept="video/*" style="display:none;" onchange="uploadBlogVideo()"><span id="blogVideoStatus" style="color:#999;font-size:12px;">' + (isEdit && blog.video_url ? '已上传，可更换' : '支持 MP4 等格式，最大 1GB') + '</span></div><input type="hidden" id="blogVideo" value="' + (isEdit ? escapeHtml(blog.video_url || '') : '') + '"><div id="blogVideoProgressWrap" style="display:none;margin-top:8px;"><div style="background:#E8E8ED;border-radius:6px;height:8px;overflow:hidden;"><div id="blogVideoProgressBar" style="background:#27AE60;height:100%;width:0%;transition:width .2s;"></div></div><small id="blogVideoProgressText" style="color:#666;margin-top:4px;display:block;">0%</small></div><div id="blogVideoPreview" style="margin-top:8px;">' + (isEdit && blog.video_url ? '<video src="' + escapeHtml(blog.video_url) + '" controls style="max-width:320px;max-height:180px;border-radius:6px;border:1px solid #E8E8ED;"></video> <button type="button" class="btn btn-danger btn-sm" onclick="clearBlogVideo()">移除视频</button>' : '') + '</div></div>';
   html += '<div class="form-group"><label class="form-label">下载设置（扫码付费后自助领取）</label>';
   html += '<div id="blogDownloadsContainer"></div>';
   html += '<button type="button" class="btn btn-outline btn-sm" onclick="addBlogDownloadItem()">+ 添加下载项</button>';
@@ -871,6 +872,80 @@ async function uploadBlogCover() {
     if (statusEl) statusEl.textContent = '上传失败，请重试';
     showToast('上传失败: ' + uploadErrMsg(e), 'error');
   }
+}
+
+// 视频分片直传：1GB 以内，20MB/片，R2 multipart（并发 3 片）
+async function uploadBlogVideo() {
+  var fileInput = document.getElementById('blogVideoFile');
+  var file = fileInput.files[0];
+  if (!file) { showToast('请先选择文件', 'error'); return; }
+  if (file.size > 1024 * 1024 * 1024) { showToast('视频不能超过 1GB', 'error'); return; }
+  var statusEl = document.getElementById('blogVideoStatus');
+  var wrap = document.getElementById('blogVideoProgressWrap');
+  var bar = document.getElementById('blogVideoProgressBar');
+  var ptext = document.getElementById('blogVideoProgressText');
+  if (statusEl) statusEl.textContent = '上传中...';
+  if (wrap) wrap.style.display = 'block';
+  if (bar) bar.style.width = '0%';
+  var CHUNK = 20 * 1024 * 1024;
+  var total = file.size;
+  var chunks = Math.max(1, Math.ceil(total / CHUNK));
+  try {
+    var initRes = await fetch('/api/upload-video?action=init&filename=' + encodeURIComponent(file.name) + '&size=' + total, { method: 'POST', headers: { 'x-admin-key': authToken } });
+    var initData = await initRes.json();
+    if (!initData.success) throw new Error(initData.error || '初始化失败');
+    var uploadId = initData.uploadId;
+    var key = initData.key;
+    var parts = [];
+    var uploadedBytes = 0;
+    async function uploadOne(i) {
+      var start = i * CHUNK;
+      var end = Math.min(total, start + CHUNK);
+      var blob = file.slice(start, end);
+      var resp = await fetch('/api/upload-video?action=part&uploadId=' + encodeURIComponent(uploadId) + '&key=' + encodeURIComponent(objKey) + '&partNumber=' + (i + 1), { method: 'POST', headers: { 'x-admin-key': authToken, 'Content-Type': 'application/octet-stream' }, body: blob });
+      var data = await resp.json();
+      if (!data.success) throw new Error(data.error || ('分片 ' + (i + 1) + ' 上传失败'));
+      parts.push({ partNumber: i + 1, etag: data.etag });
+      uploadedBytes += blob.size;
+      var pct = Math.min(100, Math.round(uploadedBytes / total * 100));
+      if (bar) bar.style.width = pct + '%';
+      if (ptext) ptext.textContent = pct + '%';
+    }
+    var nextIdx = 0;
+    async function worker() {
+      while (true) {
+        var i = nextIdx++;
+        if (i >= chunks) break;
+        await uploadOne(i);
+      }
+    }
+    var workers = [];
+    var pool = Math.min(3, chunks);
+    for (var w = 0; w < pool; w++) workers.push(worker());
+    await Promise.all(workers);
+
+    var compRes = await fetch('/api/upload-video?action=complete&uploadId=' + encodeURIComponent(uploadId) + '&key=' + encodeURIComponent(key), { method: 'POST', headers: { 'x-admin-key': authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ parts: parts }) });
+    var compData = await compRes.json();
+    if (!compData.success) throw new Error(compData.error || '合并失败');
+    document.getElementById('blogVideo').value = compData.url;
+    document.getElementById('blogVideoPreview').innerHTML = '<video src="' + escapeHtml(compData.url) + '" controls style="max-width:320px;max-height:180px;border-radius:6px;border:1px solid #E8E8ED;"></video> <button type="button" class="btn btn-danger btn-sm" onclick="clearBlogVideo()">移除视频</button>';
+    if (statusEl) statusEl.textContent = '上传成功，保存后生效';
+    if (bar) bar.style.width = '100%';
+    if (ptext) ptext.textContent = '100%';
+    showToast('视频上传成功', 'success');
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '上传失败，请重试';
+    showToast('上传失败: ' + uploadErrMsg(e), 'error');
+  } finally {
+    fileInput.value = '';
+  }
+}
+
+function clearBlogVideo() {
+  document.getElementById('blogVideo').value = '';
+  document.getElementById('blogVideoPreview').innerHTML = '';
+  var statusEl = document.getElementById('blogVideoStatus');
+  if (statusEl) statusEl.textContent = '已移除，重新选择可上传';
 }
 
 // 正文插入图片：上传到 /api/upload 后自动插入 Markdown 图片语法到光标位置
@@ -1168,6 +1243,7 @@ async function saveBlog(id) {
     cover_image: document.getElementById('blogCover').value,
     content: document.getElementById('blogContent').value,
     bilibili: document.getElementById('blogBilibili').value,
+    video_url: document.getElementById('blogVideo').value,
     downloads: collectBlogDownloads()
   };
   if (!data.title.trim()) { showToast('标题不能为空', 'error'); return; }
