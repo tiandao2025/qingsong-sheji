@@ -102,12 +102,21 @@ body {
 let allPosts = [];
 let currentCat = '';
 
+function renderFilterBar() {
+  const bar = document.getElementById('filterBar');
+  const cats = ['全部', ...new Set(allPosts.map(p => p.category).filter(Boolean))];
+  bar.innerHTML = cats.map(c =>
+    `<button class="${c === '全部' ? 'active' : ''}" data-cat="${c === '全部' ? '' : c}">${c}</button>`
+  ).join('');
+}
+
 async function loadPosts() {
   const list = document.getElementById('blogList');
   try {
     const res = await fetch('/api/blog?limit=100');
     const data = await res.json();
     allPosts = data.posts || [];
+    renderFilterBar();
     renderPosts();
   } catch (e) {
     list.innerHTML = '<div class="empty">加载失败，请刷新页面重试</div>';
