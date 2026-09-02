@@ -29,12 +29,16 @@ function verifyToken(authHeader) {
   }
 }
 
-// 兼容 x-admin-key 鉴权（旧版后台 api() 携带）
+// 兼容鉴权：
+// 1. Bearer 标准 JWT（新版后台理想场景）
+// 2. Bearer 明文 adminKey（新版后台 auth/login 实际签发的是 env.ADMIN_TOKEN || 'qs-admin-2024'，非 JWT）
+// 3. x-admin-key 请求头（旧版后台 api() 携带）
 function verifyAuth(request, env) {
   const authHeader = request.headers.get('Authorization') || '';
   const validToken = env.ADMIN_TOKEN || 'qs-admin-2024';
   const adminKey = request.headers.get('x-admin-key') || '';
-  return verifyToken(authHeader) || adminKey === validToken;
+  const bearerKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  return verifyToken(authHeader) || bearerKey === validToken || adminKey === validToken;
 }
 
 export async function onRequest({ request, env }) {
