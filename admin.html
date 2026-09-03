@@ -269,7 +269,31 @@ tr:hover td { background: #FAFAFA; }
   .form-row { grid-template-columns: 1fr; }
   .login-box { width: 90%; padding: 32px 24px; }
 }
+/* ===== 富文本正文编辑器（Word 式，博客文章） ===== */
+.rich-toolbar { display:flex; flex-wrap:wrap; gap:4px; padding:8px 10px; border:1px solid #ddd; border-bottom:none; border-radius:8px 8px 0 0; background:#f8f8f6; align-items:center; }
+.rich-toolbar .rt-sep { width:1px; height:20px; background:#ddd; margin:0 6px; }
+.rt-btn { display:inline-flex; align-items:center; justify-content:center; min-width:30px; height:30px; padding:0 8px; border:1px solid transparent; background:transparent; border-radius:6px; font-size:13px; cursor:pointer; color:#444; line-height:1; white-space:nowrap; font-family:inherit; }
+.rt-btn:hover { background:#e8e6de; border-color:#d8d5c8; }
+.rt-btn:active { background:#ded9c9; }
+.rt-btn.rt-label { font-weight:600; color:#C9A96E; cursor:default; }
+.rt-btn.rt-label:hover { background:transparent; border-color:transparent; }
+.editor-tabs { display:inline-flex; margin-left:auto; border:1px solid #ddd; border-radius:6px; overflow:hidden; }
+.editor-tab { border:0; background:#fff; color:#666; font-size:12px; padding:5px 14px; cursor:pointer; font-family:inherit; }
+.editor-tab.active { background:#C9A96E; color:#fff; }
+.rich-editor { border:1px solid #ddd; border-radius:0 0 8px 8px; min-height:280px; max-height:56vh; overflow-y:auto; padding:14px 16px; background:#fff; font-size:15px; line-height:1.9; color:#333; word-wrap:break-word; outline:none; }
+.rich-editor:empty::before { content:"在这里像 Word 一样输入正文：可加粗、标题、列表、对齐、超链接、图片…"; color:#aaa; }
+.rich-editor img { max-width:100%; height:auto; border-radius:6px; margin:6px 0; }
+.rich-editor video { max-width:100%; border-radius:8px; margin:8px 0; display:block; }
+.rich-editor iframe { max-width:100%; aspect-ratio:16/9; border:0; border-radius:8px; margin:8px 0; }
+.rich-editor a { color:#C9A96E; text-decoration:underline; }
+.rich-editor h2, .rich-editor h3 { margin:14px 0 8px; }
+.rich-editor ul, .rich-editor ol { padding-left:26px; }
+.rich-editor blockquote { border-left:3px solid #C9A96E; margin:10px 0; padding:2px 14px; color:#666; background:#faf8f1; }
+#blogRichEditor.source-hidden { display:none; }
+#blogContent.source-off { display:none; }
+#blogContent.source-on { display:block; border-radius:0 0 8px 8px; }
 </style>
+<script src="/js/marked.min.js"></script>
 </head>
 <body>
 
@@ -748,12 +772,13 @@ function showBlogModal(blog) {
   resetBlogModalLayout();
   var isEdit = !!blog;
   var bilibiliVal = isEdit ? escapeHtml(blog.bilibiliEmbed || '') : '';
+  var contentHtml = blogMdToHtmlSafe(isEdit ? (blog.content || '') : '');
   var html = '<div class="modal-header"><h3>' + (isEdit ? '编辑文章' : '新建文章') + '</h3></div>';
   html += '<div class="form-group"><label class="form-label">标题</label><input class="form-input" id="blogTitle" value="' + (isEdit ? escapeHtml(blog.title) : '') + '"></div>';
   html += '<div class="form-row"><div class="form-group"><label class="form-label">分类</label><input class="form-input" id="blogCategory" value="' + (isEdit ? escapeHtml(blog.category || '') : '') + '"></div>';
   html += '<input type="hidden" id="blogCover" value="' + (isEdit ? escapeHtml(blog.cover_image || '') : '') + '">';
   html += '<div class="form-group"><label class="form-label">封面图</label><div style="display:flex;gap:8px;align-items:center;"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogCoverFile\').click()">上传封面</button><input type="file" id="blogCoverFile" accept="image/*" style="display:none;" onchange="uploadBlogCover()"><span id="blogCoverStatus" style="color:#999;font-size:13px;">' + (isEdit && blog.cover_image ? '已有封面，可点击按钮更换' : '点击按钮选择图片上传') + '</span></div><div id="blogCoverPreview" style="margin-top:8px;">' + (isEdit && blog.cover_image ? '<img src="' + escapeHtml(blog.cover_image) + '" style="max-width:200px;max-height:120px;border-radius:6px;border:1px solid #E8E8ED;">' : '') + '</div></div>';
-  html += '<div class="form-group" style="flex:1;display:flex;flex-direction:column;min-height:0;"><label class="form-label">内容 (Markdown)</label><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;"><input type="file" id="blogContentImageFile" accept="image/*" style="display:none;" onchange="insertBlogImage()"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogContentImageFile\').click()">插入图片</button><button type="button" class="btn btn-outline btn-sm" onclick="openBlogMaterialPanel(\'image\')">插入常用</button><small style="color:#999;">上传后自动插入 Markdown 图片语法到光标位置</small></div><textarea class="form-textarea" id="blogContent" style="flex:1;min-height:200px;resize:vertical;overflow:auto;">' + (isEdit ? escapeHtml(blog.content || '') : '') + '</textarea></div>';
+  html += '<div class="form-group" style="display:flex;flex-direction:column;"><label class="form-label">正文（富文本，像 Word 一样编辑）</label><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;"><input type="file" id="blogContentImageFile" accept="image/*" style="display:none;" onchange="insertBlogImage()"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogContentImageFile\').click()">插入图片</button><button type="button" class="btn btn-outline btn-sm" onclick="openBlogMaterialPanel(\'image\')">插入常用</button><small style="color:#999;">图片上传后自动插入正文光标处；正文支持加粗/标题/列表/链接等</small><div class="editor-tabs"><button type="button" class="editor-tab active" id="blogTabEdit" onclick="switchBlogEditorMode(\'edit\')">编辑</button><button type="button" class="editor-tab" id="blogTabSource" onclick="switchBlogEditorMode(\'source\')">源码</button></div></div><div class="rich-toolbar" id="blogRichToolbar"><span class="rt-btn rt-label">文</span><button type="button" class="rt-btn" title="加粗" onclick="docBlogCmd(\'bold\')"><b>B</b></button><button type="button" class="rt-btn" title="斜体" onclick="docBlogCmd(\'italic\')"><i>I</i></button><button type="button" class="rt-btn" title="下划线" onclick="docBlogCmd(\'underline\')"><u>U</u></button><button type="button" class="rt-btn" title="删除线" onclick="docBlogCmd(\'strikeThrough\')"><s>S</s></button><button type="button" class="rt-btn" title="清除格式" onclick="docBlogCmd(\'removeFormat\')">格式</button><span class="rt-sep"></span><button type="button" class="rt-btn" title="大标题" onclick="docBlogBlock(\'h2\')">H2</button><button type="button" class="rt-btn" title="小标题" onclick="docBlogBlock(\'h3\')">H3</button><button type="button" class="rt-btn" title="正文" onclick="docBlogBlock(\'p\')">正文</button><button type="button" class="rt-btn" title="无序列表" onclick="docBlogCmd(\'insertUnorderedList\')">•≡</button><button type="button" class="rt-btn" title="有序列表" onclick="docBlogCmd(\'insertOrderedList\')">1≡</button><button type="button" class="rt-btn" title="引用" onclick="docBlogBlock(\'blockquote\')">❝</button><span class="rt-sep"></span><button type="button" class="rt-btn" title="左对齐" onclick="docBlogCmd(\'justifyLeft\')">左</button><button type="button" class="rt-btn" title="居中" onclick="docBlogCmd(\'justifyCenter\')">中</button><button type="button" class="rt-btn" title="右对齐" onclick="docBlogCmd(\'justifyRight\')">右</button><button type="button" class="rt-btn" title="分隔线" onclick="docBlogCmd(\'insertHorizontalRule\')">—</button><span class="rt-sep"></span><button type="button" class="rt-btn" title="插入超链接（可选中文字后点击，或直接插入文字链接）" onclick="docBlogLink()">链接</button></div><div id="blogRichEditor" class="rich-editor" contenteditable="true"></div><textarea class="form-textarea source-off" id="blogContent" style="min-height:280px;resize:vertical;overflow:auto;font-family:Consolas,Monaco,monospace;font-size:13px;" placeholder="（源码模式）正文 HTML 源码"></textarea></div>';
   html += '<div class="form-group"><label class="form-label">B站视频嵌入码</label><textarea class="form-textarea" id="blogBilibili" style="min-height:60px;" placeholder="粘贴B站视频的 &lt;iframe&gt; 嵌入代码">' + bilibiliVal + '</textarea><small style="color:#999;">B站视频 → 分享 → 嵌入代码，复制整段 iframe</small></div>';
   html += '<div class="form-group"><label class="form-label">本地视频（1GB 以内，分片直传）</label><div class="upload-row"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogVideoFile\').click()">' + (isEdit && blog.video_url ? '更换视频' : '上传视频') + '</button><input type="file" id="blogVideoFile" accept="video/*" style="display:none;" onchange="uploadBlogVideo()"><span id="blogVideoStatus" style="color:#999;font-size:12px;">' + (isEdit && blog.video_url ? '已上传，可更换' : '支持 MP4 等格式，最大 1GB') + '</span></div><input type="hidden" id="blogVideo" value="' + (isEdit ? escapeHtml(blog.video_url || '') : '') + '"><div id="blogVideoProgressWrap" style="display:none;margin-top:8px;"><div style="background:#E8E8ED;border-radius:6px;height:8px;overflow:hidden;"><div id="blogVideoProgressBar" style="background:#27AE60;height:100%;width:0%;transition:width .2s;"></div></div><small id="blogVideoProgressText" style="color:#666;margin-top:4px;display:block;">0%</small></div><div id="blogVideoPreview" style="margin-top:8px;">' + (isEdit && blog.video_url ? '<video src="' + escapeHtml(blog.video_url) + '" controls style="max-width:320px;max-height:180px;border-radius:6px;border:1px solid #E8E8ED;"></video> <button type="button" class="btn btn-danger btn-sm" onclick="clearBlogVideo()">移除视频</button>' : '') + '</div></div>';
   html += '<div class="form-group"><label class="form-label">下载设置（扫码付费后自助领取）</label>';
@@ -766,12 +791,131 @@ function showBlogModal(blog) {
   html += '</div>';
   html += '<div class="modal-resize-handle"></div>';
   document.getElementById('blogModalContent').innerHTML = html;
+  var blogContentEl = document.getElementById('blogContent');
+  if (blogContentEl) blogContentEl.value = contentHtml;
+  var blogRichEl = document.getElementById('blogRichEditor');
+  if (blogRichEl) { blogRichEl.innerHTML = contentHtml; switchBlogEditorMode('edit'); }
   fillBlogDownloads(isEdit ? (blog.downloads || []) : []);
   document.getElementById('blogModalOverlay').classList.add('show');
 }
 
 function closeBlogModal() {
   document.getElementById('blogModalOverlay').classList.remove('show');
+}
+
+/* ===== 富文本正文编辑器（Word 式，博客文章正文） ===== */
+// 旧文章可能存的是 Markdown/纯文本：无 HTML 标签时用 marked 转 HTML（与前台 article.html 渲染规则一致）
+function blogMdToHtmlSafe(raw) {
+  var html = raw || '';
+  if (html && !/<[a-zA-Z!][^>]*>/.test(html) && typeof marked !== 'undefined') {
+    try { html = marked.parse(html, { breaks: true, gfm: true }); } catch (e) {}
+  }
+  return html;
+}
+
+function switchBlogEditorMode(mode) {
+  var ta = document.getElementById('blogContent');
+  var ed = document.getElementById('blogRichEditor');
+  var tb = document.getElementById('blogRichToolbar');
+  var tEdit = document.getElementById('blogTabEdit');
+  var tSrc = document.getElementById('blogTabSource');
+  if (!ta || !ed || !tb || !tEdit || !tSrc) return;
+  if (mode === 'source') {
+    ta.value = ed.innerHTML;
+    tb.style.display = 'none';
+    ed.classList.add('source-hidden');
+    ta.classList.remove('source-off');
+    ta.classList.add('source-on');
+    tEdit.classList.remove('active');
+    tSrc.classList.add('active');
+    ta.focus();
+  } else {
+    if (ta.classList.contains('source-on')) ed.innerHTML = ta.value;
+    tb.style.display = 'flex';
+    ed.classList.remove('source-hidden');
+    ta.classList.add('source-off');
+    ta.classList.remove('source-on');
+    tSrc.classList.remove('active');
+    tEdit.classList.add('active');
+    ed.focus();
+  }
+}
+
+function getBlogContentHtml() {
+  var ed = document.getElementById('blogRichEditor');
+  var ta = document.getElementById('blogContent');
+  if (ed && !ed.classList.contains('source-hidden')) return ed.innerHTML;
+  return ta ? ta.value : '';
+}
+
+function syncBlogContent() {
+  var ed = document.getElementById('blogRichEditor');
+  var ta = document.getElementById('blogContent');
+  if (ed && ta && !ed.classList.contains('source-hidden')) ta.value = ed.innerHTML;
+}
+
+function docBlogCmd(cmd) {
+  var ed = document.getElementById('blogRichEditor');
+  if (!ed) return;
+  ed.focus();
+  document.execCommand(cmd, false, null);
+  syncBlogContent();
+}
+
+function docBlogBlock(tag) {
+  var ed = document.getElementById('blogRichEditor');
+  if (!ed) return;
+  ed.focus();
+  document.execCommand('formatBlock', false, tag);
+  syncBlogContent();
+}
+
+function docBlogInsertHTML(html) {
+  var ed = document.getElementById('blogRichEditor');
+  if (!ed) return;
+  ed.focus();
+  document.execCommand('insertHTML', false, html);
+  syncBlogContent();
+}
+
+function docBlogLink() {
+  var ed = document.getElementById('blogRichEditor');
+  if (!ed) return;
+  ed.focus();
+  var url = (prompt('链接地址（须以 http:// 或 https:// 开头）：') || '').trim();
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url)) { alert('链接地址需以 http(s):// 开头'); return; }
+  var sel = window.getSelection();
+  var txt = sel ? String(sel).trim() : '';
+  if (txt) {
+    document.execCommand('createLink', false, url);
+    var links = ed.querySelectorAll('a');
+    for (var i = 0; i < links.length; i++) {
+      if (links[i].getAttribute('href') === url && !links[i].getAttribute('target')) { links[i].target = '_blank'; links[i].rel = 'noopener'; }
+    }
+  } else {
+    var label = (prompt('链接显示文字（留空直接用链接地址）：') || url).trim();
+    docBlogInsertHTML('<a href="' + url.replace(/"/g, '') + '" target="_blank" rel="noopener">' + label.replace(/</g, '&lt;') + '</a>');
+  }
+  syncBlogContent();
+}
+
+// 素材/上传统一插入：kind = image / link / text
+function docBlogMaterialInsert(title, content, kind) {
+  var v = content || '';
+  if (kind === 'image') {
+    if (!v) return;
+    docBlogInsertHTML('<img src="' + v.replace(/"/g, '') + '" style="max-width:100%;" alt="素材图片">');
+  } else if (kind === 'link') {
+    var href = v || '';
+    if (!href) return;
+    var label = title || href;
+    docBlogInsertHTML('<a href="' + href.replace(/"/g, '') + '" target="_blank" rel="noopener">' + label.replace(/</g, '&lt;') + '</a>');
+  } else {
+    if (!v) return;
+    var safe = escapeHtml(v).replace(/\r\n/g, '\n').split('\n').join('<br>');
+    docBlogInsertHTML('<p>' + safe + '</p>');
+  }
 }
 
 // 弹窗拖动移动 + 右下角缩放手柄（document 级事件委托，弹窗内容重建无需重复绑定）
@@ -948,7 +1092,7 @@ function clearBlogVideo() {
   if (statusEl) statusEl.textContent = '已移除，重新选择可上传';
 }
 
-// 正文插入图片：上传到 /api/upload 后自动插入 Markdown 图片语法到光标位置
+// 正文插入图片：上传到 /api/upload 后自动插入富文本正文光标处
 async function insertBlogImage() {
   var fileInput = document.getElementById('blogContentImageFile');
   var file = fileInput.files[0];
@@ -959,18 +1103,7 @@ async function insertBlogImage() {
   try {
     var result = await uploadWithRetry(formData, 2);
     if (result.url) {
-      var ta = document.getElementById('blogContent');
-      var md = '![图片](' + result.url + ')';
-      if (ta.selectionStart !== undefined && ta.selectionStart !== null) {
-        var start = ta.selectionStart;
-        var end = ta.selectionEnd;
-        var v = ta.value;
-        ta.value = v.slice(0, start) + md + v.slice(end);
-        ta.selectionStart = ta.selectionEnd = start + md.length;
-      } else {
-        ta.value += md;
-      }
-      ta.focus();
+      docBlogInsertHTML('<img src="' + result.url.replace(/"/g, '') + '" style="max-width:100%;" alt="图片">');
       showToast('图片已插入正文', 'success');
     } else {
       showToast('上传失败: ' + (result.error || '未知错误'), 'error');
@@ -1031,11 +1164,11 @@ async function loadBlogMaterialImages() {
     }
     var html = '<div class="mat-grid">';
     images.forEach(function(img) {
-      html += '<div class="mat-img-item" title="点击插入" onclick="insertBlogMaterialText(\'![](' + img.url + ')\')">' +
+      html += '<div class="mat-img-item" title="点击插入" onclick="docBlogMaterialInsert(\'\', \'' + img.url.replace(/'/g, '') + '\', \'image\')">' +
         '<img src="' + img.url + '" loading="lazy" onerror="this.style.display=\'none\'">' +
         '<div class="mat-img-name">' + escapeHtml(decodeURIComponent(img.key.split('/').pop())) + '</div></div>';
     });
-    html += '</div><div class="mat-hint">点击图片插入 Markdown 图片语法到光标位置</div>';
+    html += '</div><div class="mat-hint">点击图片插入正文光标处</div>';
     body.innerHTML = html;
   } catch (e) {
     body.innerHTML = '<div class="mat-empty">加载失败: ' + escapeHtml(e.message) + '</div>';
@@ -1056,9 +1189,10 @@ async function loadBlogMaterialList(type) {
     var html = '';
     list.forEach(function(m) {
       var sub = type === 'link' ? escapeHtml(m.content) : escapeHtml((m.content || '').slice(0, 120));
-      var insertText = type === 'link' ? ('[' + m.title.replace(/[\[\]]/g, '') + '](' + m.content + ')') : (m.content || '');
+      var mTitle = m.title || '';
+      var mContent = m.content || '';
       html += '<div class="mat-list-item">' +
-        '<div class="mat-main" onclick="insertBlogMaterialText(' + JSON.stringify(insertText) + ')">' +
+        '<div class="mat-main" onclick="docBlogMaterialInsert(' + JSON.stringify(mTitle) + ', ' + JSON.stringify(mContent) + ', \'' + type + '\')">' +
         '<div class="mat-title">' + escapeHtml(m.title) + '</div>' +
         (type === 'link' ? '<div class="mat-sub">' + sub + '</div>' : '<div class="mat-content-preview">' + sub + '</div>') +
         '</div>' +
@@ -1072,20 +1206,9 @@ async function loadBlogMaterialList(type) {
   }
 }
 
-// 插入文本到 blogContent 光标处
+// 兼容旧引用：兜底按富文本正文插入
 function insertBlogMaterialText(text) {
-  var ta = document.getElementById('blogContent');
-  if (!ta) return;
-  if (ta.selectionStart !== undefined && ta.selectionStart !== null) {
-    var start = ta.selectionStart;
-    var end = ta.selectionEnd;
-    var v = ta.value;
-    ta.value = v.slice(0, start) + text + v.slice(end);
-    ta.selectionStart = ta.selectionEnd = start + text.length;
-  } else {
-    ta.value += text;
-  }
-  ta.focus();
+  docBlogMaterialInsert('', text, 'text');
 }
 
 // 新增链接/内容素材
@@ -1126,7 +1249,7 @@ function uploadBlogMaterialImage(input) {
     .then(function(resp) { return resp.json(); })
     .then(function(result) {
       if (result.url) {
-        insertBlogMaterialText('![](' + result.url + ')');
+        docBlogMaterialInsert('', result.url, 'image');
         showToast('图片已插入正文', 'success');
         loadBlogMaterialImages();
       } else {
@@ -1241,7 +1364,7 @@ async function saveBlog(id) {
     title: document.getElementById('blogTitle').value,
     category: document.getElementById('blogCategory').value,
     cover_image: document.getElementById('blogCover').value,
-    content: document.getElementById('blogContent').value,
+    content: getBlogContentHtml(),
     bilibili: document.getElementById('blogBilibili').value,
     video_url: document.getElementById('blogVideo').value,
     downloads: collectBlogDownloads()
