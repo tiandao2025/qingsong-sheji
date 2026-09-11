@@ -38,6 +38,10 @@ body {
 .article-content h3 { font-size:17px; margin-top:20px; margin-bottom:10px; }
 .article-content iframe { max-width:100%; border-radius:8px; margin:12px 0; }
 .article-content a { color:#C9A96E; }
+.article-content video { display:block; max-width:100%; border-radius:10px; margin:14px 0; background:#000; }
+.article-content .qdoc, .article-content a[data-name] { display:inline-flex; align-items:center; gap:8px; margin:6px 4px; padding:9px 16px; background:#f7f4ea; border:1px solid #e5dfcb; border-radius:10px; color:#6b5a1e !important; text-decoration:none; font-weight:600; font-size:14px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.article-content .qdoc:hover, .article-content a[data-name]:hover { background:#efe8d2; }
+.article-content .video-caption { font-size:12px; color:#999; text-align:center; margin:-6px 0 16px; }
 .article-content ul, .article-content ol { padding-left:24px; margin-bottom:14px; }
 .article-content li { margin-bottom:6px; }
 .article-content blockquote { border-left:3px solid #C9A96E; padding-left:16px; color:#666; margin:16px 0; }
@@ -218,6 +222,76 @@ body {
 }
 .chat-widget-input-area button:hover { background: #A68A4C; }
 .chat-widget-input-area button svg { width: 17px; height: 17px; fill: #fff; }
+
+/* ---- 平台直达卡片区（同步小程序文章页） ---- */
+.follow-block {
+  margin: 28px auto 8px;
+  padding: 18px 16px 20px;
+  background: linear-gradient(145deg, #faf7f0, #f3ecdf);
+  border: 1px solid #e8ddc6;
+  border-radius: 16px;
+}
+.follow-block-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #7a5c2e;
+  margin-bottom: 4px;
+}
+.follow-block-sub { font-size: 12px; color: #9a8a6a; margin-bottom: 14px; }
+.follow-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.follow-card {
+  display: block;
+  background: #fff;
+  border: 1px solid #e6ddca;
+  border-radius: 12px;
+  padding: 10px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: box-shadow .2s, transform .2s;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+.follow-card:hover { box-shadow: 0 6px 16px rgba(170,140,80,.18); transform: translateY(-2px); }
+.follow-qr-wrap {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #f0e8d8;
+  overflow: hidden;
+  line-height: 0;
+}
+.follow-qr-wrap img { width: 100%; height: auto; display: block; }
+.follow-card-name { margin-top: 8px; font-size: 13px; font-weight: 600; color: #4a3b1d; }
+.follow-card-action { margin-top: 2px; font-size: 11px; color: #a08a5e; }
+@media (min-width: 640px) {
+  .follow-grid { grid-template-columns: repeat(3, 1fr); }
+  .follow-block { padding: 24px 28px; }
+}
+#followTip {
+  position: fixed;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%) translateY(8px);
+  background: rgba(0,0,0,.78);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 9px 14px;
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 9999;
+  max-width: 84vw;
+}
+#followTip.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -230,6 +304,7 @@ body {
       <li><a href="cases.html">设计案例</a></li>
       <li><a href="blog.html" class="active">最新博客</a></li>
       <li><a href="/#about">关于我们</a></li>
+      <li><a href="materials.html">设计选材</a></li>
       <li><a href="/#contact">预约咨询</a></li>
     </ul>
   </div>
@@ -272,7 +347,9 @@ async function loadArticle(id) {
       <div class="article-content">${formatContent(p.content)}</div>
       ${renderDownloads(p.downloads)}
     `;
+    convertFenceBlocks();
     enhanceCodeBlocks();
+    enhanceFollowBlock();
     // 页面加载即调用计数接口（服务端做 IP 去重），成功后刷新显示
     try {
       const vr = await fetch(`/api/blog/${id}/view`, { method: 'POST' });
@@ -431,6 +508,74 @@ function formatContent(html) {
     .replace(/href\s*=\s*"javascript:[^"]*"/gi, 'href="#"');
 }
 
+function extractBlockText(frag) {
+  // 从 DOM 片段中提取纯文本：块级标签与 <br> 视为换行，图片/视频跳过
+  var BLOCK = /^(H[1-6]|P|DIV|LI|TR|BLOCKQUOTE|SECTION|ARTICLE|UL|OL|TABLE|PRE|FIGURE)$/;
+  var out = '';
+  (function walk(nodes) {
+    Array.prototype.forEach.call(nodes, function(n) {
+      if (n.nodeType === 3) { out += n.nodeValue; return; }
+      if (n.nodeType !== 1) return;
+      var tag = n.tagName;
+      if (tag === 'BR') { out += '\n'; return; }
+      if (tag === 'IMG' || tag === 'VIDEO' || tag === 'IFRAME') return;
+      if (BLOCK.test(tag)) out += '\n';
+      walk(n.childNodes);
+      if (BLOCK.test(tag)) out += '\n';
+    });
+  })(frag.childNodes);
+  return out
+    .replace(/\u00a0/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{2,}/g, '\n')
+    .replace(/^\n+|\n+$/g, '');
+}
+
+function convertFenceBlocks() {
+  // 旧文章正文以 HTML 形式存储时，编辑器会把 Markdown 的 ``` 围栏转成普通段落，
+  // 页面上只剩两个裸 ``` 符号、内容变普通文字。此处将其还原为可复制的代码块。
+  var content = document.querySelector('.article-content');
+  if (!content) return;
+  var walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, null);
+  var fences = [], n;
+  while ((n = walker.nextNode())) {
+    if (n.nodeValue && n.nodeValue.indexOf('```') !== -1) fences.push(n);
+  }
+  if (fences.length < 2) return;
+  function cleanEmpty(el) {
+    while (el && el !== content) {
+      var parent = el.parentElement;
+      if (el.textContent.replace(/\s|\u00a0/g, '') === '' && !el.querySelector('img,iframe,video,pre')) {
+        el.parentNode.removeChild(el);
+      } else { break; }
+      el = parent;
+    }
+  }
+  for (var i = 0; i + 1 < fences.length; i += 2) {
+    var startText = fences[i], endText = fences[i + 1];
+    var sIdx = startText.nodeValue.indexOf('```');
+    var eIdx = endText.nodeValue.indexOf('```');
+    var range = document.createRange();
+    range.setStart(startText, sIdx + 3);
+    range.setEnd(endText, eIdx);
+    var frag = range.cloneContents();
+    // 区间内含图片/视频时不转换，避免内容丢失
+    if (frag.querySelector && frag.querySelector('img,iframe,video')) continue;
+    var text = extractBlockText(frag);
+    if (!text) continue;
+    var pre = document.createElement('pre');
+    var code = document.createElement('code');
+    code.textContent = text;
+    pre.appendChild(code);
+    range.deleteContents();
+    range.insertNode(pre);
+    startText.nodeValue = startText.nodeValue.replace(/```/g, '');
+    endText.nodeValue = endText.nodeValue.replace(/```/g, '');
+    cleanEmpty(startText.parentElement);
+    cleanEmpty(endText.parentElement);
+  }
+}
+
 function enhanceCodeBlocks() {
   const preList = document.querySelectorAll('.article-content pre');
   preList.forEach(function(pre) {
@@ -476,6 +621,79 @@ function enhanceCodeBlocks() {
       }
     });
   });
+}
+
+/* ---- 平台直达卡片区（同步小程序文章页） ---- */
+const FOLLOW_SPRITE_URL = 'https://qingsong.ggff.net/cdn/uploads/1787587225607_______.jpg';
+const FOLLOW_PLATFORMS = [
+  { name: '视频号', action: '微信内长按识别', tip: '视频号没有网页版，请在微信中长按上方二维码识别关注' },
+  { name: 'B站', action: '扫码 / 长按识别', tip: '请使用 B 站 App 扫一扫，或长按二维码识别后打开' },
+  { name: 'YouTube', action: '扫码 / 长按识别', tip: '请使用 YouTube App 扫一扫，或长按二维码识别后打开' },
+  { name: '抖音', action: '扫码 / 长按识别', tip: '请使用抖音 App 扫一扫，或长按二维码识别后打开' },
+  { name: '小红书', action: '扫码 / 长按识别', tip: '请使用小红书 App 扫一扫，或长按二维码识别后打开' },
+  { name: '快手', action: '扫码 / 长按识别', tip: '请使用快手 App 扫一扫，或长按二维码识别后打开' }
+];
+const FOLLOW_PLATFORM_QRS = {
+  sph: 'https://qingsong.ggff.net/cdn/uploads/1788409429349_sph.png',
+  bili: 'https://qingsong.ggff.net/cdn/uploads/1788409412810_bili.png',
+  youtube: 'https://qingsong.ggff.net/cdn/uploads/1788409422416_youtube.png',
+  douyin: 'https://qingsong.ggff.net/cdn/uploads/1788409414607_douyin.png',
+  xhs: 'https://qingsong.ggff.net/cdn/uploads/1788409420261_xhs.png',
+  ks: 'https://qingsong.ggff.net/cdn/uploads/1788409417527_ks.png'
+};
+
+function createFollowBlockHtml() {
+  let html = '<div class="follow-block">' +
+    '<div class="follow-block-title">关注我，不迷路</div>' +
+    '<div class="follow-block-sub">手机扫码或长按识别，直达各平台主页</div>' +
+    '<div class="follow-grid">';
+  const keys = ['sph', 'bili', 'youtube', 'douyin', 'xhs', 'ks'];
+  FOLLOW_PLATFORMS.forEach(function(p, i) {
+    html += '<div class="follow-card" data-tip="' + p.tip + '">' +
+      '<div class="follow-qr-wrap"><img src="' + FOLLOW_PLATFORM_QRS[keys[i]] + '" alt="' + p.name + ' 二维码" loading="lazy"></div>' +
+      '<div class="follow-card-name">' + p.name + '</div>' +
+      '<div class="follow-card-action">' + p.action + '</div>' +
+      '</div>';
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function enhanceFollowBlock() {
+  const content = document.querySelector('.article-content');
+  if (!content) return;
+  // 若正文里存在旧版“六平台拼图长图”占位，先将其移除，避免重复展示。
+  // 同一张长图历史上多次上传、文件名时间戳不同（1787587225607/1787580859709/…_______.jpg），
+  // 因此除固定常量外，统一按“/cdn/uploads/数字+连续下划线+.jpg”特征匹配所有变体，再整体移除
+  const SPRITE_RE = /\/cdn\/uploads\/\d+_{3,}\.jpg/;
+  const imgs = content.querySelectorAll('img');
+  imgs.forEach(function(img) {
+    const src = img.getAttribute('src') || '';
+    if ((src.indexOf(FOLLOW_SPRITE_URL) !== -1 || SPRITE_RE.test(src)) && img.parentNode) img.parentNode.removeChild(img);
+  });
+  // 固定模板：每篇文章末尾都追加关注卡片；若已存在 .follow-block 则不重复追加
+  if (content.querySelector('.follow-block')) return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = createFollowBlockHtml();
+  content.appendChild(wrap);
+  wrap.addEventListener('click', function(ev) {
+    const card = ev.target && ev.target.closest ? ev.target.closest('.follow-card') : null;
+    if (card) showFollowTip(card.getAttribute('data-tip') || '请使用对应 App 扫码关注');
+  });
+}
+
+function showFollowTip(msg) {
+  let tip = document.getElementById('followTip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'followTip';
+    tip.setAttribute('role', 'alert');
+    document.body.appendChild(tip);
+  }
+  tip.textContent = msg;
+  tip.className = 'show';
+  clearTimeout(tip._t);
+  tip._t = setTimeout(function() { tip.className = ''; }, 2600);
 }
 </script>
 

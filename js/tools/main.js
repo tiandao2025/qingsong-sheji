@@ -297,6 +297,103 @@
     } finally { busy(false, btn); }
   });
 
+  /* ==========================================================
+   * Tab 5 · SU 效果图提示词（智谱 GLM-4V-Flash 生成 / 润色）
+   * 前端压缩为 JPEG base64 直传 /api/su-prompt，不走 R2
+   * ========================================================== */
+  const SU_MAX_SIDE = 1024;                 // 长边上限
+  const SU_MAX_BYTES = 2 * 1024 * 1024;     // 2MB 上限，超出降质
+
+  /** 压缩为 JPEG base64（长边 ≤1024，控制在 2MB 内） */
+  function suPrepareB64(canvas) {
+    const ow = canvas.width, oh = canvas.height;
+    const scale = Math.min(1, SU_MAX_SIDE / Math.max(ow, oh));
+    const w = Math.max(1, Math.round(ow * scale));
+    const h = Math.max(1, Math.round(oh * scale));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(canvas, 0, 0, w, h);
+    let q = 0.85;
+    let url = c.toDataURL('image/jpeg', q);
+    while (url.length * 0.75 > SU_MAX_BYTES && q > 0.4) {
+      q -= 0.1;
+      url = c.toDataURL('image/jpeg', q);
+    }
+    return url.split(',')[1];
+  }
+
+  function suBusy(on, btn) {
+    ['#btn-su-run', '#btn-su-polish'].forEach((sel) => {
+      const b = $(sel);
+      if (b) b.disabled = on;
+    });
+    if (btn) btn.textContent = on ? '处理中…' : btn.dataset.label;
+  }
+
+  async function suRun(mode, btn) {
+    if (!requireSrc()) return;
+    const textEl = $('#su-input');
+    const text = textEl ? textEl.value.trim() : '';
+    if (mode === 'polish' && !text) {
+      setStatus('请先在左侧填写需要润色的提示词');
+      return;
+    }
+    let imageB64;
+    try {
+      imageB64 = suPrepareB64(currentSrc.canvas);
+    } catch (e) {
+      setStatus('图片压缩失败：' + e.message);
+      return;
+    }
+    suBusy(true, btn);
+    setStatus('AI 正在' + (mode === 'polish' ? '润色' : '生成') + '提示词，约 5~20 秒…');
+    try {
+      const resp = await fetch('/api/su-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_b64: imageB64, text: text || undefined, mode })
+      });
+      let data = null;
+      try { data = await resp.json(); } catch (_) {}
+      if (!resp.ok || !data || !data.success) {
+        throw new Error((data && data.error) || ('HTTP ' + resp.status));
+      }
+      const posEl = $('#su-result-pos');
+      const negEl = $('#su-result-neg');
+      if (posEl) posEl.value = data.text || '';
+      if (negEl) negEl.value = data.negative || '';
+      showResult('tab-su', mode === 'polish' ? '提示词润色完成' : '提示词生成完成');
+    } catch (err) {
+      setStatus('失败：' + err.message);
+    } finally {
+      suBusy(false, btn);
+    }
+  }
+
+  function suCopy(sel, label) {
+    const el = $(sel);
+    if (!el || !el.value.trim()) { setStatus('暂无内容可复制'); return; }
+    const done = () => setStatus(label + '已复制到剪贴板');
+    const fallback = () => { el.select(); try { document.execCommand('copy'); } catch (_) {} done(); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(el.value).then(done).catch(fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  const btnSuRun = $('#btn-su-run');
+  if (btnSuRun) btnSuRun.addEventListener('click', () => suRun('generate', btnSuRun));
+  const btnSuPolish = $('#btn-su-polish');
+  if (btnSuPolish) btnSuPolish.addEventListener('click', () => suRun('polish', btnSuPolish));
+  const btnSuCopyPos = $('#btn-su-copy-pos');
+  if (btnSuCopyPos) btnSuCopyPos.addEventListener('click', () => suCopy('#su-result-pos', '正向提示词'));
+  const btnSuCopyNeg = $('#btn-su-copy-neg');
+  if (btnSuCopyNeg) btnSuCopyNeg.addEventListener('click', () => suCopy('#su-result-neg', '负向提示词'));
+
   /* ---------- 通用下载 ---------- */
   $$('.res-download').forEach((btn) => {
     btn.addEventListener('click', () => {

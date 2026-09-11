@@ -58,7 +58,10 @@ export async function onRequestPost({ request, env }) {
 
       const safeName = filename.replace(/[^\w.-]/g, '_');
       const key = `uploads/videos/${Date.now()}_${safeName}`;
-      const multipart = await env.IMAGES.createMultipartUpload(key);
+      const ext = (safeName.split('.').pop() || '').toLowerCase();
+      const mimeMap = { mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', m4v: 'video/x-m4v', mkv: 'video/x-matroska' };
+      const contentType = mimeMap[ext] || 'video/mp4';
+      const multipart = await env.IMAGES.createMultipartUpload(key, { httpMetadata: { contentType } });
       return json({ success: true, uploadId: multipart.uploadId, key });
     }
 

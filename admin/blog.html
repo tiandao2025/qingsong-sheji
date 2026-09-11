@@ -97,6 +97,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 .mat-upload-btn:hover { background:#C9A96E; color:#fff; }
 .mat-empty { text-align:center; padding:50px 20px; color:#aaa; font-size:13px; }
 .mat-hint { font-size:11px; color:#999; margin-top:8px; }
+/* ===== 富文本正文编辑器（Word 式） ===== */
+.rich-toolbar { display:flex; flex-wrap:wrap; gap:4px; padding:8px 10px; border:1px solid #ddd; border-bottom:none; border-radius:8px 8px 0 0; background:#f8f8f6; align-items:center; }
+.rich-toolbar .rt-sep { width:1px; height:20px; background:#ddd; margin:0 6px; }
+.rt-btn { display:inline-flex; align-items:center; justify-content:center; min-width:30px; height:30px; padding:0 8px; border:1px solid transparent; background:transparent; border-radius:6px; font-size:13px; cursor:pointer; color:#444; line-height:1; white-space:nowrap; }
+.rt-btn:hover { background:#e8e6de; border-color:#d8d5c8; }
+.rt-btn:active { background:#ded9c9; }
+.rt-btn.rt-label { font-weight:600; color:#C9A96E; cursor:default; }
+.rt-btn.rt-label:hover { background:transparent; border-color:transparent; }
+.rich-editor { border:1px solid #ddd; border-radius:0 0 8px 8px; min-height:380px; max-height:70vh; overflow-y:auto; padding:16px 18px; background:#fff; font-size:15px; line-height:1.9; color:#333; word-wrap:break-word; outline:none; }
+.rich-editor:empty::before { content:"在这里像 Word 一样输入正文：文字、图片、视频、B站视频、超链接、Word/Excel 附件…"; color:#aaa; }
+.rich-editor img { max-width:100%; height:auto; border-radius:6px; margin:6px 0; }
+.rich-editor video { max-width:100%; border-radius:8px; margin:8px 0; display:block; }
+.rich-editor iframe { max-width:100%; aspect-ratio:16/9; border:0; border-radius:8px; margin:8px 0; }
+.rich-editor a { color:#C9A96E; text-decoration:underline; }
+.rich-editor .qdoc { display:inline-flex; align-items:center; gap:6px; margin:4px 2px; padding:6px 12px; background:#f7f4ea; border:1px solid #e5dfcb; border-radius:8px; color:#6b5a1e !important; text-decoration:none; font-weight:600; }
+.rich-editor .qdoc:hover { background:#efe8d2; }
+.rich-editor h2, .rich-editor h3 { margin:14px 0 8px; }
+.rich-editor ul, .rich-editor ol { padding-left:26px; }
+.rich-editor blockquote { border-left:3px solid #C9A96E; margin:10px 0; padding:2px 14px; color:#666; background:#faf8f1; }
+.rich-editor pre { background:#0d1117; color:#e6edf3; padding:12px 14px; border-radius:8px; overflow-x:auto; font-size:13px; line-height:1.7; font-family:Consolas,Menlo,monospace; }
+.rich-editor table { border-collapse:collapse; width:100%; margin:10px 0; }
+.rich-editor td, .rich-editor th { border:1px solid #ddd; padding:6px 10px; }
+#richEditor.source-hidden { display:none; }
+#postContent { font-family:'SF Mono','Consolas','Monaco',monospace; font-size:13px; line-height:1.7; display:none; }
+#postContent.show { display:block; border-radius:0 0 8px 8px; }
+.rich-upload-tip { color:#999; font-size:12px; margin:6px 2px 0; }
 </style>
 <script src="/js/marked.min.js"></script>
 </head>
@@ -137,9 +163,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
           <label>分类</label>
           <select id="postCategory">
             <option value="SketchUp教程">SketchUp教程</option>
-            <option value="设计理念">设计理念</option>
-            <option value="行业资讯">行业资讯</option>
-            <option value="项目纪实">项目纪实</option>
             <option value="装修百科">装修百科</option>
           </select>
         </div>
@@ -158,18 +181,48 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
       </div>
       <div class="form-group editor-group">
         <div class="editor-header">
-          <label>正文内容</label>
+          <label>正文内容（Word 式编辑）</label>
           <div style="display:flex;gap:8px;align-items:center;">
             <button type="button" class="btn btn-outline btn-sm" onclick="openMaterialPanel('image')">插入常用</button>
             <div class="editor-tabs">
-              <button type="button" class="editor-tab active" id="tabSource" onclick="switchEditorMode('source')">源码</button>
-              <button type="button" class="editor-tab" id="tabPreview" onclick="switchEditorMode('preview')">预览</button>
+              <button type="button" class="editor-tab active" id="tabEdit" onclick="switchEditorMode('edit')">编辑</button>
+              <button type="button" class="editor-tab" id="tabSource" onclick="switchEditorMode('source')">源码</button>
             </div>
           </div>
         </div>
-        <textarea id="postContent" rows="24" placeholder="支持 HTML / Markdown 格式"></textarea>
+        <div class="rich-toolbar" id="richToolbar">
+          <span class="rt-btn rt-label">文</span>
+          <button type="button" class="rt-btn" title="加粗" onclick="docCmd('bold')"><b>B</b></button>
+          <button type="button" class="rt-btn" title="斜体" onclick="docCmd('italic')"><i>I</i></button>
+          <button type="button" class="rt-btn" title="下划线" onclick="docCmd('underline')"><u>U</u></button>
+          <button type="button" class="rt-btn" title="删除线" onclick="docCmd('strikeThrough')"><s>S</s></button>
+          <button type="button" class="rt-btn" title="清除格式" onclick="docCmd('removeFormat')">⌫格式</button>
+          <span class="rt-sep"></span>
+          <button type="button" class="rt-btn" title="标题" onclick="docFormatBlock('h2')">H2</button>
+          <button type="button" class="rt-btn" title="小标题" onclick="docFormatBlock('h3')">H3</button>
+          <button type="button" class="rt-btn" title="正文" onclick="docFormatBlock('p')">正文</button>
+          <button type="button" class="rt-btn" title="无序列表" onclick="docCmd('insertUnorderedList')">•≡</button>
+          <button type="button" class="rt-btn" title="有序列表" onclick="docCmd('insertOrderedList')">1≡</button>
+          <button type="button" class="rt-btn" title="引用" onclick="docFormatBlock('blockquote')">❝</button>
+          <span class="rt-sep"></span>
+          <button type="button" class="rt-btn" title="左对齐" onclick="docCmd('justifyLeft')">⯇≡</button>
+          <button type="button" class="rt-btn" title="居中" onclick="docCmd('justifyCenter')">☰中</button>
+          <button type="button" class="rt-btn" title="右对齐" onclick="docCmd('justifyRight')">≡⯈</button>
+          <button type="button" class="rt-btn" title="分隔线" onclick="docCmd('insertHorizontalRule')">—</button>
+          <span class="rt-sep"></span>
+          <button type="button" class="rt-btn" title="插入超链接（可选中文字/图片后点击）" onclick="docLink()">🔗链接</button>
+          <button type="button" class="rt-btn" title="插入图片（本地上传到 R2）" onclick="document.getElementById('richImageInput').click()">🖼图片</button>
+          <button type="button" class="rt-btn" title="上传视频（≤50MB 直传；大视频自动分片）" onclick="document.getElementById('richVideoInput').click()">🎬视频</button>
+          <button type="button" class="rt-btn" title="插入 B 站视频（粘贴链接）" onclick="docBili()">📺B站</button>
+          <button type="button" class="rt-btn" title="插入 Word / Excel / PDF 等文档附件" onclick="document.getElementById('richFileInput').click()">📄附件</button>
+          <input type="file" id="richImageInput" accept="image/*" style="display:none;" onchange="uploadRichMedia(this, 'image')">
+          <input type="file" id="richVideoInput" accept="video/*" style="display:none;" onchange="uploadRichMedia(this, 'video')">
+          <input type="file" id="richFileInput" accept=".doc,.docx,.xls,.xlsx,.ppt,.pptx,.pdf,.zip,.rar,.7z,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none;" onchange="uploadRichMedia(this, 'file')">
+        </div>
+        <div id="richEditor" class="rich-editor" contenteditable="true"></div>
+        <textarea id="postContent" rows="24" placeholder="（源码模式）HTML 源码"></textarea>
         <div id="contentPreview" class="content-preview"></div>
-        <div class="hint">源码模式编辑 HTML，预览模式查看渲染效果；切换回源码继续编辑。</div>
+        <div class="hint">所见即所得编辑，像 Word 一样自由输入。工具栏可插入图片、视频、B 站视频、自定义文字/图片超链接、Word/Excel 附件；高级操作可切「源码」直接编辑 HTML。</div>
       </div>
       <div class="form-group">
         <div class="editor-header" style="align-items:center;">
@@ -278,7 +331,12 @@ async function openEditor(id) {
       document.getElementById('postTitle').value = p.title || '';
       document.getElementById('postCategory').value = p.category || 'SketchUp教程';
       document.getElementById('postTags').value = tagsStr;
-      document.getElementById('postContent').value = p.content || '';
+      // 正文：旧文章若为纯文本/Markdown，先按与前台一致规则转成 HTML，再载入富文本编辑器；
+      // 保存后自动升级为富文本 HTML，前台两端渲染行为不变
+      const contentHtml = mdToHtmlSafe(p.content || '');
+      document.getElementById('richEditor').innerHTML = contentHtml;
+      document.getElementById('postContent').value = contentHtml;
+      switchEditorMode('edit');
       document.getElementById('postCover').value = p.cover_image || '';
       const preview = document.getElementById('coverPreview');
       preview.innerHTML = p.cover_image ? `<img src="${p.cover_image}" alt="封面">` : '<span class="placeholder">点击上传封面图</span>';
@@ -295,8 +353,11 @@ async function openEditor(id) {
     document.getElementById('deleteBtn').style.display = 'none';
     document.getElementById('postForm').reset();
     document.getElementById('postId').value = '';
+    document.getElementById('richEditor').innerHTML = '';
+    document.getElementById('postContent').value = '';
     document.getElementById('postCover').value = '';
     document.getElementById('coverPreview').innerHTML = '<span class="placeholder">点击上传封面图</span>';
+    switchEditorMode('edit');
     fillDownloads([]);
     document.getElementById('saveBtn').disabled = false;
     document.getElementById('saveBtn').textContent = '发布';
@@ -305,38 +366,215 @@ async function openEditor(id) {
 
 function closeEditor() { document.getElementById('editorModal').classList.remove('show'); }
 
+/* ===== 富文本正文编辑器（Word 式） ===== */
+function mdToHtmlSafe(raw) {
+  let html = raw || '';
+  if (html && !/<[a-zA-Z!][^>]*>/.test(html) && typeof marked !== 'undefined') {
+    try { html = marked.parse(html, { breaks: true, gfm: true }); } catch (e) {}
+  }
+  return html;
+}
+
 function switchEditorMode(mode) {
   const textarea = document.getElementById('postContent');
-  const preview = document.getElementById('contentPreview');
+  const editor = document.getElementById('richEditor');
+  const toolbar = document.getElementById('richToolbar');
+  const tabEdit = document.getElementById('tabEdit');
   const tabSource = document.getElementById('tabSource');
-  const tabPreview = document.getElementById('tabPreview');
 
-  if (mode === 'preview') {
-    const raw = textarea.value.trim();
-    let html = raw;
-    // 与详情页 article.html formatContent 保持一致：无 HTML 标签时按 Markdown 渲染，
-    // breaks:true 让单个换行渲染为 <br>，预览所见即所得
-    if (raw && !/<[a-zA-Z!][^>]*>/.test(raw) && typeof marked !== 'undefined') {
-      try { html = marked.parse(raw, { breaks: true, gfm: true }); } catch (e) {}
-    }
-    html = (html || '')
-      .replace(/<script[\s\S]*?<\/script>/gi, '')
-      .replace(/\s+on\w+\s*=\s*"[^"]*"/gi, '')
-      .replace(/\s+on\w+\s*=\s*'[^']*'/gi, '')
-      .replace(/href\s*=\s*"javascript:[^"]*"/gi, 'href="#"');
-    preview.innerHTML = html
-      ? html
-      : '<div class="empty-preview">暂无内容，请先在源码模式中输入内容</div>';
-    textarea.classList.add('preview-hidden');
-    preview.classList.add('show');
-    tabSource.classList.remove('active');
-    tabPreview.classList.add('active');
-  } else {
-    preview.classList.remove('show');
-    textarea.classList.remove('preview-hidden');
-    tabPreview.classList.remove('active');
+  if (mode === 'source') {
+    textarea.value = editor.innerHTML;
+    toolbar.style.display = 'none';
+    editor.classList.add('source-hidden');
+    textarea.classList.add('show');
+    tabEdit.classList.remove('active');
     tabSource.classList.add('active');
     textarea.focus();
+  } else {
+    if (textarea.classList.contains('show')) editor.innerHTML = textarea.value;
+    toolbar.style.display = 'flex';
+    editor.classList.remove('source-hidden');
+    textarea.classList.remove('show');
+    tabSource.classList.remove('active');
+    tabEdit.classList.add('active');
+    editor.focus();
+  }
+}
+
+// 执行富文本命令，并同步回 textarea（保证不切模式时保存也有最新内容）
+function docCmd(cmd) {
+  const editor = document.getElementById('richEditor');
+  editor.focus();
+  document.execCommand(cmd, false, null);
+  document.getElementById('postContent').value = editor.innerHTML;
+}
+
+function docFormatBlock(tag) {
+  const editor = document.getElementById('richEditor');
+  editor.focus();
+  document.execCommand('formatBlock', false, tag);
+  document.getElementById('postContent').value = editor.innerHTML;
+}
+
+function docInsertHTML(html) {
+  const editor = document.getElementById('richEditor');
+  editor.focus();
+  document.execCommand('insertHTML', false, html);
+  document.getElementById('postContent').value = editor.innerHTML;
+}
+
+// 取当前选区中被选中的图片（用于给图片加超链接）
+function selectedImage() {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return null;
+  let node = sel.getRangeAt(0).commonAncestorContainer;
+  while (node && node.nodeType === 3) node = node.parentNode;
+  if (!node || node.nodeType !== 1) return null;
+  if (node.nodeName === 'IMG') return node;
+  // 图片后光标落在 <p> 内：向上就近找 IMG 子节点
+  const imgs = node.querySelectorAll('img');
+  if (imgs.length === 1) return imgs[0];
+  return null;
+}
+
+// 插入自定义超链接：支持选中文字 / 选中图片 / 无选中插文字链接
+function docLink() {
+  const editor = document.getElementById('richEditor');
+  editor.focus();
+  const sel = window.getSelection();
+  const img = selectedImage();
+  const url = (prompt('链接地址（须以 http:// 或 https:// 开头）：') || '').trim();
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url)) { alert('链接地址需以 http(s):// 开头'); return; }
+
+  if (img) {
+    // 图片加超链接：包一层 <a>
+    if (!img.parentNode || img.parentNode.nodeName !== 'A') {
+      const a = document.createElement('a');
+      a.href = url; a.target = '_blank'; a.rel = 'noopener';
+      img.parentNode.insertBefore(a, img);
+      a.appendChild(img);
+    } else {
+      img.parentNode.href = url;
+    }
+    document.getElementById('postContent').value = editor.innerHTML;
+    return;
+  }
+
+  const selectedText = sel ? String(sel).trim() : '';
+  if (selectedText) {
+    document.execCommand('createLink', false, url);
+    // 去除 Firefox 默认的 contenteditable 包裹属性问题：补 target
+    const links = editor.querySelectorAll('a[href="' + url.replace(/"/g, '') + '"]');
+    links.forEach(function(a) {
+      if (!a.getAttribute('target')) { a.target = '_blank'; a.rel = 'noopener'; }
+    });
+  } else {
+    const label = (prompt('链接显示文字（留空直接用链接地址）：') || url).trim();
+    docInsertHTML('<a href="' + url + '" target="_blank" rel="noopener">' + label + '</a>');
+  }
+  document.getElementById('postContent').value = editor.innerHTML;
+}
+
+// 插入 B 站视频（网页内嵌播放器；小程序自动转跳转卡片）
+function docBili() {
+  const input = (prompt('粘贴 B 站视频链接或 BV 号，例如：\nhttps://www.bilibili.com/video/BV1xx411c7mD\n或直接输入 BV1xx411c7mD') || '').trim();
+  if (!input) return;
+  const bvid = (input.match(/BV[0-9A-Za-z]{10}/) || [])[0];
+  if (!bvid) { alert('未能识别出 B 站 BV 号，请检查链接'); return; }
+  docInsertHTML('<iframe src="https://player.bilibili.com/player.html?bvid=' + bvid +
+    '&high_quality=1&danmaku=0" scrolling="no" frameborder="no" allowfullscreen="true" style="width:100%;aspect-ratio:16/9;"></iframe>');
+}
+
+// 通用媒体上传：image / video / file(附件)。≤50MB 直传 /api/upload，大视频走分片接口
+async function uploadRichMedia(input, kind) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  const editor = document.getElementById('richEditor');
+  editor.focus();
+  const insertTip = document.createElement('div');
+  insertTip.textContent = kind === 'image' ? '图片上传中…' : (kind === 'video' ? '视频上传中（较大视频需分片，请稍候）…' : '附件上传中…');
+  insertTip.style.cssText = 'color:#C9A96E;font-size:13px;padding:4px 0;';
+  docInsertHTML(insertTip.outerHTML);
+
+  try {
+    let url, extra;
+    if (file.size <= 50 * 1024 * 1024) {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await authFetch('/api/upload', { method: 'POST', body: formData });
+      if (!res) return;
+      const data = await res.json();
+      if (!data.url) throw new Error(data.error || '上传失败');
+      url = data.url;
+    } else if (kind === 'video') {
+      url = await uploadVideoChunked(file);
+    } else {
+      alert('文件超过 50MB 上限，请压缩后重试（视频除外，视频可大文件分片上传）');
+      removeLastTip();
+      return;
+    }
+    removeLastTip();
+    let html = '';
+    if (kind === 'image') {
+      html = '<img src="' + url + '" style="max-width:100%;" alt="' + (file.name || '图片') + '"/>';
+    } else if (kind === 'video') {
+      html = '<video src="' + url + '" controls preload="metadata"></video><div style="font-size:12px;color:#999;text-align:center;">' + (file.name || '') + '</div>';
+    } else {
+      const name = file.name.replace(/["<>]/g, '');
+      html = '<a class="qdoc" href="' + url + '" data-name="' + name + '" target="_blank" rel="noopener">📄 ' + name + '</a>';
+    }
+    docInsertHTML(html);
+  } catch (e) {
+    removeLastTip();
+    alert((kind === 'image' ? '图片' : kind === 'video' ? '视频' : '附件') + '上传失败: ' + e.message);
+  }
+
+  function removeLastTip() {
+    const tip = editor.querySelector('[style*="上传中"]');
+    if (tip) tip.remove();
+    document.getElementById('postContent').value = editor.innerHTML;
+  }
+}
+
+// 大视频（>50MB）走 /api/upload-video 分片上传（8MB/片）
+async function uploadVideoChunked(file) {
+  const CHUNK = 8 * 1024 * 1024;
+  const enc = encodeURIComponent;
+  const initRes = await authFetch('/api/upload-video?action=init&filename=' + enc(file.name) + '&size=' + file.size);
+  const initData = await initRes.json();
+  if (!initData.success) throw new Error(initData.error || '初始化上传失败');
+  const { uploadId, key } = initData;
+  const parts = [];
+  let offset = 0, partNumber = 1;
+  try {
+    while (offset < file.size) {
+      const blob = file.slice(offset, Math.min(offset + CHUNK, file.size));
+      const partRes = await authFetch('/api/upload-video?action=part&uploadId=' + enc(uploadId) + '&key=' + enc(key) + '&partNumber=' + partNumber, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: blob
+      });
+      const partData = await partRes.json();
+      if (!partData.success) throw new Error(partData.error || ('第 ' + partNumber + ' 片上传失败'));
+      parts.push({ partNumber: partData.partNumber, etag: partData.etag });
+      offset += CHUNK; partNumber += 1;
+    }
+    const compRes = await authFetch('/api/upload-video?action=complete&uploadId=' + enc(uploadId) + '&key=' + enc(key), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parts: parts })
+    });
+    const compData = await compRes.json();
+    if (!compData.success) throw new Error(compData.error || '合并上传失败');
+    return compData.url;
+  } catch (e) {
+    // 失败时中止，清理 R2 未完成分片
+    try {
+      await authFetch('/api/upload-video?action=abort&uploadId=' + enc(uploadId) + '&key=' + enc(key), { method: 'POST' });
+    } catch (abortErr) {}
+    throw e;
   }
 }
 
@@ -360,6 +598,11 @@ async function previewCover(input) {
 
 document.getElementById('postForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  // 编辑模式下先把富文本内容同步到 textarea
+  const richEditor = document.getElementById('richEditor');
+  if (!richEditor.classList.contains('source-hidden')) {
+    document.getElementById('postContent').value = richEditor.innerHTML;
+  }
   const btn = document.getElementById('saveBtn');
   btn.disabled = true; btn.textContent = '发布中...';
 
@@ -639,11 +882,11 @@ async function loadMaterialImages() {
     }
     body.innerHTML =
       '<div class="mat-grid">' + images.map(img =>
-        '<div class="mat-img-item" title="点击插入" onclick="insertMaterialText(\'![](' + img.url + ')\')">' +
+        '<div class="mat-img-item" title="点击插入正文" onclick="insertMaterialText(\'![](' + img.url + ')\')">' +
         '<img src="' + img.url + '" loading="lazy" onerror="this.style.display=\'none\'">' +
         '<div class="mat-img-name">' + escapeHtml(decodeURIComponent(img.key.split('/').pop())) + '</div>' +
         '</div>').join('') + '</div>' +
-      '<div class="mat-hint">点击图片插入 Markdown 图片语法到光标位置</div>';
+      '<div class="mat-hint">点击图片插入到正文光标处</div>';
   } catch (e) {
     body.innerHTML = '<div class="mat-empty">加载失败: ' + escapeHtml(e.message) + '</div>';
   }
@@ -681,21 +924,40 @@ async function loadMaterialList(type) {
   }
 }
 
-// 插入文本到 postContent 光标处
+// 插入素材到正文（兼容素材库 legacy 的 Markdown 片段，统一转为富文本 HTML 后插入光标处）
+function materialToHtml(text) {
+  const t = String(text == null ? '' : text).trim();
+  const mdImg = t.match(/^!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)$/);
+  if (mdImg) return '<img src="' + mdImg[2] + '" style="max-width:100%;" alt="' + mdImg[1].replace(/"/g, '&quot;') + '"/>';
+  const mdLink = t.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/);
+  if (mdLink) return '<a href="' + mdLink[2] + '" target="_blank" rel="noopener">' + mdLink[1].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</a>';
+  if (/<[a-zA-Z!][^>]*>/.test(t)) return t;
+  return '<p>' + t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\r?\n/g, '<br>') + '</p>';
+}
+
+// 插入文本到富文本编辑器光标处（源码模式则插入 textarea 光标处）
 function insertMaterialText(text) {
+  const editor = document.getElementById('richEditor');
+  const html = materialToHtml(text);
+  if (editor && !editor.classList.contains('source-hidden')) {
+    editor.focus();
+    document.execCommand('insertHTML', false, html);
+    document.getElementById('postContent').value = editor.innerHTML;
+    editor.focus();
+    return;
+  }
   const ta = document.getElementById('postContent');
   if (!ta) return;
   if (ta.selectionStart !== undefined && ta.selectionStart !== null) {
     const start = ta.selectionStart;
     const end = ta.selectionEnd;
     const v = ta.value;
-    ta.value = v.slice(0, start) + text + v.slice(end);
-    ta.selectionStart = ta.selectionEnd = start + text.length;
+    ta.value = v.slice(0, start) + html + v.slice(end);
+    ta.selectionStart = ta.selectionEnd = start + html.length;
   } else {
-    ta.value += text;
+    ta.value += html;
   }
   ta.focus();
-  switchEditorMode('source');
 }
 
 // 新增链接/内容素材

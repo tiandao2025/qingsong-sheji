@@ -1,0 +1,40 @@
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: *
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /temp
+Disallow: /functions
+Disallow: /_wrangler
+Allow: /
+
+Sitemap: https://qingsong.ggff.net/sitemap.xml
+（内容由AI生成，仅供参考）

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI 图片工具 · 青松设计</title>
-<meta name="description" content="免费在线抠图、换背景、去人物工具，本地浏览器 AI 处理，图片不出设备。">
+<meta name="description" content="免费在线抠图、换背景、去人物、老照片修复工具，并可上传 SketchUp 模型截图一键生成/润色渲染效果图 AI 生图提示词。">
 <link rel="icon" href="favicon.ico">
 <style>
   :root {
@@ -64,6 +64,7 @@
 <body>
 <header class="topbar">
   <a class="logo" href="index.html">青松设计<span>AI 图片工具</span></a>
+  <a href="materials.html" style="margin-left:auto; font-size:14px; color:var(--text); text-decoration:none; border:1px solid var(--border); padding:6px 12px; border-radius:6px;">设计选材</a>
 </header>
 
 <div class="container">
@@ -72,6 +73,7 @@
     <button data-tab="bg">换背景 / 换纯色</button>
     <button data-tab="remove">去人物</button>
     <button data-tab="restore">老照片修复</button>
+    <button data-tab="su">SU 效果图提示词</button>
   </div>
 
   <!-- ============ Tab 1 抠图 ============ -->
@@ -217,7 +219,49 @@
     </div>
   </div>
 
-  <div class="footer">AI 图片工具 · 抠图 / 换背景 / 去人物 / 老照片修复 免费 · 本地浏览器 + 云端 AI</div>
+  <!-- ============ Tab 5 SU 效果图提示词 ============ -->
+  <div class="tab-panel" id="tab-su">
+    <div class="panel">
+      <p class="panel-hint">上传 SketchUp 模型截图，AI 自动生成 / 润色可直接用于 Stable Diffusion、Midjourney 的建筑与室内渲染效果图生图提示词（正向 + 负向，中英双语）。</p>
+      <div class="dropzone">
+        <span class="big">⇪</span>
+        <div>点击或拖拽 SketchUp 模型截图到此处</div>
+        <div class="tags">支持 JPG / PNG / WebP，建议上传模型轴测图或人视角度截图</div>
+        <input type="file" accept="image/*">
+      </div>
+      <div class="workflow">
+        <div class="wcol">
+          <h3>模型截图</h3>
+          <div class="src-wrap"><div class="imgbox"><canvas class="src-canvas" width="1" height="1"></canvas></div></div>
+          <label style="font-size:13px;color:var(--muted)">已有提示词（选填，用于「润色优化」）</label>
+          <textarea id="su-input" rows="4" placeholder="例如：现代简约客厅，落地窗，午后自然光，木饰面…" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
+          <div class="row">
+            <button class="btn" id="btn-su-run" data-label="生成提示词">生成提示词</button>
+            <button class="btn ghost" id="btn-su-polish" data-label="润色优化">润色优化</button>
+          </div>
+        </div>
+        <div class="wcol">
+          <h3>效果图生图提示词（中英双语）</h3>
+          <div class="res-out">
+            <canvas class="res-canvas" width="1" height="1" style="display:none"></canvas>
+            <label style="font-size:13px;color:var(--muted)">正向提示词 Prompt</label>
+            <textarea id="su-result-pos" rows="7" placeholder="生成结果将显示在这里" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.5"></textarea>
+            <div class="row" style="margin-top:8px">
+              <button class="btn ghost" id="btn-su-copy-pos" style="padding:7px 12px;font-size:13px">复制正向</button>
+            </div>
+            <label style="font-size:13px;color:var(--muted);margin-top:6px">负向提示词 Negative Prompt</label>
+            <textarea id="su-result-neg" rows="3" placeholder="生成结果将显示在这里" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.5"></textarea>
+            <div class="row" style="margin-top:8px">
+              <button class="btn ghost" id="btn-su-copy-neg" style="padding:7px 12px;font-size:13px">复制负向</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="statusbar"><span id="status"></span></div>
+    </div>
+  </div>
+
+  <div class="footer">AI 图片工具 · 抠图 / 换背景 / 去人物 / 老照片修复 / SU 效果图提示词 免费 · 本地浏览器 + 云端 AI</div>
 </div>
 
 <script src="js/tools/vendor/ort/ort.min.js"></script>

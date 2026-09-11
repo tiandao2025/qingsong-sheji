@@ -339,6 +339,10 @@ tr:hover td { background: #FAFAFA; }
       <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       数据统计
     </div>
+    <div class="nav-item" data-page="materials">
+      <svg viewBox="0 0 24 24"><rect x="4" y="3" width="5" height="18" rx="1"/><rect x="11.5" y="3" width="5" height="18" rx="1"/><rect x="19" y="3" width="1.6" height="18" rx="0.8"/></svg>
+      设计选材
+    </div>
   </nav>
   <div class="sidebar-footer">
     <a href="index.html" target="_blank">→ 打开官网</a>
@@ -549,6 +553,84 @@ tr:hover td { background: #FAFAFA; }
       </div>
     </div>
   </div>
+
+  <!-- 设计选材管理 -->
+  <div class="page-content" id="page-materials">
+    <div class="page-title">设计选材管理</div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>上传材料图</h3>
+        <a class="btn btn-outline btn-sm" href="https://qingsong.ggff.net/materials.html" target="_blank">去官网查看设计选材板块</a>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">名称 *</label>
+          <input class="form-input" id="materialName" placeholder="如 意大利灰大理石">
+        </div>
+        <div class="form-group">
+          <label class="form-label">分类 *</label>
+          <select class="form-select" id="materialCategory">
+            <option value="瓷砖">瓷砖</option>
+            <option value="石材">石材</option>
+            <option value="木纹">木纹</option>
+            <option value="金属">金属</option>
+            <option value="涂料">涂料</option>
+            <option value="其他" selected>其他</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">描述</label>
+        <textarea class="form-textarea" id="materialDescription" rows="2" placeholder="材质说明，选填"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">图片文件 *（jpg / png / webp 等，≤50MB）</label>
+        <div class="upload-row">
+          <input type="file" id="materialFile" accept="image/*" onchange="previewMaterialFile(this)">
+        </div>
+        <div class="img-preview" id="materialPreview"></div>
+      </div>
+      <div style="text-align:right;">
+        <button class="btn btn-primary" id="materialSubmitBtn" onclick="uploadMaterial()">上传材料</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>材料列表 <span id="materialCount" style="color:#C9A96E;font-weight:400;"></span></h3>
+        <div class="btn-group">
+          <select class="form-select" id="materialFilterCategory" style="width:auto;" onchange="filterMaterials()">
+            <option value="">全部分类</option>
+            <option value="瓷砖">瓷砖</option>
+            <option value="石材">石材</option>
+            <option value="木纹">木纹</option>
+            <option value="金属">金属</option>
+            <option value="涂料">涂料</option>
+            <option value="其他">其他</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="loadMaterials()">刷新</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:100px;">缩略图</th>
+              <th>名称</th>
+              <th style="width:80px;">分类</th>
+              <th>描述</th>
+              <th style="width:150px;">上传时间</th>
+              <th>图片链接</th>
+            </tr>
+          </thead>
+          <tbody id="materialTableBody">
+            <tr><td colspan="6" style="text-align:center;color:#999;">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Modal -->
@@ -654,6 +736,7 @@ document.querySelectorAll('.nav-item').forEach(function(item) {
     else if (page === 'content') loadSiteContent();
     else if (page === 'chats') loadChats();
     else if (page === 'stats') { setDefaultStatsDate(); loadStats(); }
+    else if (page === 'materials') loadMaterials();
   });
 });
 
@@ -778,7 +861,7 @@ function showBlogModal(blog) {
   html += '<div class="form-row"><div class="form-group"><label class="form-label">分类</label><input class="form-input" id="blogCategory" value="' + (isEdit ? escapeHtml(blog.category || '') : '') + '"></div>';
   html += '<input type="hidden" id="blogCover" value="' + (isEdit ? escapeHtml(blog.cover_image || '') : '') + '">';
   html += '<div class="form-group"><label class="form-label">封面图</label><div style="display:flex;gap:8px;align-items:center;"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogCoverFile\').click()">上传封面</button><input type="file" id="blogCoverFile" accept="image/*" style="display:none;" onchange="uploadBlogCover()"><span id="blogCoverStatus" style="color:#999;font-size:13px;">' + (isEdit && blog.cover_image ? '已有封面，可点击按钮更换' : '点击按钮选择图片上传') + '</span></div><div id="blogCoverPreview" style="margin-top:8px;">' + (isEdit && blog.cover_image ? '<img src="' + escapeHtml(blog.cover_image) + '" style="max-width:200px;max-height:120px;border-radius:6px;border:1px solid #E8E8ED;">' : '') + '</div></div>';
-  html += '<div class="form-group" style="display:flex;flex-direction:column;"><label class="form-label">正文（富文本，像 Word 一样编辑）</label><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;"><input type="file" id="blogContentImageFile" accept="image/*" style="display:none;" onchange="insertBlogImage()"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogContentImageFile\').click()">插入图片</button><button type="button" class="btn btn-outline btn-sm" onclick="openBlogMaterialPanel(\'image\')">插入常用</button><small style="color:#999;">图片上传后自动插入正文光标处；正文支持加粗/标题/列表/链接等</small><div class="editor-tabs"><button type="button" class="editor-tab active" id="blogTabEdit" onclick="switchBlogEditorMode(\'edit\')">编辑</button><button type="button" class="editor-tab" id="blogTabSource" onclick="switchBlogEditorMode(\'source\')">源码</button></div></div><div class="rich-toolbar" id="blogRichToolbar"><span class="rt-btn rt-label">文</span><button type="button" class="rt-btn" title="加粗" onclick="docBlogCmd(\'bold\')"><b>B</b></button><button type="button" class="rt-btn" title="斜体" onclick="docBlogCmd(\'italic\')"><i>I</i></button><button type="button" class="rt-btn" title="下划线" onclick="docBlogCmd(\'underline\')"><u>U</u></button><button type="button" class="rt-btn" title="删除线" onclick="docBlogCmd(\'strikeThrough\')"><s>S</s></button><button type="button" class="rt-btn" title="清除格式" onclick="docBlogCmd(\'removeFormat\')">格式</button><span class="rt-sep"></span><button type="button" class="rt-btn" title="大标题" onclick="docBlogBlock(\'h2\')">H2</button><button type="button" class="rt-btn" title="小标题" onclick="docBlogBlock(\'h3\')">H3</button><button type="button" class="rt-btn" title="正文" onclick="docBlogBlock(\'p\')">正文</button><button type="button" class="rt-btn" title="无序列表" onclick="docBlogCmd(\'insertUnorderedList\')">•≡</button><button type="button" class="rt-btn" title="有序列表" onclick="docBlogCmd(\'insertOrderedList\')">1≡</button><button type="button" class="rt-btn" title="引用" onclick="docBlogBlock(\'blockquote\')">❝</button><span class="rt-sep"></span><button type="button" class="rt-btn" title="左对齐" onclick="docBlogCmd(\'justifyLeft\')">左</button><button type="button" class="rt-btn" title="居中" onclick="docBlogCmd(\'justifyCenter\')">中</button><button type="button" class="rt-btn" title="右对齐" onclick="docBlogCmd(\'justifyRight\')">右</button><button type="button" class="rt-btn" title="分隔线" onclick="docBlogCmd(\'insertHorizontalRule\')">—</button><span class="rt-sep"></span><button type="button" class="rt-btn" title="插入超链接（可选中文字后点击，或直接插入文字链接）" onclick="docBlogLink()">链接</button></div><div id="blogRichEditor" class="rich-editor" contenteditable="true"></div><textarea class="form-textarea source-off" id="blogContent" style="min-height:280px;resize:vertical;overflow:auto;font-family:Consolas,Monaco,monospace;font-size:13px;" placeholder="（源码模式）正文 HTML 源码"></textarea></div>';
+  html += '<div class="form-group" style="display:flex;flex-direction:column;"><label class="form-label">正文（富文本，像 Word 一样编辑）</label><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;"><input type="file" id="blogContentImageFile" accept="image/*" style="display:none;" onchange="insertBlogImage()"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogContentImageFile\').click()">插入图片</button><button type="button" class="btn btn-outline btn-sm" onclick="openBlogMaterialPanel(\'image\')">插入常用</button><small style="color:#999;">图片上传后自动插入正文光标处；正文支持加粗/标题/列表/链接等</small><div class="editor-tabs"><button type="button" class="editor-tab active" id="blogTabEdit" onclick="switchBlogEditorMode(\'edit\')">编辑</button><button type="button" class="editor-tab" id="blogTabSource" onclick="switchBlogEditorMode(\'source\')">源码</button></div></div><div class="rich-toolbar" id="blogRichToolbar"><span class="rt-btn rt-label">文</span><button type="button" class="rt-btn" title="加粗" onclick="docBlogCmd(\'bold\')"><b>B</b></button><button type="button" class="rt-btn" title="斜体" onclick="docBlogCmd(\'italic\')"><i>I</i></button><button type="button" class="rt-btn" title="下划线" onclick="docBlogCmd(\'underline\')"><u>U</u></button><button type="button" class="rt-btn" title="删除线" onclick="docBlogCmd(\'strikeThrough\')"><s>S</s></button><button type="button" class="rt-btn" title="清除格式" onclick="docBlogCmd(\'removeFormat\')">格式</button><span class="rt-sep"></span><button type="button" class="rt-btn" title="大标题" onclick="docBlogBlock(\'h2\')">H2</button><button type="button" class="rt-btn" title="小标题" onclick="docBlogBlock(\'h3\')">H3</button><button type="button" class="rt-btn" title="正文" onclick="docBlogBlock(\'p\')">正文</button><button type="button" class="rt-btn" title="无序列表" onclick="docBlogCmd(\'insertUnorderedList\')">•≡</button><button type="button" class="rt-btn" title="有序列表" onclick="docBlogCmd(\'insertOrderedList\')">1≡</button><button type="button" class="rt-btn" title="引用" onclick="docBlogBlock(\'blockquote\')">❝</button><span class="rt-sep"></span><button type="button" class="rt-btn" title="左对齐" onclick="docBlogCmd(\'justifyLeft\')">左</button><button type="button" class="rt-btn" title="居中" onclick="docBlogCmd(\'justifyCenter\')">中</button><button type="button" class="rt-btn" title="右对齐" onclick="docBlogCmd(\'justifyRight\')">右</button><button type="button" class="rt-btn" title="分隔线" onclick="docBlogCmd(\'insertHorizontalRule\')">—</button><span class="rt-sep"></span><button type="button" class="rt-btn" title="插入超链接（可选中文字后点击，或直接插入文字链接）" onclick="docBlogLink()">链接</button><button type="button" class="rt-btn" title="取消超链接（选中或光标置于链接文字内后点击，还原为普通文字）" onclick="docBlogUnlink()">取消链接</button></div><div id="blogRichEditor" class="rich-editor" contenteditable="true"></div><textarea class="form-textarea source-off" id="blogContent" style="min-height:280px;resize:vertical;overflow:auto;font-family:Consolas,Monaco,monospace;font-size:13px;" placeholder="（源码模式）正文 HTML 源码"></textarea></div>';
   html += '<div class="form-group"><label class="form-label">B站视频嵌入码</label><textarea class="form-textarea" id="blogBilibili" style="min-height:60px;" placeholder="粘贴B站视频的 &lt;iframe&gt; 嵌入代码">' + bilibiliVal + '</textarea><small style="color:#999;">B站视频 → 分享 → 嵌入代码，复制整段 iframe</small></div>';
   html += '<div class="form-group"><label class="form-label">本地视频（1GB 以内，分片直传）</label><div class="upload-row"><button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'blogVideoFile\').click()">' + (isEdit && blog.video_url ? '更换视频' : '上传视频') + '</button><input type="file" id="blogVideoFile" accept="video/*" style="display:none;" onchange="uploadBlogVideo()"><span id="blogVideoStatus" style="color:#999;font-size:12px;">' + (isEdit && blog.video_url ? '已上传，可更换' : '支持 MP4 等格式，最大 1GB') + '</span></div><input type="hidden" id="blogVideo" value="' + (isEdit ? escapeHtml(blog.video_url || '') : '') + '"><div id="blogVideoProgressWrap" style="display:none;margin-top:8px;"><div style="background:#E8E8ED;border-radius:6px;height:8px;overflow:hidden;"><div id="blogVideoProgressBar" style="background:#27AE60;height:100%;width:0%;transition:width .2s;"></div></div><small id="blogVideoProgressText" style="color:#666;margin-top:4px;display:block;">0%</small></div><div id="blogVideoPreview" style="margin-top:8px;">' + (isEdit && blog.video_url ? '<video src="' + escapeHtml(blog.video_url) + '" controls style="max-width:320px;max-height:180px;border-radius:6px;border:1px solid #E8E8ED;"></video> <button type="button" class="btn btn-danger btn-sm" onclick="clearBlogVideo()">移除视频</button>' : '') + '</div></div>';
   html += '<div class="form-group"><label class="form-label">下载设置（扫码付费后自助领取）</label>';
@@ -897,6 +980,29 @@ function docBlogLink() {
     var label = (prompt('链接显示文字（留空直接用链接地址）：') || url).trim();
     docBlogInsertHTML('<a href="' + url.replace(/"/g, '') + '" target="_blank" rel="noopener">' + label.replace(/</g, '&lt;') + '</a>');
   }
+  syncBlogContent();
+}
+
+// 取消超链接：选中链接文字或光标置于链接内时点击，还原为普通文字
+function docBlogUnlink() {
+  var ed = document.getElementById('blogRichEditor');
+  if (!ed) return;
+  ed.focus();
+  var sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  if (sel.isCollapsed) {
+    var startNode = sel.anchorNode;
+    if (startNode && startNode.nodeType === 3) startNode = startNode.parentNode;
+    var anchor = startNode;
+    if (anchor && anchor.nodeName !== 'A' && anchor.closest) anchor = anchor.closest('a');
+    if (anchor && anchor.nodeName === 'A') {
+      var range = document.createRange();
+      range.selectNodeContents(anchor);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }
+  document.execCommand('unlink');
   syncBlogContent();
 }
 
@@ -2653,6 +2759,112 @@ function resetStatsDate() {
   document.getElementById('statsDate').value = '';
   document.getElementById('trendTitle').textContent = '访问趋势（近30天）';
   loadStats();
+}
+
+// ==================== 设计选材管理 ====================
+var currentMaterialCategory = '';
+
+function fmtMaterialTime(iso) {
+  if (!iso) return '-';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '-';
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+function previewMaterialFile(input) {
+  var prev = document.getElementById('materialPreview');
+  if (!prev) return;
+  var file = input.files && input.files[0];
+  prev.innerHTML = file
+    ? '<img src="' + URL.createObjectURL(file) + '" alt="预览">'
+    : '';
+}
+
+async function loadMaterials() {
+  var body = document.getElementById('materialTableBody');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">加载中...</td></tr>';
+  try {
+    var url = '/api/materials?limit=10000' + (currentMaterialCategory ? '&category=' + encodeURIComponent(currentMaterialCategory) : '');
+    var res = await fetch(url, { headers: { 'x-admin-key': authToken } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var data = await res.json();
+    var items = data && data.items ? data.items : (Array.isArray(data) ? data : []);
+    var countEl = document.getElementById('materialCount');
+    if (countEl) countEl.textContent = items.length ? '(' + items.length + ')' : '';
+    if (!items.length) {
+      body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">暂无材料，请先上传</td></tr>';
+      return;
+    }
+    body.innerHTML = items.map(function (m) {
+      var url = m.image_url || '';
+      var thumb = url
+        ? '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(m.name || '') + '" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid #E8E8ED;cursor:pointer;" onclick="window.open(\'' + url.replace(/'/g, '') + '\',\'_blank\')">'
+        : '<span style="color:#ccc;">-</span>';
+      var desc = m.description
+        ? '<div style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(m.description) + '">' + escapeHtml(m.description) + '</div>'
+        : '<span style="color:#ccc;">-</span>';
+      return '<tr>' +
+        '<td>' + thumb + '</td>' +
+        '<td>' + escapeHtml(m.name || '-') + '</td>' +
+        '<td>' + escapeHtml(m.category || '其他') + '</td>' +
+        '<td>' + desc + '</td>' +
+        '<td>' + fmtMaterialTime(m.created_at) + '</td>' +
+        '<td style="word-break:break-all;">' + (url
+          ? '<a href="' + escapeHtml(url) + '" target="_blank" style="color:#A97B3F;font-size:12px;">' + escapeHtml(url) + '</a>'
+          : '<span style="color:#ccc;">-</span>') + '</td>' +
+        '</tr>';
+    }).join('');
+  } catch (e) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#E74C3C;">加载失败: ' + escapeHtml(e.message) + '</td></tr>';
+  }
+}
+
+function filterMaterials() {
+  var sel = document.getElementById('materialFilterCategory');
+  currentMaterialCategory = sel ? sel.value : '';
+  loadMaterials();
+}
+
+async function uploadMaterial() {
+  var nameEl = document.getElementById('materialName');
+  var catEl = document.getElementById('materialCategory');
+  var descEl = document.getElementById('materialDescription');
+  var fileEl = document.getElementById('materialFile');
+  var btn = document.getElementById('materialSubmitBtn');
+  var name = nameEl.value.trim();
+  var file = fileEl.files && fileEl.files[0];
+  if (!name) { showToast('请填写材料名称', 'error'); nameEl.focus(); return; }
+  if (!file) { showToast('请选择要上传的图片文件', 'error'); return; }
+  btn.disabled = true;
+  btn.textContent = '上传中...';
+  try {
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', name);
+    formData.append('category', catEl.value);
+    formData.append('description', descEl.value.trim());
+    var res = await fetch('/api/materials', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
+    var result;
+    try { result = await res.json(); } catch (err) { result = {}; }
+    if (res.ok && result.success) {
+      showToast(result.duplicate ? '该材料已存在，未重复上传' : '上传成功', result.duplicate ? '' : 'success');
+      nameEl.value = '';
+      descEl.value = '';
+      fileEl.value = '';
+      var prev = document.getElementById('materialPreview');
+      if (prev) prev.innerHTML = '';
+      loadMaterials();
+    } else {
+      showToast('上传失败: ' + (result.error || 'HTTP ' + res.status), 'error');
+    }
+  } catch (e) {
+    showToast('上传失败: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '上传材料';
+  }
 }
 
 // ==================== INIT ====================

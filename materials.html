@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设计选材 | 青松设计</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #1D1D1F; background: #FFFFFF; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Navbar */
+.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(255,255,255,0.95); border-bottom: 1px solid rgba(0,0,0,0.06); }
+.nav-inner { max-width: 1040px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 52px; }
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.nav-logo img { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #C9A96E; object-fit: cover; }
+.nav-logo span { font-size: 16px; font-weight: 600; color: #1D1D1F; }
+.nav-links { display: flex; align-items: center; gap: 6px; list-style: none; }
+.nav-links a { text-decoration: none; color: #555; font-size: 13px; padding: 6px 14px; border-radius: 20px; transition: background 0.2s ease, color 0.2s ease; }
+.nav-links a:hover, .nav-links a.active { background: #F5F5F7; color: #1D1D1F; }
+.nav-links a.primary-link { background: #C9A96E; color: #fff; font-weight: 500; }
+.nav-links a.primary-link:hover { background: #B8995E; }
+
+/* Page Header */
+.page-header { padding-top: 100px; padding-bottom: 40px; text-align: center; }
+.page-header h1 { font-size: 40px; font-weight: 700; letter-spacing: 2px; }
+.page-header .line { width: 50px; height: 3px; background: #C9A96E; margin: 16px auto 0; }
+.page-header p { color: #666; margin-top: 12px; font-size: 15px; }
+
+/* Container & Filters */
+.container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+.search-box { display: flex; justify-content: center; margin: -8px 0 28px; }
+.search-input { width: 100%; max-width: 520px; padding: 12px 20px; border: 1px solid #e5e5e5; border-radius: 24px; font-size: 14px; font-family: inherit; color: #1D1D1F; outline: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; background: #fff; }
+.search-input::placeholder { color: #bbb; }
+.search-input:focus { border-color: #C9A96E; box-shadow: 0 0 0 3px rgba(201,169,110,0.15); }
+.filter-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 36px; }
+.filter-btn { border: 1px solid #e5e5e5; background: #fff; color: #555; font-size: 13px; padding: 7px 18px; border-radius: 20px; cursor: pointer; transition: all 0.2s ease; font-family: inherit; }
+.filter-btn:hover { border-color: #C9A96E; color: #C9A96E; }
+.filter-btn.active { background: #C9A96E; border-color: #C9A96E; color: #fff; font-weight: 500; }
+
+/* Material Grid */
+.material-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; padding-bottom: 80px; }
+.material-card {
+  background: #fff; border-radius: 12px; overflow: hidden;
+  border: 1px solid #f0f0f0; cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.material-card:hover { transform: translateY(-6px); box-shadow: 0 12px 30px rgba(0,0,0,0.1); }
+.material-card-img { position: relative; width: 100%; aspect-ratio: 1 / 1; overflow: hidden; background: #f5f5f5; }
+.material-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.5s ease; }
+.material-card:hover .material-card-img img { transform: scale(1.05); }
+.material-card-body { padding: 14px 16px 16px; }
+.material-card-body h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; line-height: 1.4; }
+.material-card-body .material-desc { font-size: 12px; color: #888; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 0; margin-top: 6px; }
+.material-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.material-card-tags .tag { font-size: 11px; padding: 3px 10px; background: #f5f0e5; color: #C9A96E; border-radius: 12px; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.62); z-index: 200; overflow-y: auto; padding: 40px 0; }
+.modal-overlay.show { display: block; }
+.modal { background: #fff; border-radius: 16px; width: 92%; max-width: 760px; margin: 0 auto; overflow: hidden; }
+.modal-close { position: sticky; top: 0; float: right; z-index: 10; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.5); color: #fff; border: none; font-size: 20px; cursor: pointer; margin: 16px 16px 0 0; display: flex; align-items: center; justify-content: center; }
+.modal-cover-wrap { background: #f5f5f5; width: 100%; display: flex; align-items: center; justify-content: center; }
+.modal-cover { width: 100%; max-height: 56vh; object-fit: contain; }
+.modal-body { padding: 28px 32px 32px; }
+.modal-body h2 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+.modal-body .modal-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+.modal-body .modal-meta .tag { font-size: 11px; padding: 4px 12px; background: #f5f0e5; color: #C9A96E; border-radius: 12px; }
+.modal-body .modal-time { font-size: 12px; color: #aaa; }
+.modal-body .modal-desc { color: #555; font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+
+/* Ebook links (护墙板) */
+.material-links { padding: 30px 20px 90px; text-align: center; }
+.material-links-title { font-size: 18px; font-weight: 600; color: #1D1D1F; margin-bottom: 6px; }
+.material-links-sub { font-size: 13px; color: #999; margin-bottom: 22px; }
+.ebook-link-list { list-style: none; max-width: 520px; margin: 0 auto; }
+.ebook-link-list li { border-bottom: 1px dashed #e5e5e5; }
+.ebook-link-list a { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 15px 6px; color: #333; text-decoration: none; font-size: 15px; transition: color 0.2s ease; }
+.ebook-link-list a:hover { color: #C9A96E; }
+.ebook-link-name { font-weight: 500; }
+.ebook-link-desc { font-size: 12px; color: #aaa; white-space: nowrap; }
+
+/* Empty / Loading */
+.empty { text-align: center; padding: 90px 20px; color: #999; font-size: 15px; }
+.empty .empty-title { font-size: 17px; font-weight: 600; color: #666; margin-bottom: 8px; }
+.empty .empty-sub { font-size: 13px; color: #aaa; line-height: 1.8; }
+.loading { text-align: center; padding: 80px 20px; color: #999; }
+
+@media (max-width: 1024px) {
+  .material-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+  .material-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .page-header h1 { font-size: 28px; }
+}
+@media (max-width: 480px) {
+  .material-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo"><img src="/cdn/logo.jpg" alt="青松设计"><span>青松设计</span></a>
+    <ul class="nav-links">
+      <li><a href="/#services">服务项目</a></li>
+      <li><a href="/#process">设计流程</a></li>
+      <li><a href="cases.html">设计案例</a></li>
+      <li><a href="blog.html">最新博客</a></li>
+      <li><a href="/#about">关于我们</a></li>
+      <li><a href="materials.html" class="active">设计选材</a></li>
+      <li><a href="/#contact" class="primary-link">预约咨询</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="page-header">
+  <h1>设计选材</h1>
+  <div class="line"></div>
+  <p>材质库 · 瓷砖 / 石材 / 木纹 / 金属 / 涂料等精选素材，点击查看大图与详情</p>
+</div>
+
+<div class="container">
+  <div class="search-box">
+    <input type="search" id="searchInput" class="search-input" placeholder="搜索材料名称 / 花色，如：1988、暖白、橡木" autocomplete="off">
+  </div>
+  <div class="filter-bar" id="filterBar">
+    <button class="filter-btn active" data-category="">全部</button>
+    <button class="filter-btn" data-category="瓷砖">瓷砖</button>
+    <button class="filter-btn" data-category="石材">石材</button>
+    <button class="filter-btn" data-category="木纹">木纹</button>
+    <button class="filter-btn" data-category="金属">金属</button>
+    <button class="filter-btn" data-category="涂料">涂料</button>
+    <button class="filter-btn" data-category="护墙板">护墙板</button>
+    <button class="filter-btn" data-category="布艺">布艺</button>
+    <button class="filter-btn" data-category="地毯">地毯</button>
+    <button class="filter-btn" data-category="皮革">皮革</button>
+    <button class="filter-btn" data-category="墙纸">墙纸</button>
+    <button class="filter-btn" data-category="混凝土">混凝土</button>
+    <button class="filter-btn" data-category="无缝贴图">无缝贴图</button>
+    <button class="filter-btn" data-category="其他">其他</button>
+  </div>
+
+  <div class="material-grid" id="materialGrid">
+    <div class="loading">加载中...</div>
+  </div>
+</div>
+
+<!-- 大图弹窗 -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <div class="modal-cover-wrap"><img class="modal-cover" id="modalImg" src="" alt=""></div>
+    <div class="modal-body">
+      <h2 id="modalName"></h2>
+      <div class="modal-meta">
+        <span class="tag" id="modalCategory"></span>
+        <span class="modal-time" id="modalTime"></span>
+      </div>
+      <div class="modal-desc" id="modalDesc"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 数据来源 GET /api/materials
+var CATEGORIES = ['瓷砖', '石材', '木纹', '金属', '涂料', '其他'];
+var currentCategory = '';
+var searchKeyword = '';
+var allItems = [];
+var grid = document.getElementById('materialGrid');
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function formatTime(iso) {
+  if (!iso) return '';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+}
+
+var PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22600%22 height=%22600%22%3E%3Crect fill=%22%23e0e0e0%22 width=%22600%22 height=%22600%22/%3E%3Ctext x=%22300%22 y=%22300%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2224%22%3E暂无预览%3C/text%3E%3C/svg%3E';
+
+function renderItems(items, emptyTitle, emptySub) {
+  if (!items || items.length === 0) {
+    grid.innerHTML = '<div class="empty"><div class="empty-title">' + (emptyTitle || '暂无材质素材') + '</div><div class="empty-sub">' + (emptySub || '该分类下还没有内容<br>贴图工坊处理好的无缝贴图会自动上传并展示在这里，敬请期待') + '</div></div>';
+    return;
+  }
+  grid.innerHTML = items.map(function (m) {
+    var desc = m.description ? '<div class="material-desc">' + esc(m.description) + '</div>' : '';
+    var cat = m.category ? '<span class="tag">' + esc(m.category) + '</span>' : '';
+    return '' +
+      '<div class="material-card" onclick="openModal(' + JSON.stringify(m).replace(/"/g, '&quot;') + ')">' +
+        '<div class="material-card-img">' +
+          '<img src="' + esc(m.image_url) + '" alt="' + esc(m.name) + '" loading="lazy" onerror="this.parentElement.style.background=\'%23f5f5f5\';this.style.display=\'none\';">' +
+        '</div>' +
+        '<div class="material-card-body">' +
+          '<h3>' + esc(m.name) + '</h3>' +
+          desc +
+          (cat ? '<div class="material-card-tags">' + cat + '</div>' : '') +
+        '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function renderByFilter() {
+  if (currentCategory === '护墙板') { renderEbookLinks(); return; }
+  var kw = (searchKeyword || '').trim().toLowerCase();
+  var items = allItems.filter(function (m) {
+    if (currentCategory && (m.category || '') !== currentCategory) return false;
+    if (!kw) return true;
+    var hay = (((m.name || '') + ' ' + (m.description || '') + ' ' + (m.category || '')).toLowerCase());
+    return hay.indexOf(kw) !== -1;
+  });
+  if (kw) {
+    renderItems(items, '未找到匹配的材质', '换个关键词试试，支持材料名称、型号或花色描述<br>例如：1988、暖白、橡木、云朵拉灰');
+  } else {
+    renderItems(items);
+  }
+}
+
+function openModal(m) {
+  document.getElementById('modalImg').src = m.image_url || PLACEHOLDER;
+  document.getElementById('modalImg').alt = m.name || '';
+  document.getElementById('modalName').textContent = m.name || '';
+  document.getElementById('modalCategory').textContent = m.category || '其他';
+  document.getElementById('modalTime').textContent = m.created_at ? '上传于 ' + formatTime(m.created_at) : '';
+  var descEl = document.getElementById('modalDesc');
+  descEl.textContent = m.description || '暂无更多描述';
+  document.getElementById('modalOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+var EBOOK_LINKS = [
+  { name: '艺术X（ARTX）', desc: '精装版色卡电子书', url: 'https://book.yunzhan365.com/brthg/artx/mobile/index.html' },
+  { name: '纯色表现（CTBQ）', desc: '纯色表现版色卡电子书', url: 'https://book.yunzhan365.com/brthg/ctbq/mobile/index.html' }
+];
+
+function renderEbookLinks() {
+  grid.innerHTML =
+    '<div class="material-links">' +
+      '<div class="material-links-title">护墙板色卡电子书</div>' +
+      '<div class="material-links-sub">点击书名在新标签页中翻阅</div>' +
+      '<ul class="ebook-link-list">' +
+      EBOOK_LINKS.map(function (b) {
+        return '<li><a href="' + esc(b.url) + '" target="_blank" rel="noopener">' +
+          '<span class="ebook-link-name">' + esc(b.name) + '</span>' +
+          '<span class="ebook-link-desc">' + esc(b.desc) + ' ↗</span></a></li>';
+      }).join('') +
+      '</ul>' +
+    '</div>';
+}
+
+async function loadMaterials() {
+  grid.innerHTML = '<div class="loading">加载中...</div>';
+  try {
+    var res = await fetch('/api/materials?limit=10000');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var data = await res.json();
+    allItems = data && data.items ? data.items : (Array.isArray(data) ? data : []);
+    renderByFilter();
+  } catch (e) {
+    grid.innerHTML = '<div class="empty"><div class="empty-title">加载失败</div><div class="empty-sub">请刷新页面重试</div></div>';
+  }
+}
+
+// 分类 tab 筛选
+document.getElementById('filterBar').addEventListener('click', function (ev) {
+  var btn = ev.target.closest('.filter-btn');
+  if (!btn) return;
+  if (btn.dataset.category === currentCategory) return;
+  currentCategory = btn.dataset.category || '';
+  var allBtns = this.querySelectorAll('.filter-btn');
+  for (var i = 0; i < allBtns.length; i++) allBtns[i].classList.remove('active');
+  btn.classList.add('active');
+  renderByFilter();
+});
+
+// 搜索框实时过滤（名称 / 型号 / 花色描述）
+var searchInput = document.getElementById('searchInput');
+var searchTimer = null;
+if (searchInput) {
+  searchInput.addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    var val = searchInput.value;
+    searchTimer = setTimeout(function () {
+      searchKeyword = val;
+      renderByFilter();
+    }, 250);
+  });
+  searchInput.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { searchInput.value = ''; searchKeyword = ''; renderByFilter(); }
+  });
+}
+
+document.addEventListener('keydown', function (ev) {
+  if (ev.key === 'Escape') closeModal();
+});
+
+loadMaterials();
+</script>
+</body>
+</html>

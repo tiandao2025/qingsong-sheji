@@ -10,6 +10,23 @@ export async function onRequest({ request, env }) {
     return new Response('Not Found', { status: 404 });
   }
 
+  // 图片请求优先返回 WebP 压缩版：R2 中存在同名 .webp 副本时直接返回
+  // （2026-09 图片加速改造，原图保留在 R2 不动）
+  const imgMatch = key.match(/^(.*)\.(png|jpe?g)$/i);
+  if (imgMatch) {
+    const webpKey = imgMatch[1] + '.webp';
+    const webpObj = await env.IMAGES.get(webpKey);
+    if (webpObj) {
+      const webpHeaders = new Headers();
+      webpObj.writeHttpMetadata(webpHeaders);
+      webpHeaders.set('Cache-Control', 'public, max-age=86400');
+      webpHeaders.set('Access-Control-Allow-Origin', '*');
+      webpHeaders.set('etag', webpObj.httpEtag);
+      webpHeaders.set('Content-Type', 'image/webp');
+      return new Response(webpObj.body, { headers: webpHeaders });
+    }
+  }
+
   try {
     const object = await env.IMAGES.get(key);
     if (object) {

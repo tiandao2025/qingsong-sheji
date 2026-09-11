@@ -159,6 +159,144 @@ function getBuiltinKnowledge() {
 如果客人问的问题知识库里没有覆盖，不要生硬地说"请拨打电话"，而是自然地说"这个我帮您问一下设计师哈，稍等~"或者"这个我不太确定呢，要不您直接打19907444111问一下设计师？他们更专业哈~"`;
 }
 
+// ==================== 官网实时内容知识库模块 ====================
+
+// 序列化站点内容时忽略的纯媒体/链接字段（避免把图片地址、图标等噪音注入上下文）
+const SITE_IGNORE_KEYS = new Set([
+  'img', 'image', 'images', 'icon', 'icons', 'logo', 'avatar',
+  'video', 'video_url', 'cover_image', 'cover', 'file', 'file_url', 'file_name',
+  'url', 'href', 'src', 'link', 'banner', 'bg', 'background'
+]);
+
+/**
+ * 将站点内容 JSON 递归转成可读文本：
+ * - 只取字符串/数字叶子；数组逐项用 "- " 列出
+ * - 纯链接类值（http/https 开头）跳过
+ * - 超长自动截断
+ */
+function jsonToText(obj, maxChars) {
+  const lines = [];
+  let total = 0;
+  function push(prefix, value) {
+    const v = String(value).replace(/\s+/g, ' ').trim();
+    if (!v) return;
+    if (/^(https?:)?\/\//.test(v)) return;
+    const line = prefix + v;
+    total += line.length;
+    if (total > maxChars) return;
+    lines.push(line);
+  }
+  function walk(node, prefix) {
+    if (node == null || total > maxChars) return;
+    if (typeof node === 'string' || typeof node === 'number') {
+      push(prefix, node);
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach((item) => {
+        if (item && typeof item === 'object' && !Array.isArray(item)) {
+          walk(item, prefix);
+        } else if (Array.isArray(item)) {
+          walk(item, prefix);
+        } else {
+          push(prefix + '- ', item);
+        }
+      });
+      return;
+    }
+    if (typeof node === 'object') {
+      Object.keys(node).forEach((k) => {
+        if (SITE_IGNORE_KEYS.has(k)) return;
+        const v = node[k];
+        const childPrefix =
+          ['title', 'name', 'text', 'text1', 'text2', 'desc', 'description', 'subtitle', 'content'].indexOf(k) >= 0
+            ? prefix
+            : prefix + k + '：';
+        if (typeof v === 'string' || typeof v === 'number') {
+          push(childPrefix, v);
+        } else if (Array.isArray(v)) {
+          v.forEach((item) => {
+            if (item && typeof item === 'object' && !Array.isArray(item)) {
+              walk(item, childPrefix);
+            } else if (Array.isArray(item)) {
+              walk(item, childPrefix);
+            } else {
+              push(childPrefix + '- ', item);
+            }
+          });
+        } else if (v && typeof v === 'object') {
+          walk(v, childPrefix);
+        }
+      });
+    }
+  }
+  walk(obj, '');
+  return lines.join('\n').slice(0, maxChars);
+}
+
+/**
+ * 读取 R2 上的 site-content.json（网站后台维护的首页内容）
+ * 作为客服的"官网当前内容"知识库
+ */
+async function getSiteContentKnowledge(env) {
+  if (!env.IMAGES) return '';
+  try {
+    const obj = await env.IMAGES.get('site-content.json');
+    if (!obj) return '';
+    const data = JSON.parse(await obj.text());
+    const text = jsonToText(data, 6000);
+    if (!text) return '';
+    return `\n\n【青松设计官网当前内容（来自网站后台，客人咨询公司/服务/流程等问题时以此为准）】\n${text}`;
+  } catch (e) {
+    console.error('读取站点内容知识库失败:', e.message);
+    return '';
+  }
+}
+
+/**
+ * 查询 D1 cases 表，生成案例速览（仅简介，不取超长正文）
+ */
+async function getCasesKnowledge(env) {
+  if (!env.DB) return '';
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT title, type, location, description FROM cases ORDER BY sort_order DESC, id DESC LIMIT 50'
+    ).all();
+    if (!results || results.length === 0) return '';
+    const parts = results.map((c) => {
+      const meta = [c.type, c.location].filter(Boolean).join('·');
+      const desc = stripHtml(c.description || '').slice(0, 120);
+      return `- ${c.title}${meta ? '（' + meta + '）' : ''}${desc ? '：' + desc : ''}`;
+    });
+    return `\n\n【青松设计已完成案例速览（共 ${results.length} 个，客人咨询做过什么案例/擅长哪类空间时参考）】\n${parts.join('\n')}`;
+  } catch (e) {
+    console.error('读取案例知识库失败:', e.message);
+    return '';
+  }
+}
+
+/**
+ * 查询 D1 blog_posts 表，生成博客文章速览
+ * 客人问具体话题时由下方关键词搜索注入对应文章全文
+ */
+async function getBlogOverviewKnowledge(env) {
+  if (!env.DB) return '';
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT title, excerpt FROM blog_posts ORDER BY created_at DESC LIMIT 80'
+    ).all();
+    if (!results || results.length === 0) return '';
+    const parts = results.map((b) => {
+      const ex = stripHtml(b.excerpt || '').slice(0, 100);
+      return `- ${b.title}${ex ? '：' + ex : ''}`;
+    });
+    return `\n\n【青松设计网站博客文章速览（共 ${results.length} 篇；客人追问某篇文章或某话题细节时，可再结合下方检索到的相关文章全文回答）】\n${parts.join('\n')}`;
+  } catch (e) {
+    console.error('读取博客速览知识库失败:', e.message);
+    return '';
+  }
+}
+
 // ==================== 请求处理 ====================
 
 export async function onRequest({ request, env }) {
@@ -224,6 +362,11 @@ export async function onRequest({ request, env }) {
   // 加载知识库
   const knowledge = loadKnowledge(env);
 
+  // 拉取官网实时内容（站点内容 + 案例速览 + 博客速览）作为知识库补充
+  const siteKnowledge = await getSiteContentKnowledge(env);
+  const casesKnowledge = await getCasesKnowledge(env);
+  const blogOverview = await getBlogOverviewKnowledge(env);
+
   // 如果提供了 blogId，获取当前文章内容
   let currentArticleContext = '';
   if (blogId) {
@@ -241,7 +384,8 @@ export async function onRequest({ request, env }) {
 
   // 构建系统提示词：知识库 + 当前文章 + 相关博客文章
   const systemPrompt =
-    `${knowledge}${currentArticleContext}${blogContext}\n\n请牢记你的角色设定和聊天风格，像真人一样跟客人聊天。回复要简洁自然，控制在150字以内。`;
+    `${knowledge}${siteKnowledge}${casesKnowledge}${blogOverview}${currentArticleContext}${blogContext}\n\n请牢记你的角色设定和聊天风格，像真人一样跟客人聊天。回复要简洁自然，控制在150字以内。
+【回答要求】上面的【青松设计官网当前内容】【已完成案例速览】【相关博客文章】都是真实资料。客人问公司业务、服务项目、设计流程、报价收费、联系方式（电话/微信/邮箱/地址）、做过哪些案例、设计风格等具体问题时，必须优先从这些资料里找准确信息直接回答，能查到的就直接报出来，不要推给"打电话问设计师"，更不要说"没有记录"。只有资料里确实查不到时，才按【遇到不知道的问题】的方式应对。`;
 
   const systemMessage = { role: 'system', content: systemPrompt };
 
