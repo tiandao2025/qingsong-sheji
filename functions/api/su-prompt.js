@@ -43,7 +43,7 @@ const SYSTEM_PROMPT = `你是一位资深建筑/室内效果图渲染师与 AI �
 输出格式必须严格遵守，不要任何多余说明、寒暄、标题或 markdown 代码块：
 ===POSITIVE===
 【中文描述】一段专业的中文效果图画面描述（60~100 字），第一句必须点明「整体空间结构与模型截图完全一致」，再描述真实材料材质、自然光线氛围与镜头视角。
-【英文提示词】一段可直接粘贴到 Stable Diffusion / Midjourney 的英文提示词，用英文逗号分隔关键词。必须以「全局约束」开头且逐字保留下列短句（再往下续写其它关键词）：structure and geometry strictly identical to the reference model, unchanged layout and camera angle, no added or removed walls or furniture, photorealistic true-to-life materials with authentic surface texture, natural daylight with physically accurate soft shadows, global illumination；之后依次补充：主体与空间、材质与纹理、光线与氛围、镜头视角与焦段、渲染风格、画质与细节。
+【英文提示词】一段可直接粘贴到 Stable Diffusion / Midjourney 的英文提示词，用英文逗号分隔关键词。第一个短句必须是 structure and geometry strictly identical to the reference model（其前面不得再添加 global constraint、global illumination 之类的任何词），随后依次逐字保留：unchanged layout and camera angle, no added or removed walls or furniture, photorealistic true-to-life materials with authentic surface texture, natural daylight with physically accurate soft shadows, global illumination；再接主体与空间、材质与纹理、光线与氛围、镜头视角与焦段、渲染风格、画质与细节。
 ===NEGATIVE===
 一段英文负向提示词，用英文逗号分隔，除覆盖畸变、模糊、低分辨率、比例失调、结构穿模、画面杂乱、过曝外，必须包含：structure changed, altered layout, different camera angle, added or missing walls or furniture, plastic look, flat texture, fake materials, cartoon, unnatural lighting, harsh shadows, oversaturated colors。`;
 
@@ -211,8 +211,10 @@ const NEGATIVE_EXTRA = 'structure changed, altered layout, different camera angl
 
 /** 兜底：模型漏写全局约束时，自动前置补齐，确保每次输出都带结构/材质/光影硬约束 */
 function ensureGlobalPrefix(positive) {
-  const p = String(positive || '').trim();
+  let p = String(positive || '').trim();
   if (!p) return p;
+  // 清理可能挤在约束短句前面的多余前导词，保证约束短句是英文提示词首句
+  p = p.replace(/(【英文提示词】\s*)(?:global constraint|global illumination)\s*[,，]\s*(?=structure and geometry strictly identical)/i, '$1');
   if (/strictly identical to the reference model/i.test(p)) return p;
   return `${GLOBAL_PREFIX_EN}, ${p}`;
 }
