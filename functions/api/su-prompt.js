@@ -20,6 +20,11 @@ const ZHIPU_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 
 const SYSTEM_PROMPT = `你是一位资深建筑/室内效果图渲染师与 AI 生图提示词专家，精通 SketchUp、3ds Max 等建模软件与 Stable Diffusion、Midjourney 等 AI 生图工作流。用户会提供 3D 模型截图（SketchUp / 3ds Max 等任意建模软件导出的轴测图、人视图、白模或带材质截图均可）和 / 或自己填写的设计意图与关键词，你的任务是产出可直接用于生成「写实照片级实景效果图」的高质量生图提示词。
 
+【全局约束 · 最高优先级，任何情况下不得违反，必须置于提示词最前面】
+1. 结构与截图完全一致：严格保持模型截图中的建筑结构、空间比例、墙体与门窗洞口、梁柱、家具的位置与数量、镜头视角与构图。严禁增删结构、严禁改变布局、严禁更换视角、严禁凭空添加截图中不存在的空间或物件；效果图与模型截图的关系是「同一方案的照片级表现」，不是重新设计。（若本次未提供截图，则以用户文字描述的结构为准，保证描述内部自洽、不自相矛盾。）
+2. 真实材料材质：所有材料必须呈现真实物理质感——木饰面有真实木纹与导管肌理、石材有天然纹理与反射、金属有真实光泽与高光、玻璃有真实透射与折射、织物有柔软绒面质感等。严禁塑料感、卡通感、平涂色块、纹理糊成一片。
+3. 自然光影：以真实自然光为主（日光、天光、窗光），光影必须符合物理规律——光源方向与截图一致、明暗过渡柔和、阴影方向统一且有虚实变化、有真实的间接光与全局光照、环境光遮蔽自然。除非用户明确要求，否则不使用夸张的人造氛围光、霓虹光或舞台光。
+
 核心要求：
 - 有截图时：先据图判断空间类型、结构关系、材质现状、镜头视角与光线方向，作为画面的事实依据，不得凭空编造截图外的空间结构。
 - 有用户文字输入时：必须完整吸收其设计意图（风格、用途、材质偏好、氛围、配色、重点改造项等），扩展为专业描述并融入提示词，严禁忽略或丢弃用户的输入。
@@ -37,10 +42,10 @@ const SYSTEM_PROMPT = `你是一位资深建筑/室内效果图渲染师与 AI �
 
 输出格式必须严格遵守，不要任何多余说明、寒暄、标题或 markdown 代码块：
 ===POSITIVE===
-【中文描述】一段专业的中文效果图画面描述（60~120 字），点明空间类型、材质、光线氛围与镜头视角。
-【英文提示词】一段可直接粘贴到 Stable Diffusion / Midjourney 的英文提示词，用英文逗号分隔关键词，依次包含：主体与空间、材质与纹理、光线与氛围、镜头视角与焦段、渲染风格、画质与细节。
+【中文描述】一段专业的中文效果图画面描述（60~100 字），第一句必须点明「整体空间结构与模型截图完全一致」，再描述真实材料材质、自然光线氛围与镜头视角。
+【英文提示词】一段可直接粘贴到 Stable Diffusion / Midjourney 的英文提示词，用英文逗号分隔关键词。必须以「全局约束」开头且逐字保留下列短句（再往下续写其它关键词）：structure and geometry strictly identical to the reference model, unchanged layout and camera angle, no added or removed walls or furniture, photorealistic true-to-life materials with authentic surface texture, natural daylight with physically accurate soft shadows, global illumination；之后依次补充：主体与空间、材质与纹理、光线与氛围、镜头视角与焦段、渲染风格、画质与细节。
 ===NEGATIVE===
-一段英文负向提示词，用英文逗号分隔，覆盖畸变、模糊、低分辨率、比例失调、结构穿模、画面杂乱、过曝等问题关键词。`;
+一段英文负向提示词，用英文逗号分隔，除覆盖畸变、模糊、低分辨率、比例失调、结构穿模、画面杂乱、过曝外，必须包含：structure changed, altered layout, different camera angle, added or missing walls or furniture, plastic look, flat texture, fake materials, cartoon, unnatural lighting, harsh shadows, oversaturated colors。`;
 
 /**
  * 依据「有无截图 × 模式」组合任务指令
@@ -49,18 +54,20 @@ const SYSTEM_PROMPT = `你是一位资深建筑/室内效果图渲染师与 AI �
  * - generate + 无图 + 有文本：由文本扩写完整提示词
  * - polish   + 有文本（可带图）：润色补全
  */
+const GLOBAL_CONSTRAINT_NOTE = '\n\n【必须遵守的全局约束】① 生成的画面结构、空间比例、墙体门窗、梁柱、家具位置数量、镜头视角与构图必须与截图完全一致，不得增删改；② 材料材质必须真实（真实木纹、石纹、金属、玻璃、织物物理质感），不得出现塑料感、卡通感、平涂色块；③ 光影必须为真实自然光，符合物理规律、阴影方向统一、过渡柔和、具全局光照，不使用夸张人造光。英文提示词须以全局约束短句开头，负向提示词须包含结构与材质失真类反向词。';
+
 function buildTaskText(mode, hasImage, text) {
   if (mode === 'polish') {
     return hasImage
-      ? `以下是我已有的效果图生图提示词，请结合这张 3D 模型截图（SketchUp / 3ds Max 等建模软件导出均可）对它进行专业化润色、补全与规范化：保留我的核心意图，并据截图补足空间类型、材质与纹理、光线与氛围、镜头视角与焦段、渲染风格、画质细节等要素。\n\n【我的提示词】\n${text}`
-      : `以下是我已有的效果图生图提示词，请对它进行专业化润色、补全与规范化：保留我的核心意图，并补足空间类型、材质与纹理、光线与氛围、镜头视角与焦段、渲染风格、画质细节等要素。\n\n【我的提示词】\n${text}`;
+      ? `以下是我已有的效果图生图提示词，请结合这张 3D 模型截图（SketchUp / 3ds Max 等建模软件导出均可）对它进行专业化润色、补全与规范化：保留我的核心意图，并据截图补足空间类型、材质与纹理、光线与氛围、镜头视角与焦段、渲染风格、画质细节等要素。\n\n【我的提示词】\n${text}${GLOBAL_CONSTRAINT_NOTE}`
+      : `以下是我已有的效果图生图提示词，请对它进行专业化润色、补全与规范化：保留我的核心意图，并补足空间类型、材质与纹理、光线与氛围、镜头视角与焦段、渲染风格、画质细节等要素。\n\n【我的提示词】\n${text}${GLOBAL_CONSTRAINT_NOTE}`;
   }
   if (hasImage) {
     return text
-      ? `请仔细观察这张 3D 模型截图（SketchUp / 3ds Max 等建模软件导出均可），判断空间类型、结构、材质、视角与光线；再结合我下面填写的设计意图与关键词，综合生成一段用于生成写实实景效果图的生图提示词。\n\n【我的设计意图 / 关键词】\n${text}\n\n要求：画面结构、材质与视角以截图为准据；风格、用途、氛围、配色、重点改造项以我的说明为准，两者冲突时以我的说明为准；把我的零散关键词扩展为专业的完整描述。`
-      : `请仔细观察这张 3D 模型截图（SketchUp / 3ds Max 等建模软件导出均可），判断空间类型、材质、结构与视角，生成一段用于生成写实实景效果图的生图提示词。`;
+      ? `请仔细观察这张 3D 模型截图（SketchUp / 3ds Max 等建模软件导出均可），判断空间类型、结构、材质、视角与光线；再结合我下面填写的设计意图与关键词，综合生成一段用于生成写实实景效果图的生图提示词。\n\n【我的设计意图 / 关键词】\n${text}\n\n要求：画面结构、材质与视角以截图为准据；风格、用途、氛围、配色、重点改造项以我的说明为准，两者冲突时以我的说明为准；把我的零散关键词扩展为专业的完整描述。${GLOBAL_CONSTRAINT_NOTE}`
+      : `请仔细观察这张 3D 模型截图（SketchUp / 3ds Max 等建模软件导出均可），判断空间类型、材质、结构与视角，生成一段用于生成写实实景效果图的生图提示词。${GLOBAL_CONSTRAINT_NOTE}`;
   }
-  return `我暂时没有提供模型截图，请根据我下面的设计意图与关键词，扩写成一段完整的、可直接用于生成写实实景效果图的生图提示词，补齐空间类型、材质与纹理、光线与氛围、镜头视角与焦段、渲染风格、画质细节等要素。\n\n【我的设计意图 / 关键词】\n${text}`;
+  return `我暂时没有提供模型截图，请根据我下面的设计意图与关键词，扩写成一段完整的、可直接用于生成写实实景效果图的生图提示词，补齐空间类型、材质与纹理、光线与氛围、镜头视角与焦段、渲染风格、画质细节等要素。\n\n【我的设计意图 / 关键词】\n${text}\n\n【必须遵守的全局约束】① 结构与描述内部自洽；② 材料材质必须真实（真实木纹、石纹、金属、玻璃、织物物理质感），不得出现塑料感、卡通感、平涂色块；③ 光影必须为真实自然光，符合物理规律、阴影方向统一、过渡柔和、具全局光照，不使用夸张人造光。英文提示词须以全局约束短句开头。`;
 }
 
 function json(obj, status = 200) {
@@ -191,7 +198,30 @@ async function handle(request, env) {
   raw = raw.replace(/^```[a-zA-Z]*\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
 
   const parsed = parseResult(raw);
-  return json({ success: true, text: parsed.positive, negative: parsed.negative });
+  const positive = imageDataUrl ? ensureGlobalPrefix(parsed.positive) : parsed.positive;
+  const negative = imageDataUrl ? ensureNegative(parsed.negative) : parsed.negative;
+  return json({ success: true, text: positive, negative });
+}
+
+/** 全局约束英文短句（必须出现在正向提示词最前） */
+const GLOBAL_PREFIX_EN = 'structure and geometry strictly identical to the reference model, unchanged layout and camera angle, no added or removed walls or furniture, photorealistic true-to-life materials with authentic surface texture, natural daylight with physically accurate soft shadows, global illumination';
+
+/** 结构失真 / 材质失真 / 假光影类反向词 */
+const NEGATIVE_EXTRA = 'structure changed, altered layout, different camera angle, added or missing walls or furniture, plastic look, flat texture, fake materials, cartoon, unnatural lighting, harsh shadows, oversaturated colors';
+
+/** 兜底：模型漏写全局约束时，自动前置补齐，确保每次输出都带结构/材质/光影硬约束 */
+function ensureGlobalPrefix(positive) {
+  const p = String(positive || '').trim();
+  if (!p) return p;
+  if (/strictly identical to the reference model/i.test(p)) return p;
+  return `${GLOBAL_PREFIX_EN}, ${p}`;
+}
+
+/** 兜底：负向提示词缺少结构/材质/光影失真反向词时自动补齐 */
+function ensureNegative(negative) {
+  const n = String(negative || '').trim();
+  if (/structure changed/i.test(n)) return n;
+  return n ? `${n}, ${NEGATIVE_EXTRA}` : NEGATIVE_EXTRA;
 }
 
 /** 从模型输出中拆出正向 / 负向提示词 */
@@ -205,7 +235,7 @@ function parseResult(raw) {
     positive = raw.replace(/===\s*NEGATIVE\s*===[\s\S]*$/i, '').replace(/===\s*POSITIVE\s*===/i, '').trim();
   }
   if (!negative) {
-    negative = 'low quality, blurry, distorted, deformed, bad proportions, messy geometry, cluttered, watermark, text, oversaturated, unrealistic lighting, cartoon, low resolution';
+    negative = 'low quality, blurry, distorted, deformed, bad proportions, messy geometry, cluttered, watermark, text, oversaturated, unrealistic lighting, cartoon, low resolution, structure changed, altered layout, different camera angle, added or missing walls or furniture, plastic look, flat texture, fake materials, harsh shadows';
   }
   return { positive, negative };
 }
