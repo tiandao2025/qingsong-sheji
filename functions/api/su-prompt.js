@@ -46,8 +46,17 @@ const SYSTEM_PROMPT = `你是一位有十五年实战经验的资深室内外设
 
 输出格式必须严格遵守，不要任何多余说明、寒暄、标题或 markdown 代码块：
 ===POSITIVE===
-【中文描述】一段专业的中文效果图画面描述（80 至 140 字），第一句必须点明「整体空间结构与模型截图完全一致」，随后依次概括硬装界面做法、材质纹理质感、灯光氛围、软装陈设与镜头视角，用词专业、有设计感。
-【英文提示词】一段可直接粘贴到 Stable Diffusion / Midjourney 的英文提示词，用英文逗号分隔关键词、关键词式表达（不写完整句子、不重复堆砌）。第一个短句必须是 structure and geometry strictly identical to the reference model（其前面不得再添加 global constraint、global illumination 之类的任何词），随后依次逐字保留：unchanged layout and camera angle, no added or removed walls or furniture, photorealistic true-to-life materials with authentic surface texture, natural daylight with physically accurate soft shadows, global illumination；再按下列顺序续写专业关键词：空间与功能定位、风格体系、硬装界面与构造层次、材质纹理与表面处理、光环境与灯具色温、软装陈设与饰品、色彩基调、相机焦段与视角、渲染器质感与出图质量。整段控制在 120 个关键词以内，确保完整收尾不被截断。
+【中文描述】一段专业的中文效果图画面描述（120 至 180 字，用词专业、有设计感），第一句必须点明「整体空间结构与模型截图完全一致」，随后依次写清：硬装界面做法与构造层次、材质纹理与表面处理、光环境与灯具色温、软装陈设与饰品、色彩基调、镜头视角与出图质感。
+【英文提示词】一段可直接粘贴到 Stable Diffusion / Midjourney 的英文提示词，关键词式表达（不写完整句子、不重复堆砌），整段不少于 80 个关键词、不超过 130 个关键词，按下列八段顺序组织，段与段之间用分号分隔，除第一段外每段至少写出 5 个具体关键词：
+第一段（结构约束，必须逐字保留、置于最前，不得增删，其前面不得再出现 global constraint、global illumination 之类的任何词）：structure and geometry strictly identical to the reference model, unchanged layout and camera angle, no added or removed walls or furniture, photorealistic true-to-life materials with authentic surface texture, natural daylight with physically accurate soft shadows, global illumination；
+第二段（空间定位与风格）：建筑或空间类型与功能、设计风格体系、整体气质基调、层高与开间尺度；
+第三段（硬装界面与构造）：该空间实际采用的顶面做法、墙面材料与分缝、地面材料与铺装方式、门窗型材、柜体与收口踢脚做法；
+第四段（材质纹理质感）：逐项写出材料名称加表面处理加纹理特征加物理属性（反射、粗糙度、微观细节）；
+第五段（光环境）：自然光进光方向与时段、窗光投影形状、所用灯具类型与色温数值、三层照明结构、明暗比、柔和阴影、间接光反弹、环境光遮蔽；
+第六段（软装陈设）：该空间实际出现的家具、窗帘、地毯、床品、饰品与绿植；
+第七段（色彩体系）：主色辅色点缀色比例、冷暖色温关系、材质本色与低饱和高级灰的搭配、饰品跳色；
+第八段（相机与出图）：视角类型与人视高度、焦段毫米数、景深与焦点、透视畸变控制、渲染器质感、白平衡与曝光、8K、超精细、清晰锐利、真实反射、光线追踪、无噪点。
+关键要求：每一段都必须写出该空间实际采用的具体材料、做法与参数，严禁把本说明中的分类名称（如材质与色号、窗帘垂坠、渲染质感、相机与出图之类）原样直译搬进提示词，严禁出现 furniture style、material color、rendering quality 这类空泛无信息量的词。确保最后一段完整收尾，不得因超长而截断。
 ===NEGATIVE===
 一段英文负向提示词，用英文逗号分隔，除覆盖畸变、模糊、低分辨率、比例失调、结构穿模、画面杂乱、过曝、死黑、噪点外，必须包含：structure changed, altered layout, different camera angle, added or missing walls or furniture, plastic look, flat texture, fake materials, cartoon, unnatural lighting, harsh shadows, oversaturated colors, bad UV mapping, stretched textures, visible tiling seams, blown highlights, flat ambient light。`;
 
@@ -58,7 +67,7 @@ const SYSTEM_PROMPT = `你是一位有十五年实战经验的资深室内外设
  * - generate + 无图 + 有文本：由文本扩写完整提示词
  * - polish   + 有文本（可带图）：润色补全
  */
-const GLOBAL_CONSTRAINT_NOTE = '\n\n【必须遵守的全局约束】① 生成的画面结构、空间比例、墙体门窗、梁柱、家具位置数量、镜头视角与构图必须与截图完全一致，不得增删改；② 材料材质必须真实（真实木纹、石纹、金属、玻璃、织物物理质感），不得出现塑料感、卡通感、平涂色块；③ 光影必须为真实自然光，符合物理规律、阴影方向统一、过渡柔和、具全局光照，不使用夸张人造光。英文提示词须以全局约束短句开头，负向提示词须包含结构与材质失真类反向词。';
+const GLOBAL_CONSTRAINT_NOTE = '\n\n【必须遵守的全局约束】① 生成的画面结构、空间比例、墙体门窗、梁柱、家具位置数量、镜头视角与构图必须与截图完全一致，不得增删改；② 材料材质必须真实（真实木纹、石纹、金属、玻璃、织物物理质感），不得出现塑料感、卡通感、平涂色块；③ 光影必须为真实自然光，符合物理规律、阴影方向统一、过渡柔和、具全局光照，不使用夸张人造光。英文提示词须以全局约束短句开头，负向提示词须包含结构与材质失真类反向词。英文提示词按八段组织：① 结构约束短句 ② 空间定位与风格 ③ 硬装界面与构造 ④ 材质纹理与表面处理 ⑤ 光环境与灯具色温 ⑥ 软装陈设 ⑦ 色彩体系 ⑧ 相机与出图质感，除第一段外每段至少 5 个具体关键词，全段不少于 80 个关键词；必须完整输出 ===POSITIVE=== 与 ===NEGATIVE=== 两段，不得只输出其中一段，不得添加 markdown 代码块或其他标题。';
 
 function buildTaskText(mode, hasImage, text) {
   if (mode === 'polish') {
@@ -71,7 +80,7 @@ function buildTaskText(mode, hasImage, text) {
       ? `请仔细观察这张 3D 模型截图（SketchUp / 3ds Max 等建模软件导出均可），判断空间类型、结构、材质、视角与光线；再结合我下面填写的设计意图与关键词，综合生成一段用于生成写实实景效果图的生图提示词。\n\n【我的设计意图 / 关键词】\n${text}\n\n要求：画面结构、材质与视角以截图为准据；风格、用途、氛围、配色、重点改造项以我的说明为准，两者冲突时以我的说明为准；把我的零散关键词扩展为专业的完整描述。${GLOBAL_CONSTRAINT_NOTE}`
       : `请仔细观察这张 3D 模型截图（SketchUp / 3ds Max 等建模软件导出均可），判断空间类型、材质、结构与视角，生成一段用于生成写实实景效果图的生图提示词。${GLOBAL_CONSTRAINT_NOTE}`;
   }
-  return `我暂时没有提供模型截图，请根据我下面的设计意图与关键词，扩写成一段完整的、可直接用于生成写实实景效果图的生图提示词，补齐空间类型、材质与纹理、光线与氛围、镜头视角与焦段、渲染风格、画质细节等要素。\n\n【我的设计意图 / 关键词】\n${text}\n\n【必须遵守的全局约束】① 结构与描述内部自洽；② 材料材质必须真实（真实木纹、石纹、金属、玻璃、织物物理质感），不得出现塑料感、卡通感、平涂色块；③ 光影必须为真实自然光，符合物理规律、阴影方向统一、过渡柔和、具全局光照，不使用夸张人造光。英文提示词须以全局约束短句开头。`;
+  return `我暂时没有提供模型截图，请根据我下面的设计意图与关键词，扩写成一段完整的、可直接用于生成写实实景效果图的生图提示词，补齐空间类型、材质与纹理、光线与氛围、镜头视角与焦段、渲染风格、画质细节等要素。\n\n【我的设计意图 / 关键词】\n${text}\n\n【必须遵守的全局约束】① 结构与描述内部自洽；② 材料材质必须真实（真实木纹、石纹、金属、玻璃、织物物理质感），不得出现塑料感、卡通感、平涂色块；③ 光影必须为真实自然光，符合物理规律、阴影方向统一、过渡柔和、具全局光照，不使用夸张人造光。英文提示词须以结构内部自洽的约束短句开头（本次没有截图，不得写「与截图一致」之类表述）；必须完整输出 ===POSITIVE=== 与 ===NEGATIVE=== 两段，不得只输出其中一段，不得添加 markdown 代码块或其他标题；英文提示词不少于 80 个关键词，覆盖空间风格、硬装构造、材质纹理、光环境、软装陈设、色彩体系、相机与出图质感。`;
 }
 
 function json(obj, status = 200) {
@@ -173,7 +182,7 @@ async function handle(request, env) {
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userContent }
         ],
-        temperature: 0.7,
+        temperature: 0.55,
         max_tokens: 1024
       })
     });
@@ -202,7 +211,7 @@ async function handle(request, env) {
   raw = raw.replace(/^```[a-zA-Z]*\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
 
   const parsed = parseResult(raw);
-  const positive = imageDataUrl ? ensureGlobalPrefix(parsed.positive) : parsed.positive;
+  const positive = ensureGlobalPrefix(parsed.positive, !!imageDataUrl);
   const negative = ensureNegative(parsed.negative);
   return json({ success: true, text: positive, negative });
 }
@@ -220,14 +229,38 @@ const NEGATIVE_ITEMS = [
 ];
 const NEGATIVE_EXTRA = NEGATIVE_ITEMS.join(', ');
 
-/** 兜底：模型漏写全局约束时，自动前置补齐，确保每次输出都带结构/材质/光影硬约束 */
-function ensureGlobalPrefix(positive) {
+/** 无截图时的全局约束英文短句（结构内部自洽版） */
+const GLOBAL_PREFIX_EN_TEXT = 'structure and geometry internally consistent with the description, real materials with authentic surface texture, natural daylight with physically accurate soft shadows, global illumination';
+
+/** 兜底：强制把全局约束短句归位到英文提示词最前，并清掉错位/重复的约束段与多余前导词 */
+function ensureGlobalPrefix(positive, hasImage) {
   let p = String(positive || '').trim();
   if (!p) return p;
-  // 清理可能挤在约束短句前面的多余前导词，保证约束短句是英文提示词首句
-  p = p.replace(/(【英文提示词】\s*)(?:global constraint|global illumination)\s*[,，]\s*(?=structure and geometry strictly identical)/i, '$1');
-  if (/strictly identical to the reference model/i.test(p)) return p;
-  return `${GLOBAL_PREFIX_EN}, ${p}`;
+  const std = hasImage ? GLOBAL_PREFIX_EN : GLOBAL_PREFIX_EN_TEXT;
+  const tag = '【英文提示词】';
+  const i = p.indexOf(tag);
+  if (i < 0) return p;
+  const head = p.slice(0, i + tag.length);
+  let body = p.slice(i + tag.length).replace(/^[\s:：]*/, '');
+  // 清掉挤在正文开头的 global constraint / global illumination 等前导词
+  body = body.replace(/^(?:global constraint|global illumination)\s*[,，]\s*/i, '');
+  // 移除正文中已存在（可能错位或残缺）的约束段，统一由标准约束短句前置
+  const reIdentical = /structure and geometry strictly identical to the reference model[\s\S]{0,600}?global illumination/i;
+  const reConsistent = /structure and geometry internally consistent[^;；\n]{0,200}?global illumination/i;
+  if (reIdentical.test(body)) body = body.replace(reIdentical, '');
+  if (reConsistent.test(body)) body = body.replace(reConsistent, '');
+  // 本次未提供截图时，清掉任何「与截图一致」类表述（模型可能误留有图版约束）
+  if (!hasImage) {
+    body = body.replace(/structure and geometry strictly identical to the reference model[^;；\n]{0,300}/gi, '');
+    body = body.replace(/no added or removed walls or furniture[^;；\n]{0,200}/gi, '');
+  }
+  // 清掉误混进正向提示词的负向词
+  const negStart = body.search(/(?:^|[,;；\s])(?:no\s+)?structure changed\s*,\s*(?:altered layout|different camera angle)/i);
+  if (negStart >= 0) body = body.slice(0, negStart);
+  // 去掉空段与重复分隔符
+  body = body.replace(/[;；]\s*[;；]/g, '; ').replace(/[,，]\s*[,，]/g, ', ');
+  body = body.replace(/^[\s,，;；、]+/, '').replace(/[\s,，;；、]+$/, '');
+  return `${head}${std}${body ? ', ' + body : ''}`;
 }
 
 /** 兜底：负向提示词缺少结构/材质/光影/纹理失真反向词时逐项补齐 */
@@ -241,6 +274,10 @@ function ensureNegative(negative) {
 
 /** 从模型输出中拆出正向 / 负向提示词 */
 function parseResult(raw) {
+  // 归一化模型可能输出的标题变体（### POSITIVE / **NEGATIVE** / POSITIVE: 等）
+  raw = String(raw)
+    .replace(/^[ \t>*#_=-]*(POSITIVE)[ \t>*#_=-]*[:：]?[ \t]*$/gim, '===POSITIVE===')
+    .replace(/^[ \t>*#_=-]*(NEGATIVE)[ \t>*#_=-]*[:：]?[ \t]*$/gim, '===NEGATIVE===');
   const posMatch = raw.match(/===\s*POSITIVE\s*===([\s\S]*?)(?====\s*NEGATIVE\s*===|$)/i);
   const negMatch = raw.match(/===\s*NEGATIVE\s*===([\s\S]*)$/i);
   let positive = posMatch ? posMatch[1].trim() : '';
