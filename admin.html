@@ -712,7 +712,29 @@ async function api(url, options) {
   const headers = { 'Content-Type': 'application/json', 'x-admin-key': authToken };
   if (options.headers) Object.assign(headers, options.headers);
   const res = await fetch(url, { method: options.method || 'GET', body: options.body, headers: headers });
-  return res.json();
+  // 先校验响应状态与类型，避免 503/401 返回纯文本时 res.json() 抛 "Unexpected token '<'"
+  const ct = (res.headers.get('Content-Type') || '').toLowerCase();
+  if (!res.ok) {
+    if (res.status === 401) { return { error: '未授权，请重新登录' }; }
+    let detail = '';
+    try {
+      if (ct.indexOf('application/json') !== -1) {
+        const j = await res.json();
+        detail = (j && j.error) || '';
+      } else {
+        detail = (await res.text() || '').slice(0, 120);
+      }
+    } catch (e) {}
+    return { error: '请求失败 (HTTP ' + res.status + ')' + (detail ? ': ' + detail : '') };
+  }
+  if (ct.indexOf('application/json') === -1) {
+    return { error: '响应格式异常，请稍后重试' };
+  }
+  try {
+    return await res.json();
+  } catch (e) {
+    return { error: '数据解析失败，请稍后重试' };
+  }
 }
 
 function showToast(msg, type) {
@@ -2654,7 +2676,7 @@ async function loadStats(dateStr) {
     var apiUrl = '/api/admin-stats';
     if (dateStr) apiUrl += '?date=' + encodeURIComponent(dateStr);
     var res = await api(apiUrl);
-    if (res.error) return;
+    if (res.error) { showToast(res.error, 'error'); return; }
     var d = res.data || {};
     var labels = (d.dailyTrend || []).map(function(item) { return item.date.substring(5); });
     var values = (d.dailyTrend || []).map(function(item) { return item.pv; });

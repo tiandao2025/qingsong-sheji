@@ -156,7 +156,7 @@ async function trackPageView(env, page, referrer, visitorId, duration, cf, isExi
 export async function onRequest(context) {
   const { request, env } = context;
   const headers = {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-admin-key'
@@ -188,6 +188,22 @@ export async function onRequest(context) {
 
       const url = new URL(request.url);
       const queryDate = url.searchParams.get('date') || null;
+
+      // 响应级缓存：同一 date 参数 60 秒内直接复用，避免重复读 R2 导致 1102 超限
+      const cache = (typeof caches !== 'undefined' && caches.default) ? caches.default : null;
+      const cacheKey = new Request(
+        'https://admin-stats.internal/cache?date=' + (queryDate || 'all'),
+        { method: 'GET' }
+      );
+      if (cache) {
+        try {
+          const hit = await cache.match(cacheKey);
+          if (hit) {
+            return new Response(hit.body, { status: 200, headers });
+          }
+        } catch (e) {}
+      }
+
       const stats = await getStats(env);
       const today = cnDateStr();
 
@@ -271,36 +287,53 @@ export async function onRequest(context) {
         : 0;
       const totalDuration = stats.totalDuration || 0;
 
+      // ===== 统一读取地理明细：请求内按日期缓存 + 一次性并发拉取，消除重复读 R2 =====
+      const geoCache = new Map();
+      const readGeoList = async (dk) => {
+        if (geoCache.has(dk)) return geoCache.get(dk);
+        let list = null;
+        try {
+          const obj = await env.IMAGES.get(GEO_KEY_PREFIX + dk);
+          if (obj) {
+            const parsed = JSON.parse(await obj.text());
+            if (Array.isArray(parsed)) list = parsed;
+          }
+        } catch (e) {}
+        geoCache.set(dk, list);
+        return list;
+      };
+
+      // 需要统计的日期集合：指定日期时仅该日，否则近 30 天（含今日）
+      const dayKeys = [];
+      if (queryDate) {
+        dayKeys.push(queryDate);
+      } else {
+        for (let i = 0; i < 30; i++) {
+          dayKeys.push(cnDateStr(new Date(Date.now() - i * 86400000)));
+        }
+      }
+      const uniqueKeys = [...new Set(dayKeys)];
+
+      // 去重后并发读取（最多 30 次 R2 get），后续所有统计全部复用缓存
+      await Promise.all(uniqueKeys.map(readGeoList));
+
       // 停留时长：有 date 参数时只取该日，否则今日 + 近 7 天平均
       let todayAvg = 0;
       let weeklyAvg = 0;
       try {
-        if (queryDate) {
-          const geoObj = await env.IMAGES.get(GEO_KEY_PREFIX + queryDate);
-          if (geoObj) {
-            const geoList = JSON.parse(await geoObj.text());
-            const durs = geoList.filter(g => g.duration > 0);
-            if (durs.length > 0) {
-              todayAvg = Math.round(durs.reduce((s, g) => s + g.duration, 0) / durs.length);
-            }
+        const targetList = await readGeoList(queryDate || today);
+        if (targetList) {
+          const durs = targetList.filter(g => g.duration > 0);
+          if (durs.length > 0) {
+            todayAvg = Math.round(durs.reduce((s, g) => s + g.duration, 0) / durs.length);
           }
-        } else {
-          const todayGeoKey = GEO_KEY_PREFIX + today;
-          const todayGeoObj = await env.IMAGES.get(todayGeoKey);
-          if (todayGeoObj) {
-            const todayGeoList = JSON.parse(await todayGeoObj.text());
-            const todayDurs = todayGeoList.filter(g => g.duration > 0);
-            if (todayDurs.length > 0) {
-              todayAvg = Math.round(todayDurs.reduce((s, g) => s + g.duration, 0) / todayDurs.length);
-            }
-          }
-
+        }
+        if (!queryDate) {
           const weeklyDurs = [];
           for (let i = 0; i < 7; i++) {
             const dk = cnDateStr(new Date(Date.now() - i * 86400000));
-            const geoObj = await env.IMAGES.get(GEO_KEY_PREFIX + dk);
-            if (geoObj) {
-              const geoList = JSON.parse(await geoObj.text());
+            const geoList = await readGeoList(dk);
+            if (geoList) {
               geoList.filter(g => g.duration > 0).forEach(g => weeklyDurs.push(g.duration));
             }
           }
@@ -310,41 +343,22 @@ export async function onRequest(context) {
         }
       } catch (e) {}
 
-      // 地理分布：有 date 参数时只取该日，否则近 30 天聚合
+      // 地理分布：复用缓存（指定日期时仅该日，否则近 30 天聚合）
       const geoDistribution = [];
       try {
         const regionMap = {};
-        if (queryDate) {
-          const geoObj = await env.IMAGES.get(GEO_KEY_PREFIX + queryDate);
-          if (geoObj) {
-            const geoList = JSON.parse(await geoObj.text());
-            geoList.forEach(g => {
-              const r = g.region || '未知';
-              const c = g.city || '未知';
-              if (!regionMap[r]) {
-                regionMap[r] = { count: 0, cities: {} };
-              }
-              regionMap[r].count++;
-              regionMap[r].cities[c] = (regionMap[r].cities[c] || 0) + 1;
-            });
+        const addGeo = (g) => {
+          const r = g.region || '未知';
+          const c = g.city || '未知';
+          if (!regionMap[r]) {
+            regionMap[r] = { count: 0, cities: {} };
           }
-        } else {
-          for (let i = 0; i < 30; i++) {
-            const dk = cnDateStr(new Date(Date.now() - i * 86400000));
-            const geoObj = await env.IMAGES.get(GEO_KEY_PREFIX + dk);
-            if (geoObj) {
-              const geoList = JSON.parse(await geoObj.text());
-              geoList.forEach(g => {
-                const r = g.region || '未知';
-                const c = g.city || '未知';
-                if (!regionMap[r]) {
-                  regionMap[r] = { count: 0, cities: {} };
-                }
-                regionMap[r].count++;
-                regionMap[r].cities[c] = (regionMap[r].cities[c] || 0) + 1;
-              });
-            }
-          }
+          regionMap[r].count++;
+          regionMap[r].cities[c] = (regionMap[r].cities[c] || 0) + 1;
+        };
+        for (const dk of uniqueKeys) {
+          const geoList = await readGeoList(dk);
+          if (geoList) geoList.forEach(addGeo);
         }
         for (const [region, data] of Object.entries(regionMap)) {
           const cities = Object.entries(data.cities)
@@ -355,23 +369,14 @@ export async function onRequest(context) {
         geoDistribution.sort((a, b) => b.count - a.count);
       } catch (e) {}
 
-      // 访问时段分布（24 小时）：有 date 参数时只取该日，否则近 30 天
+      // 访问时段分布（24 小时）与国家级分布：复用缓存
       const hourlyStats = Array(24).fill(0);
       const countryStats = [];
       try {
         const countryMap = {};
-        const collectDays = [];
-        if (queryDate) {
-          collectDays.push(queryDate);
-        } else {
-          for (let i = 0; i < 30; i++) {
-            collectDays.push(cnDateStr(new Date(Date.now() - i * 86400000)));
-          }
-        }
-        for (const dk of collectDays) {
-          const geoObj = await env.IMAGES.get(GEO_KEY_PREFIX + dk);
-          if (!geoObj) continue;
-          const geoList = JSON.parse(await geoObj.text());
+        for (const dk of uniqueKeys) {
+          const geoList = await readGeoList(dk);
+          if (!geoList) continue;
           geoList.forEach(g => {
             if (g.time) {
               const h = parseInt(g.time.substring(11, 13), 10);
@@ -387,7 +392,7 @@ export async function onRequest(context) {
         countryStats.sort((a, b) => b.count - a.count);
       } catch (e) {}
 
-      return new Response(JSON.stringify({
+      const payload = JSON.stringify({
         success: true,
         data: {
           overview: {
@@ -411,7 +416,27 @@ export async function onRequest(context) {
             weeklyAvg
           }
         }
-      }), { headers });
+      });
+
+      // 写入边缘缓存（60s），同一 date 参数的后续请求直接命中，避免重复计算与读 R2
+      if (cache) {
+        try {
+          const cacheResp = new Response(payload, {
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Cache-Control': 'max-age=60'
+            }
+          });
+          const putPromise = cache.put(cacheKey, cacheResp);
+          if (typeof context.waitUntil === 'function') {
+            context.waitUntil(putPromise);
+          } else {
+            await putPromise;
+          }
+        } catch (e) {}
+      }
+
+      return new Response(payload, { headers });
     }
 
     return new Response(JSON.stringify({ error: '不支持的请求方法' }), { status: 405, headers });
