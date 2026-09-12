@@ -281,7 +281,8 @@ function ensureGlobalPrefix(positive, hasImage) {
   if (reConsistent.test(body)) body = body.replace(reConsistent, '');
   // 本次未提供截图时，清掉任何「与截图一致」类表述（模型可能误留有图版约束）
   if (!hasImage) {
-    body = body.replace(/structure and geometry strictly identical to the reference model[^;；]{0,300}/gi, '');
+    body = body.replace(/,?\s*structure and geometry (?:strictly )?identical (?:with|to) the reference model[^;；]{0,300}/gi, '');
+    body = body.replace(/[^;；,，]{0,40}(?:strictly )?identical (?:with|to) the reference model[^;；,，]{0,80}/gi, '');
     body = body.replace(/no added or removed walls or furniture[^;；]{0,200}/gi, '');
   }
   // 清掉误混进正向提示词的负向词
