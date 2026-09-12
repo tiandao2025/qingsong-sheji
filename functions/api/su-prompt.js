@@ -210,8 +210,9 @@ async function handle(request, env) {
   // 去掉可能的 markdown 代码块包裹
   raw = raw.replace(/^```[a-zA-Z]*\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
 
-  // 英文设计描述过短（不足 30 词）时自动重试一次，取更完整的一份
-  if (englishWordCount(raw) < 30) {
+  // 英文设计描述过短时最多重试两次，取最完整的一份
+  let bestWords = englishWordCount(raw);
+  for (let attempt = 0; attempt < 2 && bestWords < 60; attempt++) {
     try {
       const retryResp = await fetch(ZHIPU_URL, {
         method: 'POST',
@@ -225,7 +226,7 @@ async function handle(request, env) {
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: userContent }
           ],
-          temperature: 0.6,
+          temperature: 0.6 + attempt * 0.05,
           max_tokens: 1024
         })
       });
@@ -233,10 +234,14 @@ async function handle(request, env) {
         const rd = await retryResp.json();
         let r2 = String((rd.choices && rd.choices[0] && rd.choices[0].message && rd.choices[0].message.content) || '');
         r2 = r2.replace(/^```[a-zA-Z]*\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
-        if (englishWordCount(r2) > englishWordCount(raw)) raw = r2;
+        const w2 = englishWordCount(r2);
+        if (w2 > bestWords) {
+          raw = r2;
+          bestWords = w2;
+        }
       }
     } catch (err) {
-      // 重试失败时沿用首次结果
+      // 重试失败时沿用已有结果
     }
   }
 
@@ -281,8 +286,9 @@ function ensureGlobalPrefix(positive, hasImage) {
   if (reConsistent.test(body)) body = body.replace(reConsistent, '');
   // 本次未提供截图时，清掉任何「与截图一致」类表述（模型可能误留有图版约束）
   if (!hasImage) {
+    // 片段级清除：无图时任何提及参考图/截图的片段都不允许出现
+    body = body.replace(/[^,;；]*\b(?:reference model|the screenshot|the image|as shown)\b[^,;；]*[,;；]?/gi, '');
     body = body.replace(/,?\s*structure and geometry (?:strictly )?identical (?:with|to) the reference model[^;；]{0,300}/gi, '');
-    body = body.replace(/[^;；,，]{0,40}(?:strictly )?identical (?:with|to) the reference model[^;；,，]{0,80}/gi, '');
     body = body.replace(/no added or removed walls or furniture[^;；]{0,200}/gi, '');
   }
   // 清掉误混进正向提示词的负向词
