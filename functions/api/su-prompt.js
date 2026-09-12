@@ -203,15 +203,22 @@ async function handle(request, env) {
 
   const parsed = parseResult(raw);
   const positive = imageDataUrl ? ensureGlobalPrefix(parsed.positive) : parsed.positive;
-  const negative = imageDataUrl ? ensureNegative(parsed.negative) : parsed.negative;
+  const negative = ensureNegative(parsed.negative);
   return json({ success: true, text: positive, negative });
 }
 
 /** 全局约束英文短句（必须出现在正向提示词最前） */
 const GLOBAL_PREFIX_EN = 'structure and geometry strictly identical to the reference model, unchanged layout and camera angle, no added or removed walls or furniture, photorealistic true-to-life materials with authentic surface texture, natural daylight with physically accurate soft shadows, global illumination';
 
-/** 结构失真 / 材质失真 / 假光影类反向词 */
-const NEGATIVE_EXTRA = 'structure changed, altered layout, different camera angle, added or missing walls or furniture, plastic look, flat texture, fake materials, cartoon, unnatural lighting, harsh shadows, oversaturated colors';
+/** 结构失真 / 材质失真 / 假光影 / 纹理瑕疵类反向词（逐项兜底） */
+const NEGATIVE_ITEMS = [
+  'structure changed', 'altered layout', 'different camera angle',
+  'added or missing walls or furniture', 'plastic look', 'flat texture',
+  'fake materials', 'cartoon', 'unnatural lighting', 'harsh shadows',
+  'oversaturated colors', 'bad UV mapping', 'stretched textures',
+  'visible tiling seams', 'blown highlights', 'flat ambient light',
+];
+const NEGATIVE_EXTRA = NEGATIVE_ITEMS.join(', ');
 
 /** 兜底：模型漏写全局约束时，自动前置补齐，确保每次输出都带结构/材质/光影硬约束 */
 function ensureGlobalPrefix(positive) {
@@ -223,11 +230,13 @@ function ensureGlobalPrefix(positive) {
   return `${GLOBAL_PREFIX_EN}, ${p}`;
 }
 
-/** 兜底：负向提示词缺少结构/材质/光影失真反向词时自动补齐 */
+/** 兜底：负向提示词缺少结构/材质/光影/纹理失真反向词时逐项补齐 */
 function ensureNegative(negative) {
   const n = String(negative || '').trim();
-  if (/structure changed/i.test(n)) return n;
-  return n ? `${n}, ${NEGATIVE_EXTRA}` : NEGATIVE_EXTRA;
+  const lower = n.toLowerCase();
+  const missing = NEGATIVE_ITEMS.filter((k) => !lower.includes(k.toLowerCase()));
+  if (!missing.length) return n;
+  return n ? `${n}, ${missing.join(', ')}` : missing.join(', ');
 }
 
 /** 从模型输出中拆出正向 / 负向提示词 */
@@ -241,7 +250,7 @@ function parseResult(raw) {
     positive = raw.replace(/===\s*NEGATIVE\s*===[\s\S]*$/i, '').replace(/===\s*POSITIVE\s*===/i, '').trim();
   }
   if (!negative) {
-    negative = 'low quality, blurry, distorted, deformed, bad proportions, messy geometry, cluttered, watermark, text, oversaturated, unrealistic lighting, cartoon, low resolution, structure changed, altered layout, different camera angle, added or missing walls or furniture, plastic look, flat texture, fake materials, harsh shadows';
+    negative = `low quality, blurry, distorted, deformed, bad proportions, messy geometry, cluttered, watermark, text, low resolution, ${NEGATIVE_EXTRA}`;
   }
   return { positive, negative };
 }
