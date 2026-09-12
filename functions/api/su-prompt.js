@@ -210,6 +210,36 @@ async function handle(request, env) {
   // 去掉可能的 markdown 代码块包裹
   raw = raw.replace(/^```[a-zA-Z]*\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
 
+  // 英文设计描述过短（不足 30 词）时自动重试一次，取更完整的一份
+  if (englishWordCount(raw) < 30) {
+    try {
+      const retryResp = await fetch(ZHIPU_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: userContent }
+          ],
+          temperature: 0.6,
+          max_tokens: 1024
+        })
+      });
+      if (retryResp.ok) {
+        const rd = await retryResp.json();
+        let r2 = String((rd.choices && rd.choices[0] && rd.choices[0].message && rd.choices[0].message.content) || '');
+        r2 = r2.replace(/^```[a-zA-Z]*\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+        if (englishWordCount(r2) > englishWordCount(raw)) raw = r2;
+      }
+    } catch (err) {
+      // 重试失败时沿用首次结果
+    }
+  }
+
   const parsed = parseResult(raw);
   const positive = ensureGlobalPrefix(parsed.positive, !!imageDataUrl);
   const negative = ensureNegative(parsed.negative);
@@ -251,8 +281,8 @@ function ensureGlobalPrefix(positive, hasImage) {
   if (reConsistent.test(body)) body = body.replace(reConsistent, '');
   // 本次未提供截图时，清掉任何「与截图一致」类表述（模型可能误留有图版约束）
   if (!hasImage) {
-    body = body.replace(/structure and geometry strictly identical to the reference model[^;；\n]{0,300}/gi, '');
-    body = body.replace(/no added or removed walls or furniture[^;；\n]{0,200}/gi, '');
+    body = body.replace(/structure and geometry strictly identical to the reference model[^;；]{0,300}/gi, '');
+    body = body.replace(/no added or removed walls or furniture[^;；]{0,200}/gi, '');
   }
   // 清掉误混进正向提示词的负向词
   const negStart = body.search(/(?:^|[,;；\s])(?:no\s+)?structure changed\s*,\s*(?:altered layout|different camera angle)/i);
@@ -270,6 +300,18 @@ function ensureNegative(negative) {
   const missing = NEGATIVE_ITEMS.filter((k) => !lower.includes(k.toLowerCase()));
   if (!missing.length) return n;
   return n ? `${n}, ${missing.join(', ')}` : missing.join(', ');
+}
+
+/** 统计英文提示词正文（不含约束短句之前的中文）词数，用于判断输出是否过短 */
+function englishWordCount(raw) {
+  const t = String(raw || '');
+  const i = t.indexOf('【英文提示词】');
+  let seg = i >= 0 ? t.slice(i + 6) : t;
+  seg = seg.split(/===\s*NEGATIVE\s*===/i)[0];
+  // 先剔除约束短句本身，只统计真正的设计描述正文
+  seg = seg.replace(/structure and geometry (?:strictly identical to the reference model|internally consistent)[\s\S]{0,400}?global illumination/gi, '');
+  seg = seg.replace(/structure and geometry strictly identical to the reference model[^;；]{0,300}/gi, '');
+  return seg.split(/[\s,;；]+/).filter((x) => x.length > 2).length;
 }
 
 /** 从模型输出中拆出正向 / 负向提示词 */
