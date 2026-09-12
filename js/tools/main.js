@@ -334,19 +334,25 @@
   }
 
   async function suRun(mode, btn) {
-    if (!requireSrc()) return;
     const textEl = $('#su-input');
     const text = textEl ? textEl.value.trim() : '';
+    const hasImg = !!(currentSrc && currentSrc.canvas && currentSrc.canvas.width);
     if (mode === 'polish' && !text) {
       setStatus('请先在左侧填写需要润色的提示词');
       return;
     }
-    let imageB64;
-    try {
-      imageB64 = suPrepareB64(currentSrc.canvas);
-    } catch (e) {
-      setStatus('图片压缩失败：' + e.message);
+    if (!hasImg && !text) {
+      setStatus('请上传 SU / 3ds Max 模型截图，或先填写设计意图关键词');
       return;
+    }
+    let imageB64;
+    if (hasImg) {
+      try {
+        imageB64 = suPrepareB64(currentSrc.canvas);
+      } catch (e) {
+        setStatus('图片压缩失败：' + e.message);
+        return;
+      }
     }
     suBusy(true, btn);
     setStatus('AI 正在' + (mode === 'polish' ? '润色' : '生成') + '提示词，约 5~20 秒…');
