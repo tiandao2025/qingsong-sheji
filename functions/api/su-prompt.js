@@ -4,7 +4,9 @@
  * 使用智谱 GLM-4V-Flash（视觉）或 GLM-4-Flash（纯文本）
  *
  * 入参 JSON:
- *   { image_b64?: string, text?: string, mode?: 'generate' | 'polish' }
+ *   { img?: string, text?: string, mode?: 'generate' | 'polish' }
+ *   注：图片字段名用 img（qingsong.ggff.net 域名层对 image_b64 字段会边缘拦截 502），
+ *       同时兼容旧字段 image_b64。
  * 出参 JSON:
  *   { success: true, text: '正向提示词', negative: '负向提示词' }
  *   { success: false, error: '...' }
@@ -83,7 +85,9 @@ async function handle(request, env) {
 
   const mode = body.mode === 'polish' ? 'polish' : 'generate';
   const text = typeof body.text === 'string' ? body.text.trim() : '';
-  const rawImage = typeof body.image_b64 === 'string' ? body.image_b64.trim() : '';
+  const rawImage = typeof body.img === 'string'
+    ? body.img.trim()
+    : (typeof body.image_b64 === 'string' ? body.image_b64.trim() : '');
 
   // 规范化图片为 data URL，并做 2MB 体积校验
   let imageDataUrl = '';
@@ -101,7 +105,7 @@ async function handle(request, env) {
   }
 
   if (!imageDataUrl && !text) {
-    return json({ success: false, error: '请提供 SketchUp 截图（image_b64）或已有提示词（text）' }, 400);
+    return json({ success: false, error: '请提供 SketchUp 截图（img）或已有提示词（text）' }, 400);
   }
 
   const taskText = mode === 'polish'
@@ -132,7 +136,7 @@ async function handle(request, env) {
           { role: 'user', content: userContent }
         ],
         temperature: 0.7,
-        max_tokens: 1500
+        max_tokens: 1024
       })
     });
   } catch (err) {

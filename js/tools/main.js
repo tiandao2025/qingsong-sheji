@@ -354,12 +354,12 @@
       const resp = await fetch('/api/su-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_b64: imageB64, text: text || undefined, mode })
+        body: JSON.stringify({ img: imageB64, text: text || undefined, mode })
       });
       let data = null;
       try { data = await resp.json(); } catch (_) {}
       if (!resp.ok || !data || !data.success) {
-        throw new Error((data && data.error) || ('HTTP ' + resp.status));
+        throw new Error((data && data.error) || ('服务暂时不可用（HTTP ' + resp.status + '），请稍后重试'));
       }
       const posEl = $('#su-result-pos');
       const negEl = $('#su-result-neg');
