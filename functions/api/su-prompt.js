@@ -288,6 +288,7 @@ function ensureGlobalPrefix(positive, hasImage) {
   if (!hasImage) {
     // 片段级清除：无图时任何提及参考图/截图的片段都不允许出现
     body = body.replace(/[^,;；]*\b(?:reference model|the screenshot|the image|as shown)\b[^,;；]*[,;；]?/gi, '');
+    body = body.replace(/[^,;；]*\bstructure internally consistent\b[^,;；]*[,;；]?/gi, '');
     body = body.replace(/,?\s*structure and geometry (?:strictly )?identical (?:with|to) the reference model[^;；]{0,300}/gi, '');
     body = body.replace(/no added or removed walls or furniture[^;；]{0,200}/gi, '');
   }
