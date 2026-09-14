@@ -20,8 +20,22 @@ const INDEX_KEY = 'proposals-index.json';
 // 允许写入的字段白名单
 const FIELDS = [
   'title', 'category', 'description', 'cover_image', 'images', 'content',
-  'video_url', 'file_url', 'file_name', 'tags', 'sort_order', 'featured'
+  'video_url', 'file_url', 'file_name', 'tags', 'sort_order', 'featured',
+  // 网页文件夹型方案相关字段
+  'password', 'type', 'slug', 'entry', 'file_count', 'total_size'
 ];
+
+// 数值型字段
+const NUMERIC_FIELDS = ['file_count', 'total_size'];
+
+// 目录标识合法格式
+const SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+
+function sanitizeSlug(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  return SLUG_RE.test(s) ? s : '';
+}
 
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -129,27 +143,60 @@ async function handlePost(request, env) {
     created_at: now,
     updated_at: now
   };
-  FIELDS.forEach((f) => {
-    if (f === 'sort_order') {
-      item.sort_order = body.sort_order === undefined || body.sort_order === null || body.sort_order === ''
-        ? maxOrder + 1
-        : (parseInt(body.sort_order, 10) || 0);
-      return;
-    }
-    if (f === 'featured') {
-      item.featured = !!body.featured;
-      return;
-    }
-    if (f === 'images') {
-      item.images = Array.isArray(body.images) ? body.images.filter((u) => String(u || '').trim()) : [];
-      return;
-    }
-    item[f] = body[f] === undefined || body[f] === null ? '' : String(body[f]);
-  });
+  applyFields(item, body, items, true, maxOrder);
 
   items.push(item);
   await writeIndex(env, { items });
   return json({ success: true, id: item.id, data: item });
+}
+
+// 字段写入（含排序号、布尔、数组、数值、slug 归一化）
+function applyFields(target, body, items, isCreate, maxOrder) {
+  FIELDS.forEach((f) => {
+    if (f === 'sort_order') {
+      if (isCreate && (body.sort_order === undefined || body.sort_order === null || body.sort_order === '')) {
+        target.sort_order = (maxOrder || 0) + 1;
+      } else if (body.sort_order !== undefined) {
+        target.sort_order = parseInt(body.sort_order, 10) || 0;
+      }
+      return;
+    }
+    if (f === 'featured') {
+      if (body.featured !== undefined) target.featured = !!body.featured;
+      else if (isCreate) target.featured = false;
+      return;
+    }
+    if (f === 'images') {
+      if (body.images !== undefined) {
+        target.images = Array.isArray(body.images) ? body.images.filter((u) => String(u || '').trim()) : [];
+      } else if (isCreate) {
+        target.images = [];
+      }
+      return;
+    }
+    if (NUMERIC_FIELDS.indexOf(f) !== -1) {
+      if (body[f] !== undefined) target[f] = parseInt(body[f], 10) || 0;
+      else if (isCreate) target[f] = 0;
+      return;
+    }
+    if (f === 'slug') {
+      const s = sanitizeSlug(body.slug);
+      if (body.slug !== undefined) target.slug = s;
+      else if (isCreate) target.slug = '';
+      return;
+    }
+    if (body[f] === undefined) {
+      if (isCreate) target[f] = '';
+      return;
+    }
+    target[f] = body[f] === null ? '' : String(body[f]);
+  });
+
+  // slug 唯一性：同 slug 已被其它条目占用时清空，避免目录互相覆盖
+  if (target.slug) {
+    const clash = (items || []).some((it) => it.id !== target.id && (it.slug || '') === target.slug);
+    if (clash) target.slug = '';
+  }
 }
 
 // ---------- PUT（更新） ----------
@@ -172,22 +219,7 @@ async function handlePut(request, env) {
   const title = String(body.title || '').trim();
   if (!title) return json({ error: '方案标题不能为空' }, 400);
 
-  FIELDS.forEach((f) => {
-    if (body[f] === undefined) return;
-    if (f === 'sort_order') {
-      target.sort_order = parseInt(body.sort_order, 10) || 0;
-      return;
-    }
-    if (f === 'featured') {
-      target.featured = !!body.featured;
-      return;
-    }
-    if (f === 'images') {
-      target.images = Array.isArray(body.images) ? body.images.filter((u) => String(u || '').trim()) : [];
-      return;
-    }
-    target[f] = body[f] === null ? '' : String(body[f]);
-  });
+  applyFields(target, body, items, false, 0);
   target.updated_at = new Date().toISOString();
 
   await writeIndex(env, { items });
@@ -202,13 +234,43 @@ async function handleDelete(request, env) {
 
   const index = await readIndex(env);
   const items = index.items || [];
-  const next = items.filter((it) => it.id !== id);
-  if (next.length === items.length) {
+  const target = items.find((it) => it.id === id);
+  if (!target) {
     return json({ error: '未找到该方案汇报' }, 404);
   }
 
+  const next = items.filter((it) => it.id !== id);
   await writeIndex(env, { items: next });
-  return json({ success: true });
+
+  // 同步清理该方案上传的网页目录（proposals/<slug>/）
+  let removedFiles = 0;
+  const slug = sanitizeSlug(target.slug);
+  if (slug && url.searchParams.get('keepFiles') !== '1') {
+    try {
+      removedFiles = await clearProposalDir(env, slug);
+    } catch (e) {
+      removedFiles = -1;
+    }
+  }
+
+  return json({ success: true, removedFiles: removedFiles });
+}
+
+// 清空 proposals/<slug>/ 前缀下的全部对象
+async function clearProposalDir(env, slug) {
+  const prefix = 'proposals/' + slug + '/';
+  const keys = [];
+  let cursor;
+  for (let i = 0; i < 20; i++) {
+    const res = await env.IMAGES.list({ prefix: prefix, limit: 1000, cursor: cursor });
+    if (res.objects) res.objects.forEach((o) => keys.push(o.key));
+    if (!res.truncated) break;
+    cursor = res.cursor;
+  }
+  for (let i = 0; i < keys.length; i += 1000) {
+    await env.IMAGES.delete(keys.slice(i, i + 1000));
+  }
+  return keys.length;
 }
 
 // 鉴权写法与 admin-cases.js / upload.js 保持一致

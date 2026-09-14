@@ -405,8 +405,8 @@ tr:hover td { background: #FAFAFA; }
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th style="width:80px;">缩略图</th><th>标题</th><th>分类</th><th style="width:70px;">视频</th><th style="width:70px;">附件</th><th style="width:60px;">排序</th><th>操作</th></tr></thead>
-          <tbody id="proposalTableBody"><tr><td colspan="7" style="text-align:center;color:#999;">加载中...</td></tr></tbody>
+          <thead><tr><th style="width:80px;">缩略图</th><th>标题</th><th>分类</th><th style="width:100px;">网页方案</th><th style="width:70px;">密码</th><th style="width:70px;">视频</th><th style="width:70px;">附件</th><th style="width:60px;">排序</th><th>操作</th></tr></thead>
+          <tbody id="proposalTableBody"><tr><td colspan="9" style="text-align:center;color:#999;">加载中...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -2360,7 +2360,7 @@ async function loadProposals() {
     window._proposalsList = list;
     document.getElementById('proposalCount').textContent = '（共 ' + list.length + ' 个）';
     if (list.length === 0) {
-      document.getElementById('proposalTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">暂无方案汇报</td></tr>';
+      document.getElementById('proposalTableBody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">暂无方案汇报</td></tr>';
     } else {
       document.getElementById('proposalTableBody').innerHTML = list.map(function(p) {
         var thumb = p.cover_image
@@ -2368,10 +2368,18 @@ async function loadProposals() {
           : '<span style="color:#999;">无图</span>';
         var videoCell = p.video_url ? '<span style="color:#27AE60;">有</span>' : '<span style="color:#999;">-</span>';
         var fileCell = p.file_url ? '<span style="color:#27AE60;">有</span>' : '<span style="color:#999;">-</span>';
+        var webCell = (p.slug && (p.type === 'page' || Number(p.file_count || 0) > 0))
+          ? '<span style="color:#27AE60;">' + Number(p.file_count || 0) + ' 个文件</span><br><a href="/proposals/' + encodeURIComponent(p.slug) + '/" target="_blank" style="font-size:11px;color:#C9A96E;">预览</a>'
+          : '<span style="color:#999;">-</span>';
+        var pwdCell = (p.password && String(p.password).length)
+          ? '<span style="color:#E67E22;">已设</span>'
+          : '<span style="color:#999;">无</span>';
         return '<tr>' +
           '<td>' + thumb + '</td>' +
-          '<td><b>' + escapeHtml(p.title) + '</b></td>' +
+          '<td><b>' + escapeHtml(p.title) + '</b>' + (p.slug ? '<br><span style="font-size:11px;color:#999;">/' + escapeHtml(p.slug) + '/</span>' : '') + '</td>' +
           '<td>' + escapeHtml(p.category || '-') + '</td>' +
+          '<td>' + webCell + '</td>' +
+          '<td>' + pwdCell + '</td>' +
           '<td>' + videoCell + '</td>' +
           '<td>' + fileCell + '</td>' +
           '<td>' + (p.sort_order || 0) + '</td>' +
@@ -2382,7 +2390,7 @@ async function loadProposals() {
       }).join('');
     }
   } catch (e) {
-    document.getElementById('proposalTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#E74C3C;">加载失败: ' + e.message + '</td></tr>';
+    document.getElementById('proposalTableBody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:#E74C3C;">加载失败: ' + e.message + '</td></tr>';
   }
 }
 
@@ -2412,6 +2420,8 @@ function showProposalModal(item) {
     defaultOrder += 1;
   }
   window._proposalImages = images;
+  window._proposalFolder = null;
+  window._proposalUploaded = null;
 
   var html = '<div class="modal-header"><h3>' + (isEdit ? '编辑方案汇报' : '新建方案汇报') + '</h3></div>';
 
@@ -2453,6 +2463,29 @@ function showProposalModal(item) {
     '<div class="form-group"><label class="form-label">附件显示名称</label><input class="form-input" id="propFileName" placeholder="如：方案完整版.pdf" value="' + escapeHtml(isEdit ? (item.file_name || '') : '') + '"></div>' +
     '</div>';
 
+  html += '<div class="case-section-title">网页方案（文件夹上传）</div>';
+  html += '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">目录标识（英文 / 数字）</label>' +
+    '<input class="form-input" id="propSlug" placeholder="如：taian-xinyuan-57-903" value="' + escapeHtml(isEdit ? (item.slug || '') : '') + '">' +
+    '<div style="color:#999;font-size:12px;margin-top:4px;">填写后启用网页方案，前端地址为 <b>/proposals/目录标识/</b>；留空则使用下方图文详情页</div></div>' +
+    '<div class="form-group"><label class="form-label">访问密码</label>' +
+    '<input class="form-input" id="propPassword" placeholder="留空 = 无需密码" value="' + escapeHtml(isEdit ? (item.password || '') : '') + '">' +
+    '<div style="color:#999;font-size:12px;margin-top:4px;">设置后，前端打开该方案需先输入此密码</div></div>' +
+    '</div>';
+  html += '<div class="form-group"><label class="form-label">首页文件</label>' +
+    '<input class="form-input" id="propEntry" placeholder="index.html" value="' + escapeHtml(isEdit ? (item.entry || 'index.html') : 'index.html') + '"></div>';
+  html += '<div class="form-group"><label class="form-label">网页文件夹（本地生成的网页文件）</label>' +
+    '<input type="file" id="propFolderInput" webkitdirectory directory multiple style="display:none;" onchange="onProposalFolderPicked()">' +
+    '<div class="upload-row">' +
+      '<button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById(\'propFolderInput\').click()">选择文件夹</button>' +
+      '<button type="button" class="btn btn-outline btn-sm" onclick="refreshProposalFileList()">查看已上传</button>' +
+      '<button type="button" class="btn btn-danger btn-sm" onclick="clearProposalFiles()">清空网页</button>' +
+    '</div>' +
+    '<div id="propFolderStatus" style="color:#999;font-size:12px;margin-top:8px;">' + ((isEdit && item.slug) ? '可通过「查看已上传」确认线上文件' : '选中本地文件夹后，点「保存」即自动上传') + '</div>' +
+    '<div id="propFolderList" style="margin-top:10px;max-height:200px;overflow:auto;border:1px solid #E8E8ED;border-radius:6px;padding:8px;font-size:12px;color:#666;display:none;line-height:1.7;"></div>' +
+    '<div style="color:#999;font-size:12px;margin-top:8px;">提示：上传会以「保存」时填写的最新文件夹为准，同一路径文件会被覆盖更新。</div>' +
+    '</div>';
+
   html += '<div class="btn-group">';
   html += '<button class="btn btn-primary" onclick="saveProposal(\'' + (isEdit ? item.id : '') + '\')">保存</button>';
   html += '<button class="btn btn-outline" onclick="closeBlogModal()">取消</button>';
@@ -2461,6 +2494,15 @@ function showProposalModal(item) {
   document.getElementById('blogModalContent').innerHTML = html;
   document.getElementById('blogModalOverlay').classList.add('show');
   renderProposalGalleryPreview();
+
+  // 文件夹选择框属性兜底（部分浏览器 innerHTML 解析后不生效）
+  var folderInput = document.getElementById('propFolderInput');
+  if (folderInput) {
+    folderInput.setAttribute('webkitdirectory', '');
+    folderInput.setAttribute('directory', '');
+    folderInput.setAttribute('multiple', '');
+  }
+  if (isEdit && item.slug) refreshProposalFileList(true);
 }
 
 async function uploadProposalCover() {
@@ -2573,9 +2615,183 @@ async function uploadProposalFile() {
   fileInput.value = '';
 }
 
+// ==================== 方案汇报 · 网页文件夹 ====================
+function formatSize(bytes) {
+  var n = Number(bytes || 0);
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  if (n < 1024 * 1024 * 1024) return (n / 1024 / 1024).toFixed(2) + ' MB';
+  return (n / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+}
+
+function pickProposalSlug(rootName) {
+  var s = String(rootName || '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (s.length >= 2) return s.slice(0, 60);
+  return '';
+}
+
+function onProposalFolderPicked() {
+  var input = document.getElementById('propFolderInput');
+  var statusEl = document.getElementById('propFolderStatus');
+  var files = input && input.files;
+  if (!files || !files.length) return;
+
+  var firstRel = files[0].webkitRelativePath || files[0].name || '';
+  var slash = firstRel.indexOf('/');
+  var rootName = slash > 0 ? firstRel.slice(0, slash) : '';
+
+  var arr = [];
+  var total = 0;
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    var rel = f.webkitRelativePath || f.name || '';
+    if (rootName && rel.indexOf(rootName + '/') === 0) rel = rel.slice(rootName.length + 1);
+    if (!rel) continue;
+    arr.push({ file: f, path: rel });
+    total += f.size || 0;
+  }
+  window._proposalFolder = arr;
+
+  // 目录标识为空时自动填充（中文目录名无法自动生成，需手动填写）
+  var slugEl = document.getElementById('propSlug');
+  var autoSlug = rootName ? pickProposalSlug(rootName) : '';
+  if (slugEl && !slugEl.value.trim() && autoSlug) slugEl.value = autoSlug;
+
+  if (statusEl) {
+    var tip = '已选择「' + rootName + '」共 ' + arr.length + ' 个文件（' + formatSize(total) + '），点「保存」后自动上传';
+    if (!slugEl || !slugEl.value.trim()) tip += '｜请先在上方填写「目录标识」（英文 / 数字）';
+    statusEl.textContent = tip;
+  }
+  renderFolderPreview(arr);
+}
+
+function renderFolderPreview(arr) {
+  var el = document.getElementById('propFolderList');
+  if (!el) return;
+  if (!arr || !arr.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  var show = arr.slice(0, 200);
+  var html = show.map(function (it) {
+    return '<div>' + escapeHtml(it.path) + ' <span style="color:#b0b0b0;">(' + formatSize(it.file.size) + ')</span></div>';
+  }).join('');
+  if (arr.length > show.length) html += '<div style="color:#999;">... 其余 ' + (arr.length - show.length) + ' 个文件</div>';
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+async function refreshProposalFileList(silent) {
+  var slugEl = document.getElementById('propSlug');
+  var slug = slugEl ? slugEl.value.trim() : '';
+  var statusEl = document.getElementById('propFolderStatus');
+  var listEl = document.getElementById('propFolderList');
+  if (!slug) { if (!silent) showToast('请先填写目录标识', 'error'); return; }
+  if (statusEl) statusEl.textContent = '读取线上文件...';
+  try {
+    var res = await fetch('/api/admin-proposal-files?slug=' + encodeURIComponent(slug), { headers: { 'x-admin-key': authToken } });
+    var data = await res.json();
+    if (!data || !data.success) {
+      if (statusEl) statusEl.textContent = (data && data.error) || '读取失败';
+      return;
+    }
+    window._proposalUploaded = { count: data.count, size: data.size };
+    if (statusEl) statusEl.textContent = '线上已有 ' + data.count + ' 个文件（' + formatSize(data.size) + '）';
+    if (listEl) {
+      if (!data.count) { listEl.style.display = 'none'; listEl.innerHTML = ''; }
+      else {
+        listEl.innerHTML = data.files.map(function (f) {
+          return '<div>' + escapeHtml(f.path) + ' <span style="color:#b0b0b0;">(' + formatSize(f.size) + ')</span></div>';
+        }).join('');
+        listEl.style.display = 'block';
+      }
+    }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = '读取失败: ' + e.message;
+  }
+}
+
+async function uploadProposalFolder(slug) {
+  var items = window._proposalFolder || [];
+  if (!items.length) return true;
+  var statusEl = document.getElementById('propFolderStatus');
+  var done = 0, failedCount = 0, doneSize = 0;
+  var MAX_BATCH_BYTES = 8 * 1024 * 1024;
+  var MAX_BATCH_FILES = 30;
+  var i = 0;
+  while (i < items.length) {
+    var batch = [];
+    var bytes = 0;
+    while (i < items.length && batch.length < MAX_BATCH_FILES) {
+      var it = items[i];
+      var sz = it.file.size || 0;
+      if (batch.length && bytes + sz > MAX_BATCH_BYTES) break;
+      batch.push(it);
+      bytes += sz;
+      i++;
+    }
+    var formData = new FormData();
+    formData.append('slug', slug);
+    formData.append('mode', 'append');
+    for (var j = 0; j < batch.length; j++) {
+      formData.append('paths', batch[j].path);
+      formData.append('files', batch[j].file, batch[j].file.name);
+    }
+    try {
+      var resp = await fetch('/api/admin-proposal-files', { method: 'POST', headers: { 'x-admin-key': authToken }, body: formData });
+      var result = await resp.json();
+      if (result && result.success) {
+        done += result.uploaded || 0;
+        doneSize += result.size || 0;
+      } else {
+        failedCount += batch.length;
+      }
+      if (result && Array.isArray(result.failed) && result.failed.length) failedCount += result.failed.length;
+    } catch (e) {
+      failedCount += batch.length;
+    }
+    if (statusEl) statusEl.textContent = '上传中 ' + i + '/' + items.length + ' ...';
+  }
+  if (statusEl) {
+    statusEl.textContent = '已上传 ' + done + ' 个文件（' + formatSize(doneSize) + '）' + (failedCount ? '，失败 ' + failedCount + ' 个' : '');
+  }
+  return failedCount === 0;
+}
+
+async function clearProposalFiles() {
+  var slugEl = document.getElementById('propSlug');
+  var slug = slugEl ? slugEl.value.trim() : '';
+  if (!slug) { showToast('请先填写目录标识', 'error'); return; }
+  if (!confirm('确定清空该方案已上传的网页文件？线上文件将被删除（本地文件不受影响）。')) return;
+  try {
+    var res = await fetch('/api/admin-proposal-files?slug=' + encodeURIComponent(slug), { method: 'DELETE', headers: { 'x-admin-key': authToken } });
+    var data = await res.json();
+    if (data && data.success) {
+      showToast('已清空 ' + (data.deleted || 0) + ' 个线上文件', 'success');
+      await refreshProposalFileList(true);
+    } else {
+      showToast((data && data.error) || '清空失败', 'error');
+    }
+  } catch (e) {
+    showToast('清空失败: ' + e.message, 'error');
+  }
+}
+
 async function saveProposal(id) {
   var title = document.getElementById('propTitle').value.trim();
   if (!title) { showToast('方案标题不能为空', 'error'); return; }
+
+  var slugEl = document.getElementById('propSlug');
+  var slug = slugEl ? slugEl.value.trim() : '';
+  if (slug && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(slug)) {
+    showToast('目录标识仅允许字母、数字、点、下划线、短横线，且以字母或数字开头', 'error');
+    return;
+  }
+  var folder = window._proposalFolder || [];
+  if (folder.length && !slug) {
+    showToast('上传网页文件夹前，请先填写「目录标识」', 'error');
+    return;
+  }
+
   var data = {
     title: title,
     category: document.getElementById('propCategory').value.trim(),
@@ -2587,22 +2803,49 @@ async function saveProposal(id) {
     video_url: document.getElementById('propVideo').value.trim(),
     file_url: document.getElementById('propFileUrl').value.trim(),
     file_name: document.getElementById('propFileName').value.trim(),
-    sort_order: parseInt(document.getElementById('propOrder').value, 10) || 0
+    sort_order: parseInt(document.getElementById('propOrder').value, 10) || 0,
+    slug: slug,
+    password: document.getElementById('propPassword').value,
+    entry: document.getElementById('propEntry').value.trim() || 'index.html',
+    type: slug ? 'page' : ''
   };
+
+  var targetId = id;
   try {
     if (id) {
-      data.id = id;
       var res = await api('/api/admin-proposals', { method: 'PUT', body: JSON.stringify(data) });
-      if (res.success) { showToast('更新成功', 'success'); closeBlogModal(); loadProposals(); }
-      else showToast(res.error || '更新失败', 'error');
+      if (!res.success) { showToast(res.error || '更新失败', 'error'); return; }
     } else {
       var res2 = await api('/api/admin-proposals', { method: 'POST', body: JSON.stringify(data) });
-      if (res2.success) { showToast('创建成功', 'success'); closeBlogModal(); loadProposals(); }
-      else showToast(res2.error || '创建失败', 'error');
+      if (!res2.success) { showToast(res2.error || '创建失败', 'error'); return; }
+      targetId = res2.id;
     }
   } catch (e) {
     showToast('操作失败: ' + e.message, 'error');
+    return;
   }
+
+  // 保存成功后：若选择了本地文件夹，自动上传
+  if (folder.length && slug) {
+    var ok = await uploadProposalFolder(slug);
+    // 回写线上文件数量与体积
+    try {
+      var fres = await fetch('/api/admin-proposal-files?slug=' + encodeURIComponent(slug), { headers: { 'x-admin-key': authToken } });
+      var fdata = await fres.json();
+      if (fdata && fdata.success) {
+        var patch = { id: targetId, title: title, slug: slug, type: 'page', entry: data.entry, password: data.password, file_count: fdata.count, total_size: fdata.size };
+        await api('/api/admin-proposals', { method: 'PUT', body: JSON.stringify(patch) });
+      }
+    } catch (e) { /* 统计失败不影响主流程 */ }
+    if (ok) showToast('保存成功，已上传 ' + folder.length + ' 个网页文件', 'success');
+    else showToast('方案已保存，但部分网页文件上传失败，请重新编辑后再保存', 'error');
+  } else {
+    showToast(id ? '更新成功' : '创建成功', 'success');
+  }
+
+  window._proposalFolder = null;
+  closeBlogModal();
+  loadProposals();
 }
 
 async function deleteProposal(id) {

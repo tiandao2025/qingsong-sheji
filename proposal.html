@@ -252,6 +252,33 @@ a { color:inherit; text-decoration:none; }
 }
 .file-download:hover { border-color:var(--color-accent); color:var(--color-accent); transform:translateY(-2px); }
 
+/* ===== Lock (加密方案) ===== */
+.lock-box {
+  background:var(--color-white); border:1px solid var(--color-line); border-radius:16px;
+  padding:48px 36px; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,0.05);
+}
+.lock-icon { font-size:26px; margin-bottom:16px; }
+.lock-title { font-family:var(--font-serif); font-size:1.5rem; font-weight:500; letter-spacing:0.06em; }
+.lock-line { width:36px; height:1px; background:var(--color-accent); margin:20px auto; }
+.lock-desc { font-size:0.9rem; color:var(--color-text-secondary); line-height:1.9; }
+#lockForm { margin-top:26px; }
+#lockPassword {
+  width:100%; height:48px; border:1px solid var(--color-line); border-radius:10px;
+  padding:0 16px; font-size:1rem; font-family:inherit; outline:none; background:var(--color-bg);
+  color:var(--color-text); transition:border-color 0.3s ease; text-align:center; letter-spacing:0.1em;
+}
+#lockPassword:focus { border-color:var(--color-accent); }
+#lockBtn {
+  width:100%; height:48px; margin-top:14px; border:none; border-radius:10px;
+  background:var(--color-accent); color:#fff; font-size:1rem; font-family:inherit;
+  letter-spacing:0.16em; cursor:pointer; transition:background 0.3s ease;
+}
+#lockBtn:hover { background:#A67F58; }
+#lockBtn:disabled { opacity:0.6; cursor:default; }
+.lock-error { color:#d9534f; font-size:0.8125rem; margin-top:12px; min-height:18px; }
+.lock-back { display:inline-block; margin-top:20px; font-size:0.8125rem; color:var(--color-text-light); transition:color 0.3s ease; }
+.lock-back:hover { color:var(--color-accent); }
+
 /* ===== Error ===== */
 .error-state { text-align:center; padding:180px 24px 120px; }
 .error-state p { color:var(--color-text-secondary); margin-bottom:16px; }
@@ -320,6 +347,9 @@ a { color:inherit; text-decoration:none; }
 
 <!-- ===== Hero ===== -->
 <section class="hero" id="hero"></section>
+
+<!-- ===== Lock (加密方案) ===== -->
+<section class="section" id="lockSection" style="display:none; padding-top:170px; padding-bottom:120px;"></section>
 
 <!-- ===== Overview ===== -->
 <section class="section" id="overview" style="display:none;"></section>
@@ -428,6 +458,20 @@ a { color:inherit; text-decoration:none; }
 
       document.title = proposalData.title + ' - 青松设计';
 
+      // 加密方案：未解锁时只显示密码输入框
+      if (payload.locked) {
+        renderLock();
+        updateFooter();
+        hideLoader();
+        return;
+      }
+
+      // 网页文件夹型方案：直接跳转到上传的在线页面
+      if (proposalData.has_page && proposalData.page_url) {
+        window.location.replace(proposalData.page_url);
+        return;
+      }
+
       bilibiliEmbedUrl = parseBilibiliUrl(proposalData.video_url);
       if (Array.isArray(proposalData.images)) {
         imageList = proposalData.images.filter(function (u) { return String(u || '').trim(); });
@@ -452,6 +496,66 @@ a { color:inherit; text-decoration:none; }
   function hideLoader() {
     var loader = document.getElementById('loader');
     if (loader) setTimeout(function () { loader.classList.add('hidden'); }, 600);
+  }
+
+  /* ===== Lock ===== */
+  function renderLock() {
+    var hero = document.getElementById('hero');
+    if (hero) hero.style.display = 'none';
+
+    var section = document.getElementById('lockSection');
+    section.innerHTML =
+      '<div class="section-inner" style="max-width:440px;">' +
+        '<div class="lock-box">' +
+          '<div class="lock-icon">&#128274;</div>' +
+          '<h2 class="lock-title">' + escapeHtml(proposalData.title || '方案汇报') + '</h2>' +
+          '<div class="lock-line"></div>' +
+          '<p class="lock-desc">该方案汇报已加密<br>请输入访问密码查看完整内容</p>' +
+          '<form id="lockForm">' +
+            '<input type="password" id="lockPassword" placeholder="请输入访问密码" autocomplete="current-password" required>' +
+            '<button type="submit" id="lockBtn">进 入</button>' +
+          '</form>' +
+          '<div class="lock-error" id="lockError"></div>' +
+          '<a class="lock-back" href="proposals.html">&larr; 返回方案汇报列表</a>' +
+        '</div>' +
+      '</div>';
+    section.style.display = 'block';
+
+    var form = document.getElementById('lockForm');
+    var input = document.getElementById('lockPassword');
+    var btn = document.getElementById('lockBtn');
+    var err = document.getElementById('lockError');
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var pwd = input.value;
+      if (!pwd) { err.textContent = '请输入访问密码'; return; }
+      btn.disabled = true;
+      btn.textContent = '验证中...';
+      err.textContent = '';
+      try {
+        var res = await fetch('/api/proposals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: proposalData.id, password: pwd })
+        });
+        if (res.ok) {
+          err.textContent = '验证通过，正在进入...';
+          window.location.reload();
+          return;
+        }
+        var data = await res.json().catch(function () { return {}; });
+        err.textContent = data.error || '密码不正确，请重新输入';
+      } catch (ex) {
+        err.textContent = '网络异常，请稍后重试';
+      }
+      btn.disabled = false;
+      btn.textContent = '进 入';
+      input.focus();
+      input.select();
+    });
+
+    setTimeout(function () { input.focus(); }, 300);
   }
 
   /* ===== Hero ===== */
