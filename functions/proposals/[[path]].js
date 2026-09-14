@@ -60,8 +60,11 @@ export async function onRequest({ request, env, params }) {
   // ---------- 密码校验 ----------
   if (password) {
     const expect = await makeToken(slug, password);
+    // 兼容详情页解锁接口（/api/proposals POST）写入的 cookie：qs_pp_<id>，令牌基于条目 id
+    const expectById = await makeToken(item.id, password);
     const got = readCookie(request, cookieName);
-    let unlocked = got && got === expect;
+    const gotById = readCookie(request, 'qs_pp_' + item.id);
+    let unlocked = (got && got === expect) || (gotById && gotById === expectById);
 
     if (!unlocked && request.method === 'POST') {
       let submitted = '';
