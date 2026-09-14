@@ -38,7 +38,17 @@ export async function onRequest({ request, env, params }) {
   const rest = segs.slice(1).join('/');
 
   if (!slug) {
-    return Response.redirect(url.origin + '/proposals.html', 302);
+    // /proposals 本身：直接回列表页静态文件。
+    // 注意不能 302 到 /proposals.html —— 站点开启 clean URL，/proposals.html 会 308 回 /proposals，形成重定向环。
+    try {
+      if (env && env.ASSETS && typeof env.ASSETS.fetch === 'function') {
+        const assetUrl = new URL('/proposals.html', url.origin);
+        return await env.ASSETS.fetch(new Request(assetUrl.toString(), { headers: request.headers }));
+      }
+    } catch (e) {
+      // 落到下方提示页
+    }
+    return htmlResponse(notFoundPage('方案汇报', '请从 <a href="/proposals.html">方案汇报列表</a> 进入'), 200);
   }
 
   const index = await readIndex(env);
