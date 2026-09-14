@@ -2810,6 +2810,9 @@ async function saveProposal(id) {
     type: slug ? 'page' : ''
   };
 
+  // PUT 更新必须带 id（后端校验：缺少 id 直接 400），POST 新增时后端忽略该字段
+  if (id) data.id = id;
+
   var targetId = id;
   try {
     if (id) {
