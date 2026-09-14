@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>方案汇报 | 青松设计</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #1D1D1F; background: #FFFFFF; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Navbar */
+.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(255,255,255,0.95); border-bottom: 1px solid rgba(0,0,0,0.06); }
+.nav-inner { max-width: 1040px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 52px; }
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.nav-logo img { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #C9A96E; object-fit: cover; }
+.nav-logo span { font-size: 16px; font-weight: 600; color: #1D1D1F; }
+.nav-links { display: flex; align-items: center; gap: 6px; list-style: none; }
+.nav-links a { text-decoration: none; color: #555; font-size: 13px; padding: 6px 14px; border-radius: 20px; transition: background 0.2s ease, color 0.2s ease; }
+.nav-links a:hover, .nav-links a.active { background: #F5F5F7; color: #1D1D1F; }
+.nav-links a.primary-link { background: #C9A96E; color: #fff; font-weight: 500; }
+.nav-links a.primary-link:hover { background: #B8995E; }
+
+/* Page Header */
+.page-header { padding-top: 100px; padding-bottom: 40px; text-align: center; }
+.page-header h1 { font-size: 40px; font-weight: 700; letter-spacing: 2px; }
+.page-header .line { width: 50px; height: 3px; background: #C9A96E; margin: 16px auto 0; }
+.page-header p { color: #666; margin-top: 12px; font-size: 15px; }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+
+/* Filter */
+.filter-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 32px; }
+.filter-btn {
+  padding: 6px 16px; border-radius: 20px; border: 1px solid #e8e8e8; background: #fff;
+  color: #555; font-size: 13px; cursor: pointer; font-family: inherit;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.filter-btn:hover { border-color: #C9A96E; color: #C9A96E; }
+.filter-btn.active { background: #C9A96E; border-color: #C9A96E; color: #fff; }
+
+/* Proposals Grid */
+.proposal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; padding-bottom: 80px; }
+
+.proposal-card {
+  background: #fff; border-radius: 12px; overflow: hidden;
+  border: 1px solid #f0f0f0; cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.proposal-card:hover { transform: translateY(-6px); box-shadow: 0 12px 30px rgba(0,0,0,0.1); }
+
+.proposal-card-img { position: relative; width: 100%; height: 220px; overflow: hidden; background: #f5f5f5; }
+.proposal-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+.proposal-card:hover .proposal-card-img img { transform: scale(1.05); }
+.proposal-card-badges { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; }
+.proposal-card-badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+.badge-video { background: #ff6b6b; color: #fff; }
+.badge-file { background: #4a90d9; color: #fff; }
+.badge-category { background: rgba(201,169,110,0.92); color: #fff; }
+
+.proposal-card-body { padding: 20px; }
+.proposal-card-body h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; line-height: 1.4; }
+.proposal-card-body p { font-size: 13px; color: #888; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.proposal-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.proposal-card-tags .tag { font-size: 11px; padding: 3px 10px; background: #f5f0e5; color: #C9A96E; border-radius: 12px; }
+.proposal-card-date { font-size: 12px; color: #aaa; margin-top: 12px; }
+
+.empty { text-align: center; padding: 80px 20px; color: #999; font-size: 15px; }
+.loading { text-align: center; padding: 80px 20px; color: #999; }
+
+@media (max-width: 768px) {
+  .proposal-grid { grid-template-columns: 1fr; }
+  .page-header h1 { font-size: 28px; }
+  .nav-links { gap: 2px; }
+  .nav-links a { padding: 6px 8px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo"><img src="/cdn/logo.jpg" alt="青松设计"><span>青松设计</span></a>
+    <ul class="nav-links">
+      <li><a href="/#services">服务项目</a></li>
+      <li><a href="/#process">设计流程</a></li>
+      <li><a href="cases.html">设计案例</a></li>
+      <li><a href="proposals.html" class="active">方案汇报</a></li>
+      <li><a href="blog.html">最新博客</a></li>
+      <li><a href="/#about">关于我们</a></li>
+      <li><a href="materials.html">设计选材</a></li>
+      <li><a href="/#contact" class="primary-link">预约咨询</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="page-header">
+  <h1>方案汇报</h1>
+  <div class="line"></div>
+  <p>每一份方案，都是一次完整的设计推演</p>
+</div>
+
+<div class="container">
+  <div class="filter-bar" id="filterBar" style="display:none;"></div>
+  <div class="proposal-grid" id="proposalGrid">
+    <div class="loading">加载中...</div>
+  </div>
+</div>
+
+<script>
+var ALL_ITEMS = [];
+var CURRENT_CATEGORY = '';
+
+function escapeHtml(str) {
+  return String(str === undefined || str === null ? '' : str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatDate(str) {
+  if (!str) return '';
+  var d = new Date(str);
+  if (isNaN(d.getTime())) return '';
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function renderGrid() {
+  var grid = document.getElementById('proposalGrid');
+  var list = ALL_ITEMS;
+  if (CURRENT_CATEGORY) {
+    list = list.filter(function(p) { return (p.category || '') === CURRENT_CATEGORY; });
+  }
+
+  if (list.length === 0) {
+    grid.innerHTML = '<div class="empty">暂无方案汇报，敬请期待</div>';
+    return;
+  }
+
+  grid.innerHTML = list.map(function(p) {
+    var hasVideo = !!p.video_url;
+    var hasFile = !!p.file_url;
+    var tags = p.tags ? String(p.tags).split(',').filter(function(t) { return t.trim(); }) : [];
+    var coverSrc = p.cover_image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22360%22 height=%22220%22><rect fill=%22%23e0e0e0%22 width=%22360%22 height=%22220%22/><text x=%22180%22 y=%22110%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2216%22>暂无封面</text></svg>';
+
+    return `
+      <a href="proposal.html?id=${encodeURIComponent(p.id)}" class="proposal-card">
+        <div class="proposal-card-img">
+          <img src="${coverSrc}" alt="${escapeHtml(p.title)}" loading="lazy" onerror="this.parentElement.style.background='%23f5f5f5';this.style.display='none';">
+          <div class="proposal-card-badges">
+            ${p.category ? `<span class="proposal-card-badge badge-category">${escapeHtml(p.category)}</span>` : ''}
+            ${hasVideo ? '<span class="proposal-card-badge badge-video">视频</span>' : ''}
+            ${hasFile ? '<span class="proposal-card-badge badge-file">附件</span>' : ''}
+          </div>
+        </div>
+        <div class="proposal-card-body">
+          <h3>${escapeHtml(p.title)}</h3>
+          ${p.description ? `<p>${escapeHtml(p.description)}</p>` : ''}
+          ${tags.length > 0 ? `<div class="proposal-card-tags">${tags.map(function(t) { return '<span class="tag">' + escapeHtml(t.trim()) + '</span>'; }).join('')}</div>` : ''}
+          ${formatDate(p.created_at) ? `<div class="proposal-card-date">${formatDate(p.created_at)}</div>` : ''}
+        </div>
+      </a>`;
+  }).join('');
+}
+
+function renderFilterBar() {
+  var bar = document.getElementById('filterBar');
+  var cats = [];
+  ALL_ITEMS.forEach(function(p) {
+    var c = (p.category || '').trim();
+    if (c && cats.indexOf(c) === -1) cats.push(c);
+  });
+  if (cats.length === 0) { bar.style.display = 'none'; return; }
+
+  var html = '<button class="filter-btn active" data-cat="">全部</button>';
+  cats.forEach(function(c) {
+    html += '<button class="filter-btn" data-cat="' + escapeHtml(c) + '">' + escapeHtml(c) + '</button>';
+  });
+  bar.innerHTML = html;
+  bar.style.display = 'flex';
+
+  bar.querySelectorAll('.filter-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      bar.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      CURRENT_CATEGORY = btn.getAttribute('data-cat') || '';
+      renderGrid();
+    });
+  });
+}
+
+async function loadProposals() {
+  var grid = document.getElementById('proposalGrid');
+  try {
+    var res = await fetch('/api/proposals?limit=100');
+    var data = await res.json();
+    var items = Array.isArray(data) ? data : (data.items || []);
+
+    if (items.length === 0) {
+      grid.innerHTML = '<div class="empty">暂无方案汇报，敬请期待</div>';
+      return;
+    }
+    ALL_ITEMS = items;
+    renderFilterBar();
+    renderGrid();
+  } catch (e) {
+    grid.innerHTML = '<div class="empty">加载失败，请刷新页面重试</div>';
+  }
+}
+
+loadProposals();
+</script>
+</body>
+</html>
