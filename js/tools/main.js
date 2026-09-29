@@ -1,7 +1,8 @@
 /* ============================================================
  * main.js — AI 图片工具页交互逻辑
  * 功能：抠图 / 换背景·换纯色 / 去人物 / 老照片修复(收费·占位)
- * 抠图、换背景、去人物均为纯前端（WASM 推理 + JS 擦除），零后端成本
+ * 抠图 / 换背景 / 去人物的本地部分为纯前端（WASM 推理 + JS 擦除），零后端成本
+ * 云端 AI 能力走 /api/inpaint（Cloudflare Workers AI · Flux.2 klein 4B，免费额度）
  * ============================================================ */
 (function () {
   'use strict';
@@ -81,20 +82,29 @@
   }
 
   /* ---------- 状态栏 / 进度条 ---------- */
+  /* 状态写入页面顶部全局状态条 + 当前面板内的提示位
+     （修复：原先只写第一个 id=status 的节点，切到其它 tab 完全看不到任何提示） */
   function setStatus(msg) {
-    const el = $('#status');
-    if (el) el.textContent = msg;
+    if (!msg) return;
+    const g = $('#global-status');
+    if (g) g.textContent = msg;
+    const panel = $('#tab-' + currentTab);
+    if (panel) {
+      const l = panel.querySelector('.status-local');
+      if (l) l.textContent = msg;
+    }
   }
   function setBar(p) {
     const bar = $('#progress-fill'), wrap = $('#progress-wrap');
-    if (!bar) return;
-    wrap.style.display = 'block';
+    if (!bar || !wrap) return;
+    wrap.style.display = 'inline-block';
     bar.style.width = Math.round(p * 100) + '%';
-    if (p >= 1) setTimeout(() => { wrap.style.display = 'none'; }, 500);
+    if (p >= 1) setTimeout(() => { wrap.style.display = 'none'; }, 600);
   }
   function busy(on, btn) {
-    const b = btn || $('#busy-btn');
-    if (b) { b.disabled = on; b.textContent = on ? '处理中…' : b.dataset.label; }
+    if (!btn) return;
+    btn.disabled = on;
+    btn.textContent = on ? '处理中…' : (btn.dataset.label || btn.textContent);
   }
 
   /* ---------- Tab 切换 ---------- */
@@ -106,7 +116,7 @@
     $$('.tab-panel').forEach((p) => {
       p.style.display = p.id === 'tab-' + currentTab ? 'block' : 'none';
     });
-    setStatus('');
+    setStatus('请上传图片开始使用');
   });
 
   /* ==========================================================
@@ -206,12 +216,10 @@
       if (fusion && fusion.checked) {
         setStatus('正在 AI 融合光线氛围…');
         try {
-          const fused = await cloudInpaint({
+          const fused = await cloudEdit({
             canvas: resCanv,
-            model: 'sd15-inpaint',
-            prompt: 'same person and pose, same composition, background replaced with plain solid color, harmonized natural lighting, soft seamless blend, photorealistic, consistent light direction and color temperature',
-            negative_prompt: 'blurry, artifacts, distorted, changed identity, wrong lighting, double edges',
-            strength: 0.35, maxSide: 512, fullMask: true,
+            prompt: 'keep the same person, same pose and same framing; keep the replaced backdrop; blend subject and background with harmonized natural lighting, soft clean edges, photorealistic, do not change the identity',
+            maxSide: 448,
           });
           const fEl = $('#tab-bg .res-canvas');
           fEl.width = fused.width; fEl.height = fused.height;
@@ -258,12 +266,22 @@
     try {
       setStatus('正在识别人物区域…');
       const { mask } = await seg.segment(currentSrc.canvas);
-      const out = await cloudInpaint({
-        canvas: currentSrc.canvas, mask,
-        model: 'sd15-inpaint',
-        prompt: 'clean empty background, remove person, seamless natural background continuation, photorealistic',
-        negative_prompt: 'person, human, people, face, blurry, low quality, artifacts, distorted',
-        strength: 0.85, maxSide: 768,
+      // 先本地擦除得到底图，再交给云端 AI 修复背景纹理（复杂背景效果更好）
+      setStatus('正在擦除人物…');
+      const n = currentSrc.width * currentSrc.height;
+      const bin = new Uint8Array(n);
+      for (let i = 0; i < n; i++) bin[i] = mask[i] > 128 ? 255 : 0;
+      const srcCanv = currentSrc.canvas;
+      const imgData = srcCanv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, srcCanv.width, srcCanv.height);
+      await diffuseInpaint(imgData, bin);
+      const cleared = document.createElement('canvas');
+      cleared.width = srcCanv.width; cleared.height = srcCanv.height;
+      cleared.getContext('2d').putImageData(imgData, 0, 0);
+      setStatus('云端 AI 修复背景纹理中，约 10~60 秒…');
+      const out = await cloudEdit({
+        canvas: cleared,
+        prompt: 'remove every person from the scene and rebuild the background naturally and seamlessly: continue the floor, walls, furniture and lighting of the surroundings, clean photorealistic result, keep everything else unchanged, absolutely no human figure',
+        maxSide: 448,
       });
       const resEl = $('#tab-remove .res-canvas');
       resEl.width = out.width; resEl.height = out.height;
@@ -281,12 +299,10 @@
     if (!requireSrc()) return;
     const btn = $('#btn-restore-run'); busy(true, btn);
     try {
-      const out = await cloudInpaint({
+      const out = await cloudEdit({
         canvas: currentSrc.canvas,
-        model: 'sd15-inpaint',
-        prompt: 'restore old damaged photo, enhance details, sharp clear face, natural skin tone, realistic textures, vivid colors, high quality photo restoration',
-        negative_prompt: 'blurry, noise, scratches, cracks, low quality, deformed, distorted, faded, oversharpened',
-        strength: 0.4, maxSide: 512, fullMask: true,
+        prompt: 'restore this old photograph: repair scratches, cracks, stains and torn areas, remove dust and noise, sharpen and clarify details, restore natural skin tone and true colors, keep the original composition and the identity of the people unchanged, high quality photo restoration',
+        maxSide: 448,
       });
       const resEl = $('#tab-restore .res-canvas');
       resEl.width = out.width; resEl.height = out.height;
@@ -423,88 +439,88 @@
   /* ==========================================================
    * 云端 AI 处理（Workers AI 免费模型，经 /api/inpaint）
    * ========================================================== */
-  /** 缩放并 pad 成正方形（SD1.5-inpaint 对非方形输入易失败/黑图），返回 b64 与裁切信息 */
-  async function prepareSquare(canvas, maxSide) {
+  /**
+   * 等比缩放（不补边）——补边会让模型把填充区当成画面内容，在输出里画出白块
+   * Flux.2 klein 要求参考图小于 512x512；并按原图比例推出输出尺寸（长边 768）
+   * @returns {object} { b64, w, h, ow, oh, outW, outH }
+   */
+  async function prepareResize(canvas, maxSide) {
     const ow = canvas.width, oh = canvas.height;
-    const scale = Math.min(1, maxSide / Math.max(ow, oh));
+    const scale = Math.min(1, (maxSide || 448) / Math.max(ow, oh));
     const w = Math.max(1, Math.round(ow * scale));
     const h = Math.max(1, Math.round(oh * scale));
-    const size = Math.max(w, h);
     const c = document.createElement('canvas');
-    c.width = size; c.height = size;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, size, size);
-    const ox = Math.round((size - w) / 2);
-    const oy = Math.round((size - h) / 2);
-    ctx.drawImage(canvas, ox, oy, w, h);
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(canvas, 0, 0, ow, oh, 0, 0, w, h);
     const b64 = c.toDataURL('image/png').split(',')[1];
-    return { b64, size, ox, oy, w, h, ow, oh };
+    const ratio = 768 / Math.max(w, h);
+    const q16 = (v) => Math.max(256, Math.min(1920, Math.round(v * ratio / 16) * 16));
+    return { b64, w, h, ow, oh, outW: q16(w), outH: q16(h) };
   }
 
-  /** 把原尺寸 mask 缩放并 pad 到正方形画布（pad 区域=0 不重绘），返回字节数组 */
-  function resizeMask(mask, ow, oh, size, ox, oy, w, h) {
-    const m = new Uint8Array(size * size);
-    for (let y = 0; y < h; y++) {
-      const sy = Math.min(oh - 1, Math.floor(y * oh / h));
-      for (let x = 0; x < w; x++) {
-        const sx = Math.min(ow - 1, Math.floor(x * ow / w));
-        const v = mask[sy * ow + sx] > 128 ? 255 : 0;
-        m[(oy + y) * size + (ox + x)] = v;
-      }
-    }
-    return m;
-  }
-
-  function maskArrayToB64(m, size) {
-    const sc = document.createElement('canvas');
-    sc.width = size; sc.height = size;
-    const sctx = sc.getContext('2d');
-    const id = sctx.createImageData(size, size);
-    for (let i = 0; i < size * size; i++) {
-      const v = m[i] || 0;
-      id.data[i * 4] = v; id.data[i * 4 + 1] = v; id.data[i * 4 + 2] = v; id.data[i * 4 + 3] = 255;
-    }
-    sctx.putImageData(id, 0, 0);
-    return sc.toDataURL('image/png').split(',')[1];
-  }
 
   /**
-   * 云端 inpainting：统一做正方形 pad → 调 /api/inpaint → 裁回原尺寸
-   * @param {object} opts { canvas, mask?, fullMask?, model, prompt, negative_prompt?, strength, maxSide }
+   * 云端 AI 图像编辑（Flux.2 klein，免费）：整图送入模型，按 prompt 重绘 / 修复
+   * 等比缩放 → POST /api/inpaint → 结果校验 → 缩放回原尺寸
+   * @param {object} opts { canvas, prompt, maxSide? }
    */
-  async function cloudInpaint(opts) {
-    const { canvas, mask, fullMask, model, prompt, negative_prompt, strength, maxSide } = opts;
-    const prep = await prepareSquare(canvas, maxSide || 512);
-    const { b64, size, ox, oy, w, h, ow, oh } = prep;
-    const body = { image_b64: b64, width: size, height: size, model, prompt, strength };
-    if (negative_prompt) body.negative_prompt = negative_prompt;
-    if (fullMask) {
-      body.mask_b64 = maskArrayToB64(new Uint8Array(size * size).fill(255), size);
-    } else if (mask) {
-      body.mask_b64 = maskArrayToB64(resizeMask(mask, ow, oh, size, ox, oy, w, h), size);
+  async function cloudEdit(opts) {
+    const { canvas, prompt, maxSide } = opts;
+    const prep = await prepareResize(canvas, maxSide || 448);
+    const { b64, outW, outH, ow, oh } = prep;
+    const body = { image_b64: b64, width: outW, height: outH, model: 'flux-edit', prompt };
+    setStatus('云端 AI 处理中，约 10~60 秒，请耐心等待…');
+    // 网络抖动 / 5xx / 超时 自动重试一次（历史踩坑：首跳偶发 Failed to fetch）
+    let resp = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt) {
+        setStatus('云端响应异常，正在自动重试…');
+        await new Promise((r) => setTimeout(r, 1200));
+      }
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), 90000);
+      try {
+        resp = await fetch('/api/inpaint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: ac.signal,
+        });
+      } catch (e) {
+        resp = null;
+        if (attempt === 1) {
+          throw new Error(e && e.name === 'AbortError'
+            ? '云端处理超时（超过 90 秒），请换小一点的图重试'
+            : '云端请求失败，请检查网络后重试');
+        }
+      } finally {
+        clearTimeout(timer);
+      }
+      if (resp && resp.status < 500) break;
+      resp = null;
     }
-    setStatus('云端 AI 处理中，约 5~20 秒…');
-    const resp = await fetch('/api/inpaint', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    if (!resp) throw new Error('云端请求失败，请稍后重试');
     if (!resp.ok) {
       let msg = 'HTTP ' + resp.status;
       try { const e = await resp.json(); if (e.error) msg = e.error; } catch (_) {}
       throw new Error('云端处理失败：' + msg);
     }
     const blob = await resp.blob();
+    if (!blob || !blob.size) throw new Error('云端返回空结果，请重试');
     const url = URL.createObjectURL(blob);
     const img = new Image();
-    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = () => rej(new Error('云端返回的图像无法解析'));
+      img.src = url;
+    });
     const c = document.createElement('canvas');
     c.width = img.width; c.height = img.height;
-    c.getContext('2d').drawImage(img, 0, 0);
+    const cctx = c.getContext('2d');
+    cctx.drawImage(img, 0, 0);
     URL.revokeObjectURL(url);
     // 校验：黑图/空图视为失败（历史踩坑：模型输入格式错会返回全黑）
-    const px = c.getContext('2d').getImageData(0, 0, Math.min(64, c.width), Math.min(64, c.height)).data;
+    const px = cctx.getImageData(0, 0, Math.min(64, c.width), Math.min(64, c.height)).data;
     let sum = 0, maxv = 0;
     for (let i = 0; i < px.length; i += 4) {
       const v = (px[i] + px[i + 1] + px[i + 2]) / 3;
@@ -512,10 +528,10 @@
     }
     const avg = sum / (px.length / 4);
     if (avg < 3 && maxv < 16) throw new Error('云端模型返回异常结果，请重试或换图');
-    // 裁回原尺寸（去掉 pad 黑边）
+    // 按原始长宽比缩放回原尺寸（输入未补边，无需裁切）
     const out = document.createElement('canvas');
     out.width = ow; out.height = oh;
-    out.getContext('2d').drawImage(c, ox, oy, w, h, 0, 0, ow, oh);
+    out.getContext('2d').drawImage(c, 0, 0, c.width, c.height, 0, 0, ow, oh);
     return out;
   }
 

@@ -76,6 +76,20 @@ export async function onRequest({ request, env, params }) {
     const gotById = readCookie(request, 'qs_pp_' + item.id);
     let unlocked = (got && got === expect) || (gotById && gotById === expectById);
 
+    // 小程序 web-view 免密直达：URL 携带 ?pp=<token>（基于条目 id 的解锁令牌，与小程序 storage 一致）
+    // 校验通过后 302 回原路径并种下 qs_pp_<slug> cookie，web-view 内后续同源页面（含内页/资源）自动免密
+    const pp = (url.searchParams.get('pp') || '').trim();
+    if (!unlocked && pp && pp === expectById) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': url.origin + url.pathname,
+          'Set-Cookie': cookieName + '=' + expect + '; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax',
+          'Cache-Control': 'no-store'
+        }
+      });
+    }
+
     if (!unlocked && request.method === 'POST') {
       let submitted = '';
       try {
@@ -117,10 +131,136 @@ export async function onRequest({ request, env, params }) {
   headers.set('Access-Control-Allow-Origin', '*');
   headers.set('Cache-Control', password ? 'private, max-age=0, must-revalidate' : 'public, max-age=300');
   headers.set('X-Robots-Tag', 'noindex');
+
+  // HTML 文件统一注入移动端适配（网页文件夹为桌面版 HTML，小程序 web-view 打开时自动优化排版）
+  if (/\.html?$/i.test(relPath)) {
+    const text = await obj.text();
+    const injected = injectMobileCss(text);
+    return new Response(injected, { headers });
+  }
   return new Response(obj.body, { headers });
 }
 
 // ---------- 工具 ----------
+// 为网页文件夹 HTML 注入移动端适配：缺失 viewport 时补 viewport，并追加窄屏 CSS + 兜底 JS。
+// 网页文件夹是桌面宽屏"幻灯片 deck"（html-ppt 运行时：.deck 100vh + .slide 绝对定位 + 键盘翻页 +
+// 多栏 grid + 固定大字号 + 绝对定位页脚），移动端必须整体改写布局才能阅读。
+// 仅响应时注入，不修改 R2 原文件；CSS/JS 均以 820px 断点隔离，桌面端不受影响。
+function injectMobileCss(html) {
+  let out = String(html || '');
+
+  // 1) viewport（原 HTML 缺失时补上，避免按 980px 缩放渲染）
+  if (!/<meta[^>]+name=["']viewport["']/i.test(out)) {
+    const vp = '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">';
+    if (/<\/head>/i.test(out)) {
+      out = out.replace(/<\/head>/i, vp + '\n</head>');
+    } else {
+      out = vp + '\n' + out;
+    }
+  }
+
+  // 2) 窄屏样式：覆盖 html-ppt 幻灯片布局根因（全部 !important 压过页面内联样式）
+  const css = '<style id="qs-mobile-adapt">\n' +
+    '@media (max-width: 820px) {\n' +
+    '  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }\n' +
+    '  html { -webkit-text-size-adjust: 100%; }\n' +
+    '  html, body { width: auto !important; max-width: 100% !important; overflow-x: hidden !important; }\n' +
+    '  body { padding: 0 14px 30px !important; font-size: 15px !important; line-height: 1.65 !important; }\n' +
+    // --- 幻灯片 deck 展开为流式长页（根因 1：.slide 绝对定位 100vh + opacity 切换 + overflow hidden）---
+    '  .deck { position: static !important; width: auto !important; height: auto !important; min-height: 0 !important; overflow: visible !important; }\n' +
+    '  .slide {\n' +
+    '    position: relative !important; top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;\n' +
+    '    width: auto !important; height: auto !important; min-height: 0 !important;\n' +
+    '    display: flex !important; flex-direction: column !important; justify-content: flex-start !important;\n' +
+    '    opacity: 1 !important; visibility: visible !important; pointer-events: auto !important;\n' +
+    '    transform: none !important;\n' +
+    '    overflow: visible !important;\n' +
+    '    padding: 46px 2px 34px !important; margin: 0 0 12px !important;\n' +
+    '    border-bottom: 1px solid rgba(0,0,0,.08);\n' +
+    '  }\n' +
+    '  .deck-header, .progress-bar, .overview, .notes-overlay { display: none !important; }\n' +
+    // --- 多栏 grid / flex 转单列（根因 2：g2/g3/g4/gg/steps/tl 多栏在窄屏挤压竖排）---
+    '  .grid, .g2, .g3, .g4, .gg, .steps, .tl, .tl .row { grid-template-columns: 1fr !important; grid-template-rows: none !important; }\n' +
+    '  .grid > *, .gg > *, .steps > *, .tl .item { grid-column: auto !important; grid-row: auto !important; }\n' +
+    '  .row { flex-wrap: wrap !important; }\n' +
+    '  .row > * { flex: 1 1 auto !important; min-width: 0 !important; }\n' +
+    '  .tl::before { display: none !important; }\n' +
+    // --- 大字号缩放（根因 3：内联 font-size 96/104px 放不下逐字竖排）---
+    '  h1, .h1 { font-size: 30px !important; line-height: 1.18 !important; }\n' +
+    '  h2, .h2 { font-size: 24px !important; line-height: 1.22 !important; }\n' +
+    '  h3, .h3 { font-size: 20px !important; line-height: 1.25 !important; }\n' +
+    '  h4, .h4 { font-size: 17px !important; line-height: 1.35 !important; }\n' +
+    '  .lede { font-size: 16px !important; line-height: 1.6 !important; max-width: none !important; }\n' +
+    '  .big-num { font-size: 34px !important; }\n' +
+    '  .eyebrow, .kicker { font-size: 12px !important; letter-spacing: .08em !important; }\n' +
+    // --- 页脚绝对定位改静态（根因 4：.foot bottom:24px 依赖 84px 边距，窄屏被裁）---
+    '  .foot { position: static !important; bottom: auto !important; left: auto !important; right: auto !important; margin-top: 24px !important; padding-top: 10px !important; }\n' +
+    // --- 图片容器取消固定高宽（根因 5：.ph/.gg 固定尺寸 + object-fit + min-height:0 致白块）---
+    '  img, video, iframe, canvas, svg { max-width: 100% !important; height: auto !important; }\n' +
+    '  .ph, .gg .cell { height: auto !important; min-height: 0 !important; overflow: visible !important; box-shadow: none !important; }\n' +
+    '  .ph img, .gg .cell img { width: 100% !important; height: auto !important; object-fit: contain !important; position: static !important; }\n' +
+    '  .ph.contain { background: #fff !important; }\n' +
+    // --- 表格横向滚动（根因 7：table 强制 width:100% 会压缩列宽致多栏挤压/竖排/数字裁切；
+    //    改 width:max-content + min-width:100%，表格按内容自然宽度展开，超出部分横滑阅读）---
+    '  table { display: block !important; width: max-content !important; max-width: none !important; min-width: 100% !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }\n' +
+    '  td, th { white-space: nowrap !important; }\n' +
+    '  .t td, .t th { padding: 9px 12px !important; }\n' +
+    // --- 动画静态化（防止入场动画初始 opacity:0 导致内容不可见）---
+    '  [data-anim], [class*="anim-"] { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }\n' +
+    // --- 悬浮返回导航改静态（根因 6：#qs-return-nav fixed 遮挡首屏）---
+    '  #qs-return-nav { position: static !important; top: auto !important; right: auto !important; display: flex !important; flex-wrap: wrap !important; gap: 6px !important; padding: 10px 0 0 !important; }\n' +
+    '  #qs-return-nav a { font-size: 12px !important; padding: 6px 10px !important; }\n' +
+    // --- 其他可读性 ---
+    '  pre { white-space: pre-wrap !important; word-break: break-word !important; }\n' +
+    '}\n' +
+    '</style>';
+
+  if (/<\/head>/i.test(out)) {
+    out = out.replace(/<\/head>/i, css + '\n</head>');
+  } else if (/<body([^>]*)>/i.test(out)) {
+    out = out.replace(/<body([^>]*)>/i, css + '\n<body$1>');
+  } else {
+    out = css + '\n' + out;
+  }
+
+  // 3) 窄屏兜底 JS：压过内联 style 字号并强制展开绝对定位 slide（CSS !important 之外的双保险）
+  const fix = '<script id="qs-mobile-fix">\n' +
+    '(function () {\n' +
+    '  try {\n' +
+    '    if (window.innerWidth > 820) return;\n' +
+    '    var els = document.querySelectorAll("h1,h2,h3,h4,.big-num,.lede");\n' +
+    '    var fs = { H1: "30px", H2: "24px", H3: "20px", H4: "17px" };\n' +
+    '    var lh = { H1: "1.18", H2: "1.22", H3: "1.25", H4: "1.35" };\n' +
+    '    for (var i = 0; i < els.length; i++) {\n' +
+    '      var el = els[i], tag = el.tagName, s = el.style;\n' +
+    '      if (!s || !s.fontSize) continue;\n' +
+    '      if (fs[tag]) { s.setProperty("font-size", fs[tag], "important"); if (s.lineHeight) s.setProperty("line-height", lh[tag], "important"); }\n' +
+    '      else if (el.className && String(el.className).indexOf("big-num") >= 0) s.setProperty("font-size", "34px", "important");\n' +
+    '      else if (el.className && String(el.className).indexOf("lede") >= 0) s.setProperty("font-size", "16px", "important");\n' +
+    '    }\n' +
+    '    var tbs = document.querySelectorAll("table");\n' +
+    '    for (var j = 0; j < tbs.length; j++) {\n' +
+    '      var tb = tbs[j], p = tb.parentNode;\n' +
+    '      if (!p || p.nodeName === "BODY") continue;\n' +
+    '      if (p.className && String(p.className).indexOf("qs-tbl-wrap") >= 0) continue;\n' +
+    '      var w = document.createElement("div");\n' +
+    '      w.className = "qs-tbl-wrap";\n' +
+    '      w.style.cssText = "overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;max-width:100%;";\n' +
+    '      p.insertBefore(w, tb);\n' +
+    '      w.appendChild(tb);\n' +
+    '    }\n' +
+    '  } catch (e) {}\n' +
+    '})();\n' +
+    '</script>';
+
+  if (/<\/body>/i.test(out)) {
+    out = out.replace(/<\/body>/i, fix + '\n</body>');
+  } else {
+    out = out + '\n' + fix;
+  }
+  return out;
+}
+
 function mimeOf(path) {
   const m = path.match(/\.([A-Za-z0-9]+)$/);
   if (!m) return 'application/octet-stream';

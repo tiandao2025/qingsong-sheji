@@ -866,6 +866,15 @@ function escapeHtml(str) {
   div.textContent = str;
   return div.innerHTML;
 }
+// 用于拼接进 HTML 属性（value="..."）的转义：必须额外转义引号，否则 JSON 字符串会被属性提前截断
+function escapeAttr(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 function trimChatUrlTail(url) {
   var m = url.match(/^(.*?)[.,;:!?]+$/);
@@ -1602,6 +1611,8 @@ function showCaseModal(item) {
   var fp = safeParseJSON(isEdit ? item.floor_plan : null, {});
   var spaces = safeParseJSON(isEdit ? item.spaces : null, []);
   var materials = safeParseJSON(isEdit ? item.materials : null, []);
+  // 记录编辑前的空间数量，用于保存时防止“误清空”
+  window._caseSpacesOrigCount = spaces.length;
   var areas = fp.areas || [];
   var images = (isEdit && item.images && item.images.length) ? item.images : [];
   if (!images.length && isEdit && item.cover_image) images = [item.cover_image];
@@ -2103,7 +2114,7 @@ function addCaseSpace(data) {
     '<div class="form-group"><label class="form-label">标签（逗号分隔）</label><input class="form-input" value="' + escapeHtml(tagsVal) + '" placeholder="如 开放式,极简"></div>' +
     '<div class="form-group"><label class="form-label">空间图片（可多选，一次上传多张）</label>' +
     '<div class="upload-row"><button type="button" class="btn btn-outline btn-sm" data-id="' + id + '" onclick="caseUpload(this)">上传空间图</button><input type="file" id="' + id + '_file" accept="image/*" multiple style="display:none;" onchange="uploadCaseSpaceImage(\'' + id + '\')"><span id="' + id + '_status" style="color:#999;font-size:12px;">点击按钮选择图片</span></div>' +
-    '<input type="hidden" id="' + id + '_imgs" value="' + escapeHtml(JSON.stringify(images)) + '">' +
+    '<input type="hidden" id="' + id + '_imgs" value="' + escapeAttr(JSON.stringify(images)) + '">' +
     '<div class="img-grid" id="' + id + '_prev"></div>' +
     '</div></div>';
   document.getElementById('caseSpacesList').insertAdjacentHTML('beforeend', html);
@@ -2263,6 +2274,12 @@ function collectCaseMaterials() {
 }
 
 async function saveCase(id) {
+  // 防止“编辑后空间图片被误清空”：原有空间有内容、采集结果为空时二次确认
+  var _collectedSpaces = collectCaseSpaces();
+  var _origSpaces = window._caseSpacesOrigCount || 0;
+  if (id && _origSpaces > 0 && _collectedSpaces.length === 0) {
+    if (!confirm('警告：保存后该案例的空间展示会被全部清空（原有 ' + _origSpaces + ' 个空间，含图片）。\n\n若这不是你的本意，请点“取消”，再刷新页面重新编辑。\n\n确定要清空吗？')) return;
+  }
   var imagesRaw = document.getElementById('caseImages').value.trim();
   var images = [];
   if (imagesRaw) {
@@ -2305,7 +2322,7 @@ async function saveCase(id) {
       image: document.getElementById('fpImage').value.trim(),
       areas: collectCaseFloorAreas()
     },
-    spaces: collectCaseSpaces(),
+    spaces: _collectedSpaces,
     materials: collectCaseMaterials(),
     type: document.getElementById('caseType').value,
     location: document.getElementById('caseLocation').value,

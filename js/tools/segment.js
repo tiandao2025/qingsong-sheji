@@ -11,7 +11,7 @@
   const MODEL_URL = './tools/model/u2netp.onnx';
   // 自托管 onnxruntime WASM（避免 jsdelivr CDN 国内不稳定导致推理失败）
   if (global.ort && global.ort.env && global.ort.env.wasm) {
-    global.ort.env.wasm.wasmPaths = './js/tools/vendor/ort/';
+    global.ort.env.wasm.wasmPaths = '/js/tools/vendor/ort/';  // 绝对路径，避免相对路径在不同页面上解析错误
     global.ort.env.wasm.numThreads = 1; // 减少多线程 wasm 加载失败概率
   }
 

@@ -55,7 +55,7 @@ export async function onRequest({ request, env }) {
           return json({ item: lockedItem(item), locked: true });
         }
       }
-      return json({ item: Object.assign({}, item, { has_password: !!password, locked: false }) });
+      return json({ item: unlockedItem(item, password) });
     }
 
     if (category) {
@@ -92,14 +92,14 @@ async function handleUnlock(request, env) {
   if (!item) return json({ error: '未找到该方案汇报' }, 404);
 
   const real = String(item.password || '');
-  if (!real) return json({ success: true, item: Object.assign({}, item, { has_password: false, locked: false }) });
+  if (!real) return json({ success: true, item: unlockedItem(item, false) });
 
   const expect = await makeToken(id, real);
   if ((await makeToken(id, password)) !== expect) {
     return json({ error: '密码不正确' }, 401);
   }
 
-  const res = json({ success: true, item: Object.assign({}, item, { has_password: true, locked: false }) });
+  const res = json({ success: true, item: unlockedItem(item, true) });
   res.headers.set('Set-Cookie', 'qs_pp_' + id + '=' + expect + '; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax');
   return res;
 }
@@ -133,6 +133,16 @@ function lockedItem(it) {
     page_url: (it.slug && (it.type === 'page' || Number(it.file_count || 0) > 0)) ? ('/proposals/' + it.slug + '/') : '',
     locked: true
   };
+}
+
+// 解锁后的完整详情项：补计算字段，保证小程序端 useWebView 判定可用
+function unlockedItem(it, hasPassword) {
+  return Object.assign({}, it, {
+    has_password: !!hasPassword,
+    locked: false,
+    has_page: !!(it.slug && (it.type === 'page' || Number(it.file_count || 0) > 0)),
+    page_url: (it.slug && (it.type === 'page' || Number(it.file_count || 0) > 0)) ? ('/proposals/' + it.slug + '/') : ''
+  });
 }
 
 // cookie 令牌 = sha256('qs-prop|' + id + '|' + 密码)

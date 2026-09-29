@@ -1,0 +1,14 @@
+/js/tools/vendor/ort/ort-wasm-simd-threaded.wasm
+  Content-Type: application/wasm
+
+/js/tools/vendor/ort/ort-wasm-simd-threaded.jsep.wasm
+  Content-Type: application/wasm
+
+/js/tools/vendor/ort/ort-wasm-simd-threaded.mjs
+  Content-Type: text/javascript
+
+/js/tools/vendor/ort/ort-wasm-simd-threaded.jsep.mjs
+  Content-Type: text/javascript
+
+/tools/model/u2netp.onnx
+  Content-Type: application/octet-stream
