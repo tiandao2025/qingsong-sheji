@@ -2,22 +2,20 @@
 // GET /api/blog-materials-images  -> 列出 R2 uploads/ 目录下的历史图片（公开 URL）
 // 认证：与 blog-materials.js 保持一致（x-admin-key / JWT）
 
-const ADMIN_KEYS = ['qs-admin-2024'];
-
-function verifyAuth(request) {
+function verifyAuth(request, env) {
   const key = request.headers.get('x-admin-key') || '';
-  if (ADMIN_KEYS.includes(key)) return true;
+  if (env.ADMIN_TOKEN && key === env.ADMIN_TOKEN) return true;
   const auth = request.headers.get('Authorization') || '';
   if (auth.startsWith('Bearer ')) {
     const token = auth.slice(7);
-    if (token && token.length >= 16) return true;
+    if (env.ADMIN_TOKEN && token === env.ADMIN_TOKEN) return true;
   }
   return false;
 }
 
 export async function onRequestGet(context) {
   const { request, env } = context;
-  if (!verifyAuth(request)) {
+  if (!verifyAuth(request, env)) {
     return Response.json({ error: '未授权' }, { status: 401 });
   }
   try {

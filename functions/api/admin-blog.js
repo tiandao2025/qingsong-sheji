@@ -10,10 +10,10 @@ const BLOG_INDEX_KEY = 'blog-index.json';
 function verifyAuth(request, env) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
-  const validToken = env.ADMIN_TOKEN || 'qs-admin-2024';
+  const validToken = env.ADMIN_TOKEN || '';
   // 也支持 x-admin-key 头
   const adminKey = request.headers.get('x-admin-key') || '';
-  return token === validToken || adminKey === validToken;
+  return !!validToken && (token === validToken || adminKey === validToken);
 }
 
 async function getBlogIndex(env) {

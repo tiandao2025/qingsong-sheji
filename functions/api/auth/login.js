@@ -20,7 +20,13 @@ export async function onRequestPost({ request, env }) {
       });
     }
 
-    const token = env.ADMIN_TOKEN || 'qs-admin-2024';
+    if (!env.ADMIN_TOKEN) {
+      return new Response(JSON.stringify({ success: false, error: '服务器未配置管理员令牌' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    const token = env.ADMIN_TOKEN;
     return new Response(JSON.stringify({ success: true, token }), {
       status: 200,
       headers: {

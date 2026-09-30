@@ -1,5 +1,5 @@
 // admin-cases.js — 案例CRUD API (Cloudflare Pages Functions)
-// 认证: x-admin-key: qs-admin-2024
+// 认证: x-admin-key（取环境变量 ADMIN_TOKEN）
 // 存储: D1 数据库 cases 表 (与新版 /api/cases 统一)
 // 兼容: 同时输出新旧两套字段 ——
 //   旧字段(name/desc/type/location/images/video/order/featured): 供旧版后台 admin.html 列表 loadCases 使用
@@ -106,7 +106,7 @@ export async function onRequest(context) {
 
   // 认证
   const adminKey = request.headers.get('x-admin-key') || '';
-  if (adminKey !== 'qs-admin-2024') {
+  if (!env.ADMIN_TOKEN || adminKey !== env.ADMIN_TOKEN) {
     return new Response(JSON.stringify({ error: '未授权访问' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' }

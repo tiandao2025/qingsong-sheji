@@ -1,5 +1,5 @@
 export async function onRequest({ request, env }) {
-  const apiKey = env.ZHIPU_API_KEY || 'de905fb991ce4344877e5d4400a17ad1.NAN6MxvJYl5jMzsO';
+  const apiKey = env.ZHIPU_API_KEY || '';
   
   // Test 1: 能否访问外网
   let test1 = 'fail';

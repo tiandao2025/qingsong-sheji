@@ -293,6 +293,14 @@ body {
 }
 #followTip.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* 往期热播内容（自动生成，位于评论区下方） */
+.hot-posts-section { margin-top:36px; padding-top:24px; border-top:1px solid #eee; }
+.hot-posts-title { font-size:20px; color:#1D1D1F; margin-bottom:14px; }
+.hot-posts-list { list-style:none; margin:0; padding:0; }
+.hot-posts-list li { margin:10px 0; }
+.hot-post-link { color:#C9A96E; font-size:15px; line-height:1.6; text-decoration:none; word-break:break-word; }
+.hot-post-link:hover { color:#A68A4C; text-decoration:underline; }
+
 /* 评论留言 */
 .comments-section { margin-top:36px; padding-top:24px; border-top:1px solid #eee; }
 .comments-title { font-size:20px; color:#1D1D1F; margin-bottom:16px; }
@@ -375,11 +383,13 @@ async function loadArticle(id) {
       <div class="article-content">${formatContent(p.content)}</div>
       ${renderDownloads(p.downloads)}
       ${commentsSectionHtml()}
+      ${hotPostsSectionHtml()}
     `;
     convertFenceBlocks();
     enhanceCodeBlocks();
     enhanceFollowBlock();
     initComments(id);
+    initHotPosts(id);
     // 页面加载即调用计数接口（服务端做 IP 去重），成功后刷新显示
     try {
       const vr = await fetch(`/api/blog/${id}/view`, { method: 'POST' });
@@ -703,9 +713,12 @@ function enhanceFollowBlock() {
   });
   // 固定模板：每篇文章末尾都追加关注卡片；若已存在 .follow-block 则不重复追加
   if (content.querySelector('.follow-block')) return;
+  const host = content.parentNode || content;
+  if (host.querySelector('.follow-block')) return;
   const wrap = document.createElement('div');
   wrap.innerHTML = createFollowBlockHtml();
-  content.appendChild(wrap);
+  // 关注二维码卡片固定放在文章最底部（正文、下载区、留言区之后）
+  host.appendChild(wrap);
   wrap.addEventListener('click', function(ev) {
     const card = ev.target && ev.target.closest ? ev.target.closest('.follow-card') : null;
     if (card) showFollowTip(card.getAttribute('data-tip') || '请使用对应 App 扫码关注');
@@ -740,6 +753,32 @@ function commentsSectionHtml() {
     '</div>' +
     '<div class="comment-list" id="commentList"><div class="comments-empty">评论加载中…</div></div>' +
   '</div>';
+}
+
+/* ---- 往期热播内容（文章页自动生成，无需手动写进正文） ---- */
+function hotPostsSectionHtml() {
+  return '<div class="hot-posts-section" id="hotPostsSection" style="display:none;">' +
+    '<h2 class="hot-posts-title">往期热播内容</h2>' +
+    '<ul class="hot-posts-list" id="hotPostsList"></ul>' +
+  '</div>';
+}
+
+function initHotPosts(articleId) {
+  var section = document.getElementById('hotPostsSection');
+  var listEl = document.getElementById('hotPostsList');
+  if (!section || !listEl) return;
+  fetch('/api/blog?hot=1&limit=5&exclude=' + encodeURIComponent(articleId), { cache: 'no-store' })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      var posts = (data && data.posts) || [];
+      if (!posts.length) return;
+      listEl.innerHTML = posts.map(function(p) {
+        return '<li><a class="hot-post-link" href="article.html?id=' + encodeURIComponent(p.id) + '">' +
+          escapeHtml(p.title || '') + '</a></li>';
+      }).join('');
+      section.style.display = 'block';
+    })
+    .catch(function() { /* 热播内容加载失败不影响正文阅读 */ });
 }
 
 function formatCommentTime(t) {
@@ -777,7 +816,8 @@ function initComments(articleId) {
   var textEl = document.getElementById('commentText');
   if (!listEl || !submitBtn) return;
 
-  try { nameEl.value = localStorage.getItem('qs_comment_name') || ''; } catch (e) {}
+  // 昵称不再自动记忆预填（清掉历史遗留的测试昵称残留值）
+  try { localStorage.removeItem('qs_comment_name'); } catch (e) {}
 
   function apiUrl() { return '/api/blog/' + encodeURIComponent(articleId) + '/comments'; }
   function setStatus(msg, cls) {
@@ -821,7 +861,6 @@ function initComments(articleId) {
       var data = await res.json();
       if (!res.ok) { setStatus(data.error || '提交失败，请稍后再试', 'err'); return; }
       textEl.value = '';
-      try { localStorage.setItem('qs_comment_name', nickname); } catch (e) {}
       await refresh();
       var last = listEl.lastElementChild;
       if (last && last.classList && last.classList.contains('comment-item')) last.classList.add('comment-item-new');

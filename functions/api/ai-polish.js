@@ -78,7 +78,7 @@ async function handle({ request, env }) {
     });
   }
 
-  let apiKey = (env.ZHIPU_API_KEY || 'de905fb991ce4344877e5d4400a17ad1.NAN6MxvJYl5jMzsO').replace(/^\uFEFF/, '').trim();
+  let apiKey = (env.ZHIPU_API_KEY || '').replace(/^\uFEFF/, '').trim();
   if (!apiKey) {
     return new Response(JSON.stringify({ success: false, error: 'ZHIPU_API_KEY 未配置' }), {
       status: 500,

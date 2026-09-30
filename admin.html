@@ -703,7 +703,7 @@ tr:hover td { background: #FAFAFA; }
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 // ==================== AUTH ====================
-const ADMIN_TOKEN = 'qs-admin-2024';
+const ADMIN_TOKEN = ''; // 由后端 /api/auth/login 下发，前端不再内置明文口令
 let authToken = sessionStorage.getItem('admin_token') || '';
 
 async function doLogin() {

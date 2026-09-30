@@ -14,7 +14,7 @@ export async function onRequestOptions() {
 
 async function verifyAuth(request, env) {
   const adminKey = request.headers.get('x-admin-key');
-  if (adminKey === 'qs-admin-2024') return true;
+  if (env.ADMIN_TOKEN && adminKey === env.ADMIN_TOKEN) return true;
   if (adminKey && adminKey === env.ADMIN_TOKEN) return true;
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return false;

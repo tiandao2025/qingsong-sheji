@@ -12,6 +12,13 @@ export async function onRequest({ request, env }) {
 
 async function handleGet(request, env) {
   const url = new URL(request.url);
+
+  // 往期热播：/api/blog?hot=1&limit=5&exclude=<当前文章ID>&days=90
+  const hot = url.searchParams.get('hot');
+  if (hot === '1' || hot === 'true') {
+    return handleHot(url, env);
+  }
+
   const category = url.searchParams.get('category');
   const tag = url.searchParams.get('tag');
   const limit = parseInt(url.searchParams.get('limit') || '50');
@@ -90,6 +97,45 @@ async function handleGet(request, env) {
   }
 }
 
+// GET /api/blog?hot=1 - 往期热播文章（文章页"往期热播内容"模块数据源）
+// 规则：优先取最近 days 天（默认 90）内上传的文章，按播放量 views 降序；
+// 不足 limit 条时用全站历史热门补齐（同一篇只取一次，排除当前正在阅读的文章）
+async function handleHot(url, env) {
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '5', 10) || 5, 1), 20);
+  const days = parseInt(url.searchParams.get('days') || '90', 10) || 0;
+  const excludeId = parseInt(url.searchParams.get('exclude') || '0', 10) || 0;
+  const cols = 'SELECT id, title, views, created_at, category, cover_image FROM blog_posts';
+  const orderLimit = ' ORDER BY views DESC, created_at DESC LIMIT ?';
+  const headers = {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate'
+  };
+
+  try {
+    const posts = [];
+    const seen = {};
+    if (days > 0) {
+      const recent = await env.DB.prepare(
+        cols + " WHERE id != ? AND created_at >= datetime('now', ?)" + orderLimit
+      ).bind(excludeId, '-' + days + ' days', limit).all();
+      (recent.results || []).forEach(function(r) {
+        if (posts.length < limit && !seen[r.id]) { seen[r.id] = true; posts.push(r); }
+      });
+    }
+    if (posts.length < limit) {
+      const all = await env.DB.prepare(
+        cols + ' WHERE id != ?' + orderLimit
+      ).bind(excludeId, limit).all();
+      (all.results || []).forEach(function(r) {
+        if (posts.length < limit && !seen[r.id]) { seen[r.id] = true; posts.push(r); }
+      });
+    }
+    return new Response(JSON.stringify({ posts: posts, days: days }), { headers: headers });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: headers });
+  }
+}
+
 async function handlePost(request, env) {
   const auth = await verifyAuth(request, env);
   if (!auth) {
@@ -151,7 +197,7 @@ async function handlePost(request, env) {
 async function verifyAuth(request, env) {
   // 兼容旧版后台 admin.html 的 x-admin-key 认证
   const adminKey = request.headers.get('x-admin-key');
-  if (adminKey === 'qs-admin-2024') return true;
+  if (env.ADMIN_TOKEN && adminKey === env.ADMIN_TOKEN) return true;
   if (adminKey && adminKey === env.ADMIN_TOKEN) return true;
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return false;

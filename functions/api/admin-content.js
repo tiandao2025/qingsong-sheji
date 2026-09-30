@@ -1,5 +1,5 @@
 // admin-content.js — 网站内容管理API (Cloudflare Pages Functions)
-// 认证: x-admin-key: qs-admin-2024
+// 认证: x-admin-key（取环境变量 ADMIN_TOKEN）
 // 存储: R2 bucket qingsong-images, 文件 site-content.json
 
 export async function onRequest(context) {
@@ -8,7 +8,7 @@ export async function onRequest(context) {
   const method = request.method;
 
   const adminKey = request.headers.get('x-admin-key') || '';
-  if (adminKey !== 'qs-admin-2024') {
+  if (!env.ADMIN_TOKEN || adminKey !== env.ADMIN_TOKEN) {
     return new Response(JSON.stringify({ error: '未授权访问' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' }

@@ -19,9 +19,9 @@ function cnISO(d = new Date()) {
 function verifyAuth(request, env) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
-  const validToken = env.ADMIN_TOKEN || 'qs-admin-2024';
+  const validToken = env.ADMIN_TOKEN || '';
   const adminKey = request.headers.get('x-admin-key') || '';
-  return token === validToken || adminKey === validToken;
+  return !!validToken && (token === validToken || adminKey === validToken);
 }
 
 async function getStats(env) {

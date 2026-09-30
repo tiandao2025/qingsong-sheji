@@ -120,7 +120,7 @@ export async function onRequest(context) {
 }
 
 async function handle(request, env) {
-  const apiKey = (env.ZHIPU_API_KEY || 'de905fb991ce4344877e5d4400a17ad1.NAN6MxvJYl5jMzsO').replace(/^\uFEFF/, '').trim();
+  const apiKey = (env.ZHIPU_API_KEY || '').replace(/^\uFEFF/, '').trim();
   if (!apiKey) {
     return json({ success: false, error: 'ZHIPU_API_KEY 未配置' }, 500);
   }
