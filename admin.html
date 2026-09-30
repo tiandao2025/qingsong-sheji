@@ -347,6 +347,10 @@ tr:hover td { background: #FAFAFA; }
       <svg viewBox="0 0 24 24"><rect x="4" y="3" width="5" height="18" rx="1"/><rect x="11.5" y="3" width="5" height="18" rx="1"/><rect x="19" y="3" width="1.6" height="18" rx="0.8"/></svg>
       设计选材
     </div>
+    <div class="nav-item" data-page="comments">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      评论管理
+    </div>
   </nav>
   <div class="sidebar-footer">
     <a href="index.html" target="_blank">→ 打开官网</a>
@@ -375,6 +379,23 @@ tr:hover td { background: #FAFAFA; }
         <button class="btn btn-primary" onclick="openBlogForm()">+ 新建文章</button>
       </div>
       <div class="blog-card-grid" id="blogCardGrid"></div>
+    </div>
+  </div>
+
+  <!-- Comments Management -->
+  <div class="page-content" id="page-comments">
+    <div class="page-title">评论管理</div>
+    <div class="card">
+      <div class="card-header">
+        <h3>留言列表 <span id="commentCountAdmin" style="color:#C9A96E;font-weight:400;"></span></h3>
+        <button class="btn" onclick="loadComments()">刷新</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th style="width:170px;">文章</th><th style="width:120px;">昵称</th><th>内容</th><th style="width:150px;">时间</th><th style="width:80px;">操作</th></tr></thead>
+          <tbody id="commentTableBody"><tr><td colspan="5" style="text-align:center;color:#999;">加载中...</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -780,6 +801,7 @@ document.querySelectorAll('.nav-item').forEach(function(item) {
     else if (page === 'chats') loadChats();
     else if (page === 'stats') { setDefaultStatsDate(); loadStats(); }
     else if (page === 'materials') loadMaterials();
+    else if (page === 'comments') loadComments();
     else if (page === 'proposals') loadProposals();
   });
 });
@@ -804,6 +826,49 @@ async function loadDashboard() {
       '<p>今日访问: ' + (ov.todayPV || 0) + ' 次 | 总消息: ' + ((ov.chatStats && ov.chatStats.totalMessages) || 0) + ' 条 | 独立会话: ' + ((ov.chatStats && ov.chatStats.uniqueSessions) || 0) + ' 个</p>';
   } catch (e) {
     document.getElementById('dashboardStats').innerHTML = '<p style="color:#E74C3C;">加载失败: ' + e.message + '</p>';
+  }
+}
+
+// ==================== COMMENTS ====================
+async function loadComments() {
+  var tbody = document.getElementById('commentTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;">加载中...</td></tr>';
+  try {
+    var res = await api('/api/admin-comments');
+    if (res.error) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#E74C3C;">' + escapeHtml(res.error) + '</td></tr>';
+      return;
+    }
+    var list = res.comments || [];
+    document.getElementById('commentCountAdmin').textContent = '（共 ' + list.length + ' 条）';
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;">暂无留言</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(function(c) {
+      return '<tr>' +
+        '<td>' + escapeHtml(c.post_title || ('#' + c.blog_id)) + '</td>' +
+        '<td>' + escapeHtml(c.nickname || '访客') + '</td>' +
+        '<td style="max-width:420px;word-break:break-word;white-space:normal;">' + escapeHtml(c.content) + '</td>' +
+        '<td>' + escapeHtml(c.created_at || '') + '</td>' +
+        '<td><button class="btn btn-sm" onclick="deleteComment(' + c.id + ')">删除</button></td>' +
+      '</tr>';
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#E74C3C;">加载失败: ' + escapeHtml(e.message) + '</td></tr>';
+  }
+}
+
+async function deleteComment(id) {
+  if (!confirm('确定删除这条留言吗？删除后不可恢复。')) return;
+  try {
+    var res = await api('/api/admin-comments?id=' + id, { method: 'DELETE' });
+    if (res.error) { showToast(res.error, 'error'); return; }
+    showToast('已删除');
+    loadComments();
+  } catch (e) {
+    showToast('删除失败: ' + e.message, 'error');
   }
 }
 
