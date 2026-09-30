@@ -3228,6 +3228,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     panel.classList.toggle('open');
 
     if (panel.classList.contains('open')) input.focus();
+    else sendChatLog();  // 面板收起时做一次收尾上报
 
   }
 
@@ -3343,6 +3344,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     addMsg('user', text);
 
     messages.push({ role: 'user', content: text });
+    scheduleReport();
 
     showTyping();
 
@@ -3369,6 +3371,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
       addMsg('assistant', reply);
 
       messages.push({ role: 'assistant', content: reply });
+      scheduleReport();
 
     } catch(e) {
 
@@ -3391,23 +3394,45 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   });
 
 
-  var logSent = false;
-  async function sendChatLog() {
-    if (logSent || messages.length === 0) return;
-    logSent = true;
+  // 上报链路：对话进行中每条消息后实时上报（realtime），关闭面板 / 离开页面时收尾上报（final，附带 AI 总结）
+  var lastReportedCount = 0;
+  var finalSent = false;
+  var reportTimer = null;
+
+  async function reportChat(mode) {
+    if (messages.length === 0) return;
+    if (mode !== 'final' && messages.length === lastReportedCount) return;
     try {
-      await fetch('/api/chat/log', {
+      var resp = await fetch('/api/chat/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: sessionId, messages: messages })
+        body: JSON.stringify({ sessionId: sessionId, messages: messages, mode: mode || 'realtime' })
       });
+      if (resp && resp.ok) {
+        lastReportedCount = messages.length;
+        if (mode === 'final') finalSent = true;
+      }
     } catch(e) {}
   }
 
+  // 节流：连续对话时最多每 1 秒写一次后台，避免频繁写库
+  function scheduleReport() {
+    finalSent = false;
+    if (reportTimer) clearTimeout(reportTimer);
+    reportTimer = setTimeout(function() { reportTimer = null; reportChat('realtime'); }, 1000);
+  }
+
+  // 面板关闭 / 收起时的收尾上报（保留原函数名，供关闭按钮调用）
+  function sendChatLog() {
+    if (reportTimer) { clearTimeout(reportTimer); reportTimer = null; }
+    if (finalSent) return;
+    reportChat('final');
+  }
+
   window.addEventListener('beforeunload', function() {
-    if (!logSent && messages.length > 0) {
+    if (messages.length > 0 && !finalSent) {
       try {
-        navigator.sendBeacon('/api/chat/log', JSON.stringify({ sessionId: sessionId, messages: messages }));
+        navigator.sendBeacon('/api/chat/log', JSON.stringify({ sessionId: sessionId, messages: messages, mode: 'final' }));
       } catch(e) {}
     }
   });

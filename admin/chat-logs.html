@@ -415,8 +415,10 @@ async function loadList(page) {
 
   // Stats
   document.getElementById('statTotal').textContent = totalRecords;
-  var today = new Date().toISOString().slice(0,10);
-  var todayCount = logs.filter(function(l) { return l.created_at && l.created_at.startsWith(today); }).length;
+  // 按东八区（UTC+8）自然日统计当天记录（created_at 为 UTC ISO 串）
+  var todayStartUtc = new Date(Date.parse(new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10) + 'T00:00:00.000Z') - 8 * 3600 * 1000).toISOString();
+  var todayEndUtc = new Date(Date.parse(todayStartUtc) + 24 * 3600 * 1000).toISOString();
+  var todayCount = logs.filter(function(l) { return l.created_at && l.created_at >= todayStartUtc && l.created_at < todayEndUtc; }).length;
   document.getElementById('statToday').textContent = todayCount;
 
   var allLogs = logs;
@@ -575,6 +577,12 @@ function goPage(p) {
   loadList(p);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+// 准实时刷新：每 15 秒自动拉取一次（标签页隐藏时暂停）
+setInterval(function() {
+  if (document.visibilityState !== 'visible') return;
+  loadList(currentPage);
+}, 15000);
 
 loadList(1);
 </script>

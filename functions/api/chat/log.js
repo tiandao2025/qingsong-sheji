@@ -105,6 +105,9 @@ export async function onRequest({ request, env }) {
   try {
     const body = await request.json();
     const { sessionId, messages } = body;
+    // mode = 'realtime'：对话进行中的实时上报（只刷新对话原文，不调用 AI，快速返回）
+    // mode = 'final'   ：会话收尾上报（关闭面板 / 离开页面时），附带 AI 分析结果
+    const mode = body.mode === 'realtime' ? 'realtime' : 'final';
 
     if (!sessionId || !messages || messages.length === 0) {
       return new Response(JSON.stringify({ success: false, error: '缺少必要参数' }), {
@@ -119,8 +122,38 @@ export async function onRequest({ request, env }) {
     const visitorIp = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || '未知';
     const createdAt = new Date().toISOString();
 
-    // 调用智谱 AI 总结
-    const apiKey = (env.ZHIPU_API_KEY || '').replace(/^\uFEFF/, '').trim();
+    const messagesJson = JSON.stringify(messages);
+
+    // 同一会话（session_id）只保留一条记录：实时上报不断刷新它，收尾上报再补上 AI 分析，
+    // 这样后台刷新即可看到"正在进行中"的会话，而不是等会话结束后才出现。
+    let existingId = null;
+    try {
+      const existing = await env.DB.prepare(
+        'SELECT id FROM chat_logs WHERE session_id = ? ORDER BY id DESC LIMIT 1'
+      ).bind(sessionId).first();
+      if (existing && existing.id) existingId = existing.id;
+    } catch (err) {
+      console.error('查询已有会话失败:', err.message);
+    }
+
+    if (existingId && mode === 'realtime') {
+      // 实时上报：仅刷新对话原文与访客信息，不调用 AI（避免每条消息都产生一次模型调用）
+      await env.DB.prepare(
+        `UPDATE chat_logs SET messages = ?, visitor_ip = ?, visitor_location = ?, created_at = ? WHERE id = ?`
+      ).bind(messagesJson, visitorIp, visitorLocation, createdAt, existingId).run();
+      return new Response(JSON.stringify({
+        success: true,
+        id: existingId,
+        updated: true,
+        mode: mode
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    // 只有收尾上报才调用智谱 AI 总结
+    const apiKey = mode === 'final' ? (env.ZHIPU_API_KEY || '').replace(/^\uFEFF/, '').trim() : '';
     const analysis = apiKey ? await summarizeChat(apiKey, messages) : null;
 
     const summary = analysis?.summary || '';
@@ -133,8 +166,25 @@ export async function onRequest({ request, env }) {
       key_points: analysis.key_points || ''
     }) : '';
 
-    // 存入 D1
-    const messagesJson = JSON.stringify(messages);
+    if (existingId) {
+      // 收尾上报：更新原记录并补上 AI 分析结果
+      await env.DB.prepare(
+        `UPDATE chat_logs SET messages = ?, visitor_ip = ?, visitor_location = ?, summary = ?, valuable_info = ?, created_at = ? WHERE id = ?`
+      ).bind(messagesJson, visitorIp, visitorLocation, summary, valuableInfo, createdAt, existingId).run();
+      return new Response(JSON.stringify({
+        success: true,
+        id: existingId,
+        updated: true,
+        mode: mode,
+        summary: summary,
+        visitor_location: visitorLocation
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    // 该会话首次上报：插入新记录
     const result = await env.DB.prepare(
       `INSERT INTO chat_logs (session_id, messages, visitor_ip, visitor_location, summary, valuable_info, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
@@ -153,6 +203,8 @@ export async function onRequest({ request, env }) {
     return new Response(JSON.stringify({
       success: true,
       id: result.meta?.last_row_id,
+      updated: false,
+      mode: mode,
       summary: summary,
       visitor_location: visitorLocation
     }), {

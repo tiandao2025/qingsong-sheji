@@ -194,10 +194,13 @@ export async function onRequest({ request, env }) {
     // 获取总数与统计信息
     const countResult = await env.DB.prepare('SELECT COUNT(*) as total FROM chat_logs').first();
     const total = countResult ? countResult.total : logs.length;
-    const today = new Date().toISOString().split('T')[0];
+    // "今日"按东八区（UTC+8）自然日统计：created_at 存的是 UTC ISO 串，需换算成北京时间当天的 UTC 区间
+    const dayKey = new Date(Date.now() + 8 * 3600 * 1000).toISOString().split('T')[0]; // 北京时间当天日期
+    const dayStartUtc = new Date(Date.parse(dayKey + 'T00:00:00.000Z') - 8 * 3600 * 1000).toISOString();
+    const dayEndUtc = new Date(Date.parse(dayKey + 'T00:00:00.000Z') + 16 * 3600 * 1000).toISOString();
     const todayResult = await env.DB.prepare(
-      "SELECT COUNT(*) as c FROM chat_logs WHERE substr(created_at, 1, 10) = ?"
-    ).bind(today).first();
+      'SELECT COUNT(*) as c FROM chat_logs WHERE created_at >= ? AND created_at < ?'
+    ).bind(dayStartUtc, dayEndUtc).first();
     const sessionResult = await env.DB.prepare(
       'SELECT COUNT(DISTINCT session_id) as c FROM chat_logs'
     ).first();
