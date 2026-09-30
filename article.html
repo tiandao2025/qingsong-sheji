@@ -292,6 +292,33 @@ body {
   max-width: 84vw;
 }
 #followTip.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* 评论留言 */
+.comments-section { margin-top:36px; padding-top:24px; border-top:1px solid #eee; }
+.comments-title { font-size:20px; color:#1D1D1F; margin-bottom:16px; }
+.comment-count-badge { font-size:13px; color:#bbb; font-weight:400; margin-left:4px; }
+.comment-form { background:#fff; border:1px solid #eee; border-radius:12px; padding:16px; margin-bottom:20px; }
+.comment-input, .comment-textarea { width:100%; border:1px solid #e8e8e8; border-radius:8px; padding:10px 12px; font-size:14px; font-family:inherit; color:#1D1D1F; background:#fafafa; outline:none; transition:border-color .2s, background .2s; }
+.comment-input:focus, .comment-textarea:focus { border-color:#C9A96E; background:#fff; }
+.comment-textarea { min-height:86px; margin-top:10px; resize:vertical; line-height:1.7; }
+.comment-form-bottom { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; }
+.comment-hint { font-size:12px; color:#bbb; }
+.comment-hint.ok { color:#3f9d5a; }
+.comment-hint.err { color:#e74c3c; }
+.comment-submit { background:#C9A96E; color:#fff; border:0; border-radius:20px; padding:9px 22px; font-size:14px; font-family:inherit; cursor:pointer; transition:opacity .2s; }
+.comment-submit:hover { opacity:.88; }
+.comment-submit:disabled { opacity:.55; cursor:default; }
+.comment-list { display:flex; flex-direction:column; gap:12px; }
+.comment-item { background:#fff; border:1px solid #eee; border-radius:12px; padding:14px 16px; }
+.comment-item-new { animation:commentIn .8s ease; }
+@keyframes commentIn { from { background:#fdf8ee; } to { background:#fff; } }
+.comment-item-head { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.comment-avatar { width:30px; height:30px; border-radius:50%; background:#f2e9d6; color:#a8894e; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; flex:0 0 auto; }
+.comment-name { font-size:14px; font-weight:600; color:#4a3b1d; }
+.comment-time { font-size:12px; color:#bbb; margin-left:auto; }
+.comment-body { font-size:14px; color:#333; line-height:1.8; white-space:pre-wrap; word-break:break-word; }
+.comments-empty { text-align:center; color:#bbb; font-size:13px; padding:18px 0; }
+@media (max-width:520px) { .comment-form-bottom { flex-direction:column; align-items:stretch; } .comment-submit { width:100%; } }
 </style>
 </head>
 <body>
@@ -347,10 +374,12 @@ async function loadArticle(id) {
       ${p.bilibili ? `<div class="article-bilibili" style="margin:20px 0;"><div style="position:relative;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#000;"><iframe src="${p.bilibili.match(/src="([^"]+)"/)?.[1] || p.bilibili}" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen scrolling="no"></iframe></div></div>` : ''}
       <div class="article-content">${formatContent(p.content)}</div>
       ${renderDownloads(p.downloads)}
+      ${commentsSectionHtml()}
     `;
     convertFenceBlocks();
     enhanceCodeBlocks();
     enhanceFollowBlock();
+    initComments(id);
     // 页面加载即调用计数接口（服务端做 IP 去重），成功后刷新显示
     try {
       const vr = await fetch(`/api/blog/${id}/view`, { method: 'POST' });
@@ -695,6 +724,119 @@ function showFollowTip(msg) {
   tip.className = 'show';
   clearTimeout(tip._t);
   tip._t = setTimeout(function() { tip.className = ''; }, 2600);
+}
+
+/* ---- 评论留言（文章页） ---- */
+function commentsSectionHtml() {
+  return '<div class="comments-section" id="commentsSection">' +
+    '<h2 class="comments-title">评论留言 <span class="comment-count-badge" id="commentCount"></span></h2>' +
+    '<div class="comment-form">' +
+      '<input class="comment-input" id="commentName" type="text" maxlength="20" placeholder="你的昵称（选填）" autocomplete="nickname">' +
+      '<textarea class="comment-textarea" id="commentText" maxlength="500" placeholder="说点什么吧，最多 500 字…"></textarea>' +
+      '<div class="comment-form-bottom">' +
+        '<span class="comment-hint" id="commentStatus">留言提交后立即展示</span>' +
+        '<button type="button" class="comment-submit" id="commentSubmit">发表留言</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="comment-list" id="commentList"><div class="comments-empty">评论加载中…</div></div>' +
+  '</div>';
+}
+
+function formatCommentTime(t) {
+  if (!t) return '';
+  // D1 的 created_at 为 UTC（YYYY-MM-DD HH:MM:SS），补 Z 后按本地时区展示
+  var d = new Date(String(t).replace(' ', 'T') + 'Z');
+  if (isNaN(d.getTime())) return String(t);
+  var diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 0) diff = 0;
+  if (diff < 60) return '刚刚';
+  if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
+  if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
+  if (diff < 604800) return Math.floor(diff / 86400) + ' 天前';
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function commentItemHtml(c) {
+  var name = c.nickname || '访客';
+  return '<div class="comment-item">' +
+    '<div class="comment-item-head">' +
+      '<div class="comment-avatar">' + escapeHtml(name.slice(0, 1)) + '</div>' +
+      '<span class="comment-name">' + escapeHtml(name) + '</span>' +
+      '<span class="comment-time">' + formatCommentTime(c.created_at) + '</span>' +
+    '</div>' +
+    '<div class="comment-body">' + escapeHtml(c.content) + '</div>' +
+  '</div>';
+}
+
+function initComments(articleId) {
+  var listEl = document.getElementById('commentList');
+  var countEl = document.getElementById('commentCount');
+  var statusEl = document.getElementById('commentStatus');
+  var submitBtn = document.getElementById('commentSubmit');
+  var nameEl = document.getElementById('commentName');
+  var textEl = document.getElementById('commentText');
+  if (!listEl || !submitBtn) return;
+
+  try { nameEl.value = localStorage.getItem('qs_comment_name') || ''; } catch (e) {}
+
+  function apiUrl() { return '/api/blog/' + encodeURIComponent(articleId) + '/comments'; }
+  function setStatus(msg, cls) {
+    statusEl.textContent = msg;
+    statusEl.className = 'comment-hint' + (cls ? ' ' + cls : '');
+  }
+  function renderList(list) {
+    if (!list || !list.length) {
+      listEl.innerHTML = '<div class="comments-empty">还没有留言，来抢第一个沙发～</div>';
+      return;
+    }
+    listEl.innerHTML = list.map(commentItemHtml).join('');
+  }
+
+  function refresh() {
+    return fetch(apiUrl(), { cache: 'no-store' })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        renderList(data.comments);
+        countEl.textContent = data.total ? '(' + data.total + ')' : '';
+        return data;
+      });
+  }
+
+  refresh().catch(function() {
+    listEl.innerHTML = '<div class="comments-empty">评论加载失败，稍后可刷新重试</div>';
+  });
+
+  async function submit() {
+    var content = textEl.value.trim();
+    var nickname = nameEl.value.trim();
+    if (!content) { setStatus('先写点内容再提交吧', 'err'); textEl.focus(); return; }
+    submitBtn.disabled = true;
+    setStatus('正在提交…', '');
+    try {
+      var res = await fetch(apiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname: nickname, content: content })
+      });
+      var data = await res.json();
+      if (!res.ok) { setStatus(data.error || '提交失败，请稍后再试', 'err'); return; }
+      textEl.value = '';
+      try { localStorage.setItem('qs_comment_name', nickname); } catch (e) {}
+      await refresh();
+      var last = listEl.lastElementChild;
+      if (last && last.classList && last.classList.contains('comment-item')) last.classList.add('comment-item-new');
+      setStatus('留言成功，感谢支持！', 'ok');
+    } catch (e) {
+      setStatus('网络异常，请稍后再试', 'err');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  }
+
+  submitBtn.addEventListener('click', submit);
+  textEl.addEventListener('keydown', function(ev) {
+    if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') submit();
+  });
 }
 </script>
 
