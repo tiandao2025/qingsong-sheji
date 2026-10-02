@@ -1,2 +1,4 @@
 /admin/cases /admin 302
 /admin/cases.html /admin 302
+/materials.html / 301
+/materials / 301
