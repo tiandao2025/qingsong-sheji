@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>轻松时光 | 青松设计</title>
+<meta name="description" content="青松设计的轻松时光 —— 设计之余的小游戏，无需下载、打开即玩。">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #1D1D1F; background: #FFFFFF; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Navbar */
+.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(255,255,255,0.95); border-bottom: 1px solid rgba(0,0,0,0.06); }
+.nav-inner { max-width: 1040px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 52px; }
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.nav-logo img { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #C9A96E; object-fit: cover; }
+.nav-logo span { font-size: 16px; font-weight: 600; color: #1D1D1F; }
+.nav-links { display: flex; align-items: center; gap: 6px; list-style: none; }
+.nav-links a { text-decoration: none; color: #555; font-size: 13px; padding: 6px 14px; border-radius: 20px; transition: background 0.2s ease, color 0.2s ease; }
+.nav-links a:hover, .nav-links a.active { background: #F5F5F7; color: #1D1D1F; }
+.nav-links a.primary-link { background: #C9A96E; color: #fff; font-weight: 500; }
+.nav-links a.primary-link:hover { background: #B8995E; }
+
+/* Page Header */
+.page-header { padding-top: 100px; padding-bottom: 48px; text-align: center; }
+.page-header h1 { font-size: 40px; font-weight: 700; letter-spacing: 2px; }
+.page-header .line { width: 50px; height: 3px; background: #C9A96E; margin: 16px auto 0; }
+.page-header p { color: #666; margin-top: 12px; font-size: 15px; }
+
+/* Games Grid */
+.container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+.game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 28px; padding-bottom: 28px; }
+
+.game-card {
+  display: flex; flex-direction: column; background: #fff; border-radius: 12px; overflow: hidden;
+  border: 1px solid #f0f0f0; text-decoration: none; color: inherit; cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.game-card:hover { transform: translateY(-6px); box-shadow: 0 12px 30px rgba(0,0,0,0.1); }
+
+.game-cover { position: relative; height: 180px; overflow: hidden; background: #101223; }
+.game-cover svg { display: block; width: 100%; height: 100%; }
+.game-badge { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; background: #C9A96E; color: #fff; }
+.game-play {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 56px; height: 56px; border-radius: 50%; padding-left: 4px;
+  background: rgba(10,14,34,0.55); border: 2px solid rgba(201,169,110,0.9); color: #C9A96E;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.game-card:hover .game-play { background: rgba(201,169,110,0.92); color: #fff; }
+
+.game-card-body { flex: 1; display: flex; flex-direction: column; padding: 20px; }
+.game-card-body h3 { font-size: 17px; font-weight: 600; line-height: 1.4; }
+.game-sub { font-size: 12px; color: #C9A96E; letter-spacing: 0.5px; margin-top: 2px; }
+.game-desc { font-size: 13px; color: #888; line-height: 1.6; margin-top: 10px; }
+.game-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.game-tags .tag { font-size: 11px; padding: 3px 10px; background: #f5f0e5; color: #C9A96E; border-radius: 12px; }
+.game-meta { margin-top: 16px; padding-top: 14px; border-top: 1px solid #f2f2f2; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #aaa; }
+.game-cta { color: #C9A96E; font-weight: 500; font-size: 13px; }
+
+/* coming soon placeholder */
+.game-card.soon { border-style: dashed; cursor: default; }
+.game-card.soon:hover { transform: none; box-shadow: none; }
+.soon-cover { display: flex; align-items: center; justify-content: center; background: #FAFAFA; }
+.soon-cover .soon-plus { font-size: 38px; color: #DDD; line-height: 1; }
+.game-card.soon h3 { color: #AAA; }
+
+.grid-note { text-align: center; font-size: 12px; color: #BBB; padding-bottom: 80px; }
+
+@media (max-width: 768px) {
+  .game-grid { grid-template-columns: 1fr; gap: 20px; }
+  .game-cover { height: 150px; }
+  .page-header h1 { font-size: 28px; }
+  .nav { padding: 0 16px; }
+}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo"><img src="/cdn/logo.jpg" alt="青松设计"><span>青松设计</span></a>
+    <ul class="nav-links">
+      <li><a href="/#services">服务项目</a></li>
+      <li><a href="/#process">设计流程</a></li>
+      <li><a href="cases.html">设计案例</a></li>
+      <li><a href="proposals.html">方案汇报</a></li>
+      <li><a href="blog.html">最新博客</a></li>
+      <li><a href="/#about">关于我们</a></li>
+      <li><a href="games.html" class="active">轻松时光</a></li>
+      <li><a href="/#contact" class="primary-link">预约咨询</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="page-header">
+  <h1>轻松时光</h1>
+  <div class="line"></div>
+  <p>设计之余的小游戏 · 无需下载，打开即玩</p>
+</div>
+
+<div class="container">
+  <div class="game-grid" id="gameGrid">
+
+    <!-- 游戏卡片模板：新增游戏时复制以下 <a class="game-card"> ... </a> 整段，修改标题 / 副标题 / 简介 / 标签 / href 即可 -->
+    <a class="game-card" href="games/mario/">
+      <div class="game-cover">
+        <svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <rect width="320" height="180" fill="#101223"/>
+          <rect x="34" y="26" width="4" height="4" fill="#2A3358"/>
+          <rect x="86" y="18" width="4" height="4" fill="#2A3358"/>
+          <rect x="262" y="30" width="4" height="4" fill="#2A3358"/>
+          <rect x="214" y="16" width="4" height="4" fill="#2A3358"/>
+          <rect x="140" y="34" width="4" height="4" fill="#2A3358"/>
+          <rect x="100" y="66" width="20" height="20" fill="#C9A96E"/>
+          <rect x="104" y="70" width="12" height="12" fill="#8A7340"/>
+          <rect x="120" y="66" width="20" height="20" fill="#C9A96E"/>
+          <rect x="124" y="70" width="12" height="12" fill="#8A7340"/>
+          <rect x="160" y="66" width="20" height="20" fill="#E8C879"/>
+          <text x="170" y="81" text-anchor="middle" font-family="Courier New, monospace" font-size="14" font-weight="bold" fill="#5A4418">?</text>
+          <rect x="206" y="58" width="10" height="13" fill="#E8C879"/>
+          <rect x="209" y="61" width="4" height="7" fill="#A8873F"/>
+          <rect x="222" y="58" width="10" height="13" fill="#E8C879"/>
+          <rect x="225" y="61" width="4" height="7" fill="#A8873F"/>
+          <rect x="244" y="100" width="24" height="48" fill="#4A5578"/>
+          <rect x="240" y="92" width="32" height="10" fill="#6B78A8"/>
+          <rect x="58" y="120" width="12" height="8" fill="#C9A96E"/>
+          <rect x="58" y="128" width="12" height="10" fill="#E8C879"/>
+          <rect x="56" y="138" width="16" height="10" fill="#C9A96E"/>
+          <rect x="0" y="148" width="320" height="6" fill="#B08F52"/>
+          <g fill="#C9A96E">
+            <rect x="0" y="154" width="20" height="26"/><rect x="40" y="154" width="20" height="26"/>
+            <rect x="80" y="154" width="20" height="26"/><rect x="120" y="154" width="20" height="26"/>
+            <rect x="160" y="154" width="20" height="26"/><rect x="200" y="154" width="20" height="26"/>
+            <rect x="240" y="154" width="20" height="26"/><rect x="280" y="154" width="20" height="26"/>
+          </g>
+        </svg>
+        <span class="game-badge">可玩</span>
+        <span class="game-play">&#9654;</span>
+      </div>
+      <div class="game-card-body">
+        <h3>超级像素平台跳跃</h3>
+        <p class="game-sub">SUPER PIXEL PLATFORMER</p>
+        <p class="game-desc">复刻 FC 经典横版跳跃玩法：踩敌人、顶砖块、吃蘑菇与金币，一路闯过 5 关像素关卡。</p>
+        <div class="game-tags">
+          <span class="tag">像素风</span>
+          <span class="tag">横版跳跃</span>
+          <span class="tag">键盘 / 触屏</span>
+        </div>
+        <div class="game-meta">
+          <span>单人闯关 · 无需下载</span>
+          <span class="game-cta">开始游戏 →</span>
+        </div>
+      </div>
+    </a>
+
+    <div class="game-card soon">
+      <div class="game-cover soon-cover"><span class="soon-plus">+</span></div>
+      <div class="game-card-body">
+        <h3>更多小游戏</h3>
+        <p class="game-sub">COMING SOON</p>
+        <p class="game-desc">新的小游戏正在准备中，敬请期待。</p>
+      </div>
+    </div>
+
+  </div>
+  <p class="grid-note">游戏全部在浏览器本地运行，不收集任何数据；手机上建议横屏游玩。</p>
+</div>
+
+</body>
+</html>

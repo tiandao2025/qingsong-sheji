@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>超级像素平台跳跃 · Super Pixel Platformer</title>
+<style>
+  :root { --ink:#e8ecf8; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; padding:0; height:100%; background:#0a0c14; overflow:hidden;
+    font-family: "Courier New", ui-monospace, monospace; color:var(--ink);
+    touch-action:none; user-select:none; -webkit-user-select:none; }
+  #wrap { position:fixed; inset:0; overflow:hidden; background:#0a0c14; }
+  #stage { position:absolute; inset:0; image-rendering:pixelated; image-rendering:crisp-edges;
+    background:#0a0c14; }
+  #view { display:block; width:100%; height:100%; image-rendering:pixelated; }
+  #pad { position:fixed; inset:0; display:none; pointer-events:none; z-index:20; }
+  body.touch #pad { display:block; }
+  .btn { position:absolute; pointer-events:auto; border-radius:50%;
+    background:rgba(255,255,255,.12); border:2px solid rgba(255,255,255,.28);
+    display:flex; align-items:center; justify-content:center; font-weight:bold;
+    color:rgba(255,255,255,.8); backdrop-filter:blur(4px); }
+  .btn:active { background:rgba(255,255,255,.3); }
+  .btn.dpad { bottom:26px; width:66px; height:66px; font-size:28px; }
+  .btn.act { bottom:22px; width:80px; height:80px; font-size:24px; }
+  .btn.act.small { width:60px; height:60px; font-size:18px; }
+  .btn.sys { top:18px; width:46px; height:46px; font-size:18px; }
+  #bL { left:20px; }
+  #bR { left:100px; }
+  #bA { right:20px; }
+  #bB { right:112px; bottom:56px; }
+  #bP { right:20px; }
+  #bM { right:76px; }
+  #hint { position:fixed; left:50%; bottom:8px; transform:translateX(-50%);
+    font-size:11px; opacity:.55; pointer-events:none; z-index:10; text-align:center;
+    text-shadow:0 1px 2px rgba(0,0,0,.8); }
+  body.touch #hint { display:none; }
+  #fs { position:fixed; left:14px; top:14px; z-index:30; width:40px; height:40px;
+    border-radius:8px; background:rgba(10,14,34,.6); color:#e8ecf8; font-size:17px;
+    border:1px solid rgba(255,255,255,.2); cursor:pointer; display:none;
+    align-items:center; justify-content:center; }
+  body.touch #fs { display:flex; }
+  /* 返回「轻松时光」入口：桌面端右上角；触屏端下移，避让右上角 II / ♪ 按钮；全屏时隐藏以免影响游戏 */
+  #back { position:fixed; right:16px; top:14px; z-index:30; display:inline-flex;
+    align-items:center; gap:6px; padding:8px 14px; border-radius:8px;
+    background:rgba(10,14,34,.6); color:#C9A96E; font-size:13px; line-height:1;
+    text-decoration:none; letter-spacing:.5px; backdrop-filter:blur(4px);
+    border:1px solid rgba(201,169,110,.55); }
+  #back:hover { background:rgba(201,169,110,.18); border-color:#C9A96E; color:#E8C879; }
+  body.touch #back { top:74px; padding:7px 12px; font-size:12px; }
+  html:fullscreen #back { display:none; }
+  html:-webkit-full-screen #back { display:none; }
+  #rotate { position:fixed; inset:0; z-index:40; display:none; align-items:center;
+    justify-content:center; flex-direction:column; gap:14px; background:#0a0c14;
+    color:#e8ecf8; font-size:13px; text-align:center; padding:24px; }
+  body.portrait #rotate { display:flex; }
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage"><canvas id="view"></canvas></div></div>
+<div id="pad">
+  <div class="btn dpad" id="bL" data-k="left">&#9664;</div>
+  <div class="btn dpad" id="bR" data-k="right">&#9654;</div>
+  <div class="btn act" id="bA" data-k="jump">A</div>
+  <div class="btn act small" id="bB" data-k="run">B</div>
+  <div class="btn sys" id="bP" data-k="pause">II</div>
+  <div class="btn sys" id="bM" data-k="mute">&#9834;</div>
+</div>
+<button id="fs" title="全屏">&#9974;</button>
+<a id="back" href="/games.html" title="返回轻松时光">&#8592; 返回轻松时光</a>
+<div id="rotate">
+  <div style="font-size:44px">&#8635;</div>
+  <div>请横屏游玩体验更佳</div>
+  <div style="opacity:.6;font-size:12px">Rotate your device for the best experience</div>
+</div>
+<div id="hint">方向键 / WASD 移动 &nbsp;·&nbsp; Z 或 空格 跳跃 &nbsp;·&nbsp; X 或 Shift 加速 &nbsp;·&nbsp; Esc 暂停 &nbsp;·&nbsp; M 静音</div>
+
+<script src="shared/util.js"></script>
+<script src="shared/input.js"></script>
+<script src="shared/sfx.js"></script>
+<script src="shared/art.js"></script>
+<script src="shared/levels.js"></script>
+<script src="shared/render.js"></script>
+<script src="shared/game_core.js"></script>
+<script src="shared/game_player.js"></script>
+<script src="shared/game_entity.js"></script>
+<script src="shared/game_collide.js"></script>
+<script src="shared/game_main.js"></script>
+<script src="shared/game_draw.js"></script>
+<script>
+(function () {
+  var view = document.getElementById('view');
+  var stage = document.getElementById('stage');
+  var VW = 256, VH = 240;
+
+  R.init(function (w, h) {
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    return c;
+  }, view);
+
+  if ('ontouchstart' in window) document.body.classList.add('touch');
+
+  // Virtual viewport adapts to the window aspect ratio so the game always
+  // fills the screen without distortion. Height is anchored to the 15-row map;
+  // wider windows simply reveal more of the level horizontally.
+  // The virtual viewport mirrors the window aspect ratio exactly, so the game
+  // always fills the screen edge-to-edge with no black bars and no distortion.
+  // Height is locked to the 15-row tilemap; wide windows reveal more of the level,
+  // tall windows keep the same play width and letterbox nothing because the
+  // viewport grows vertically instead.
+  // The virtual viewport tracks the window aspect ratio so the game fills the
+  // screen edge-to-edge with no black bars and no distortion.
+  //   wide screens  -> more of the level is visible horizontally
+  //   tall screens  -> more sky above and below (letterboxed by the world itself)
+  var BASE_H = 240, MIN_W = 240, MAX_ASPECT = 2.4;
+
+  function fit() {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    if (!vw || !vh) return;
+
+    // Crisp integer pixel scale.
+    var scale = Math.max(1, Math.min(5, Math.floor(vh / BASE_H)));
+
+    // Width follows the aspect ratio (rounded to 4px so tiles stay aligned),
+    // but tall/portrait screens are capped: past this the extra height would be
+    // mostly empty sky, so the renderer letterboxes instead (via CSS centering).
+    var aspect = vw / vh;
+    if (aspect > MAX_ASPECT) aspect = MAX_ASPECT;
+    var virtW = Math.max(MIN_W, Math.round(BASE_H * aspect / 4) * 4);
+    var virtH = BASE_H;
+
+    R.setViewport(virtW, virtH);
+    R.setScale(scale);
+
+    // Portrait hint: the playfield is much wider than tall.
+    var portrait = (vw / vh) < 1.05;
+    if (portrait) document.body.classList.add('portrait');
+    else document.body.classList.remove('portrait');
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', function () { setTimeout(fit, 120); });
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
+  fit();
+
+  // ---- fullscreen ----
+  var fsBtn = document.getElementById('fs');
+  function toggleFullscreen() {
+    var el = document.documentElement;
+    var d = document;
+    if (!d.fullscreenElement && !d.webkitFullscreenElement) {
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      else if (el.msRequestFullscreen) el.msRequestFullscreen();
+    } else {
+      if (d.exitFullscreen) d.exitFullscreen();
+      else if (d.webkitExitFullscreen) d.webkitExitFullscreen();
+      else if (d.msExitFullscreen) d.msExitFullscreen();
+    }
+    setTimeout(fit, 160);
+  }
+  fsBtn.addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', function () { setTimeout(fit, 120); });
+  document.addEventListener('webkitfullscreenchange', function () { setTimeout(fit, 120); });
+
+  // keyboard
+  window.addEventListener('keydown', function (e) {
+    var n = IN.keyMap ? null : null;
+    var name = keyToName(e.code);
+    if (!name) return;
+    e.preventDefault();
+    IN.set(name, true);
+    SFX.resume();
+  });
+  window.addEventListener('keyup', function (e) {
+    var name = keyToName(e.code);
+    if (!name) return;
+    e.preventDefault();
+    IN.set(name, false);
+  });
+  function keyToName(code) {
+    var m = {
+      ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
+      ArrowUp: 'jump', KeyW: 'jump', ArrowDown: 'down', KeyS: 'down',
+      KeyZ: 'jump', Space: 'jump', KeyK: 'jump', KeyJ: 'jump',
+      ShiftLeft: 'run', ShiftRight: 'run', KeyX: 'run',
+      Enter: 'start', KeyR: 'restart', KeyM: 'mute', Escape: 'pause'
+    };
+    return m[code] || null;
+  }
+
+  // touch pad
+  var pad = document.getElementById('pad');
+  var btns = pad.querySelectorAll('.btn');
+  Array.prototype.forEach.call(btns, function (b) {
+    var k = b.getAttribute('data-k');
+    function on(e) {
+      e.preventDefault();
+      IN.set(k, true);
+      IN.isTouch = true;
+      SFX.resume();
+      if (k === 'mute') { SFX.setEnabled(!SFX.isEnabled()); b.style.opacity = SFX.isEnabled() ? 1 : 0.4; }
+    }
+    function off(e) { e.preventDefault(); IN.set(k, false); }
+    b.addEventListener('touchstart', on, { passive: false });
+    b.addEventListener('touchend', off, { passive: false });
+    b.addEventListener('touchcancel', off, { passive: false });
+    b.addEventListener('mousedown', on);
+    b.addEventListener('mouseup', off);
+    b.addEventListener('mouseleave', off);
+  });
+
+  // mute via key
+  window.addEventListener('keydown', function (e) {
+    if (e.code === 'KeyM') SFX.setEnabled(!SFX.isEnabled());
+    if (e.code === 'KeyR' && GAME.G.mode === 'play') { GAME.G.mode = 'ready'; }
+  });
+
+  // main loop with fixed timestep
+  var acc = 0, last = performance.now();
+  var STEP = 1000 / 60;
+  function frame(now) {
+    var dt = now - last;
+    last = now;
+    if (dt > 200) dt = STEP;
+    acc += dt;
+    var guard = 0;
+    while (acc >= STEP && guard < 6) {
+      GAME.update();
+      IN.tick();
+      acc -= STEP;
+      guard++;
+    }
+    GAME.draw();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
